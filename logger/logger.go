@@ -20,18 +20,8 @@ func provideZapLogger(lifecycle fx.Lifecycle) (*zap.Logger, error) {
 	return logger, nil
 }
 
-func provideZapSugar(lifecycle fx.Lifecycle, zapLogger *zap.Logger) (*zap.SugaredLogger, error) {
-	sugar := zapLogger.Sugar()
-	lifecycle.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return sugar.Sync()
-		},
-	})
-	return sugar, nil
-}
-
 // var LoggerExport = fx.Options(fx.Provide(provideZapLogger), fx.Provide(provideZapSugar), fx.NopLogger)
 
-var Export = fx.Options(fx.Provide(provideZapLogger), fx.Provide(provideZapSugar), fx.WithLogger(func(zapLogger *zap.Logger) fxevent.Logger {
+var Export = fx.Options(fx.Provide(provideZapLogger), fx.WithLogger(func(zapLogger *zap.Logger) fxevent.Logger {
 	return &fxevent.ZapLogger{Logger: zapLogger}
 }))

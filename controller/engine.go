@@ -24,17 +24,17 @@ func newEngine(logger *zap.Logger) (*gin.Engine, error) {
 	return engine, nil
 }
 
-func startEngine(lifecycle fx.Lifecycle, log *zap.SugaredLogger, config *config.Config, gin *gin.Engine, shutdowner fx.Shutdowner) {
+func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config, gin *gin.Engine, shutdowner fx.Shutdowner) {
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				log.Infof("Starting application on port %d", config.Rest.Port)
+				log.Info("application started", zap.Uint("port", config.Rest.Port))
 				go func() {
 					err := gin.Run(fmt.Sprintf(":%d", config.Rest.Port))
-					log.Error("Gin fatal error", err)
+					log.Error("gin fatal error", zap.Error(err))
 					err = shutdowner.Shutdown()
 					if err != nil {
-						log.Fatal("Failed to shutdown gracefully")
+						log.Fatal("failed to shutdown gracefully", zap.String("where", "gin"), zap.Error(err))
 					}
 				}()
 				return nil

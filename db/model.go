@@ -2,8 +2,6 @@ package db
 
 import "github.com/jinzhu/gorm"
 
-// TODO: add cascade operations
-
 // Series Represents one season of something
 type Series struct {
 	gorm.Model
@@ -17,8 +15,8 @@ type Series struct {
 	Episodes    []Episode           `gorm:"foreignKey:SeriesId"`
 }
 
-func NewSeries(name string, description string, query *string, thumbnailId uint) *Series {
-	return &Series{
+func NewSeries(name string, description string, query *string, thumbnailId uint) Series {
+	return Series{
 		Name:        name,
 		Description: description,
 		Query:       query,
@@ -34,8 +32,8 @@ type Thumbnail struct {
 	DownloadUrl string
 }
 
-func NewThumbnail(name string, path string, downloadUrl string) *Thumbnail {
-	return &Thumbnail{
+func NewThumbnail(name string, path string, downloadUrl string) Thumbnail {
+	return Thumbnail{
 		Name:        name,
 		Path:        path,
 		DownloadUrl: downloadUrl,
@@ -45,35 +43,76 @@ func NewThumbnail(name string, path string, downloadUrl string) *Thumbnail {
 type TorrentStatus string
 
 const (
-	TORRENT_IDLE        TorrentStatus = "idle"
-	TORRENT_DOWNLOADING TorrentStatus = "downloading"
-	TORRENT_ERROR       TorrentStatus = "error"
-	TORRENT_READY       TorrentStatus = "ready"
+	TORRENT_CREATING       TorrentStatus = "creating"
+	TORRENT_IDLE           TorrentStatus = "idle"
+	TORRENT_DOWNLOADING    TorrentStatus = "downloading"
+	TORRENT_POSTPROCESSING TorrentStatus = "post_processing"
+	TORRENT_ERROR          TorrentStatus = "error"
+	TORRENT_READY          TorrentStatus = "ready"
+)
+
+type TorrentInfoType string
+
+const (
+	TORRENT_INFO_FILE   TorrentInfoType = "file"
+	TORRENT_INFO_MAGNET TorrentInfoType = "magnet"
 )
 
 // Torrent Represents info about torrent (e.g. files)
 type Torrent struct {
 	gorm.Model
-	SeriesId uint
-	Name     string
-	Status   TorrentStatus
-	Path     string
-	Files    []TorrentFile `gorm:"foreignKey:TorrentId"`
+	SeriesId            uint
+	InfoType            TorrentInfoType
+	InfoPath            string // InfoPath see TorrentInfoType
+	Name                string
+	TotalLength         int64 // TotalLength total size of ALL torrent files in bytes
+	TotalDownloadLength int64 // TotalDownloadLength total size of SELECTED torrent files in bytes
+	Status              TorrentStatus
+	Source              *string       // Source link to torrent url in case it was added automatically via query
+	Files               []TorrentFile `gorm:"foreignKey:TorrentId"`
+}
+
+func NewTorrent(seriesId uint, infoPath string, infoType TorrentInfoType) Torrent {
+	return Torrent{
+		SeriesId: seriesId,
+		Status:   TORRENT_CREATING,
+		InfoPath: infoPath,
+		InfoType: infoType,
+	}
 }
 
 type TorrentFileStatus string
 
+const (
+	TORRENT_FILE_IDLE           TorrentFileStatus = "idle"
+	TORRENT_FILE_DOWNLOADING    TorrentFileStatus = "downloading"
+	TORRENT_FILE_POSTPROCESSING TorrentFileStatus = "post_processing"
+	TORRENT_FILE_ERROR          TorrentFileStatus = "error"
+	TORRENT_FILE_READY          TorrentFileStatus = "ready"
+)
+
 // TorrentFile Represents info about a single torrent file
 type TorrentFile struct {
 	gorm.Model
-	TorrentId    uint
-	Index        uint    // Index file index according to .torrent file system
-	TorrentPath  string  // TorrentPath file path according to .torrent file system
-	DownloadPath *string // DownloadPath file location during torrent download
-	ReadyPath    *string // ReadyPath file location after successful download
-	State        TorrentStatus
-	Size         uint  // Size in bytes
-	Probe        Probe `gorm:"foreignKey:TorrentFileId"`
+	TorrentId   uint
+	Index       uint    // Index file index according to .torrent file system
+	TorrentPath string  // TorrentPath file path according to .torrent file system
+	ReadyPath   *string // ReadyPath file location after successful download
+	Length      uint    // Length in bytes
+	Selected    bool
+	Status      TorrentFileStatus
+	Probe       []Probe `gorm:"foreignKey:TorrentFileId"`
+}
+
+func NewTorrentFile(torrentId uint, index uint, torrentPath string, selected bool, len uint) TorrentFile {
+	return TorrentFile{
+		TorrentId:   torrentId,
+		Index:       index,
+		TorrentPath: torrentPath,
+		Selected:    selected,
+		Status:      TORRENT_FILE_IDLE,
+		Length:      len,
+	}
 }
 
 // Probe contains JSON of file probe

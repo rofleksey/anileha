@@ -2,6 +2,7 @@ package service
 
 import (
 	"anileha/config"
+	"anileha/util"
 	"fmt"
 	"github.com/gofrs/uuid"
 	"go.uber.org/fx"
@@ -13,24 +14,23 @@ import (
 )
 
 type FileService struct {
-	db         *gorm.DB
-	log        *zap.SugaredLogger
-	shutdowner fx.Shutdowner
-	tempDir    string
+	db      *gorm.DB
+	log     *zap.Logger
+	tempDir string
 }
 
-func NewFileService(db *gorm.DB, log *zap.SugaredLogger, config *config.Config, shutdowner fx.Shutdowner) (*FileService, error) {
-	thumbnailDir := path.Join(config.Data.Dir, "temp")
-	err := os.MkdirAll(thumbnailDir, os.ModePerm)
+func NewFileService(db *gorm.DB, log *zap.Logger, config *config.Config) (*FileService, error) {
+	workingDir, err := os.Getwd()
 	if err != nil {
-		log.Error(err)
-		err = shutdowner.Shutdown()
-		if err != nil {
-			log.Fatal(err)
-		}
+		return nil, err
+	}
+	thumbnailDir := path.Join(workingDir, config.Data.Dir, util.TempSubDir)
+	err = os.MkdirAll(thumbnailDir, os.ModePerm)
+	if err != nil {
+		return nil, err
 	}
 	return &FileService{
-		db, log, shutdowner, thumbnailDir,
+		db, log, thumbnailDir,
 	}, nil
 }
 
@@ -54,12 +54,9 @@ func (s *FileService) GetFileDst(folder string, originalName string) (string, er
 	return dstPath, nil
 }
 
-func (s *FileService) DeleteFileAsync(tempDst string) {
+func (s *FileService) DeleteTempFileAsync(tempDst string) {
 	go func() {
-		err := os.Remove(tempDst)
-		if err != nil {
-			s.log.Error("error deleting temp file", err)
-		}
+		_ = os.Remove(tempDst)
 	}()
 }
 

@@ -2,26 +2,25 @@ package controller
 
 import (
 	"anileha/service"
-	"anileha/util"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"net/http"
 	"strconv"
 )
 
-func registerThumbnailController(engine *gin.Engine, tempService *service.FileService, thumbnailService *service.ThumbnailService) {
-	engine.POST(util.ThumbRoute, func(c *gin.Context) {
+func registerThumbnailController(engine *gin.Engine, fileService *service.FileService, thumbnailService *service.ThumbnailService) {
+	engine.POST("/thumb", func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		tempDst, err := tempService.GetTempFileDst(file.Filename)
+		tempDst, err := fileService.GetTempFileDst(file.Filename)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		defer tempService.DeleteFileAsync(file.Filename)
+		defer fileService.DeleteTempFileAsync(file.Filename)
 		err = c.SaveUploadedFile(file, tempDst)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

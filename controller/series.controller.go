@@ -1,7 +1,8 @@
 package controller
 
 import (
-	dao2 "anileha/dao"
+	"anileha/dao"
+	"anileha/db"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -9,14 +10,32 @@ import (
 	"strconv"
 )
 
+func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
+	return dao.SeriesResponseDao{
+		ID:          series.ID,
+		Name:        series.Name,
+		Description: series.Description,
+		Query:       series.Query,
+		Thumb:       series.Thumbnail.DownloadUrl,
+	}
+}
+
+func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
+	res := make([]dao.SeriesResponseDao, 0, len(series))
+	for _, s := range series {
+		res = append(res, mapSeriesToResponse(s))
+	}
+	return res
+}
+
 func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesService) {
 	engine.GET("/series", func(c *gin.Context) {
-		seriesArr, err := seriesService.GetAllSeries()
+		seriesSlice, err := seriesService.GetAllSeries()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, seriesArr)
+		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
 	})
 	engine.GET("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
@@ -30,7 +49,7 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, series)
+		c.JSON(http.StatusOK, mapSeriesToResponse(*series))
 	})
 	engine.DELETE("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
@@ -47,12 +66,12 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 		c.String(http.StatusOK, "OK")
 	})
 	engine.POST("/series", func(c *gin.Context) {
-		var dao dao2.SeriesDao
-		if err := c.ShouldBindJSON(&dao); err != nil {
+		var req dao.SeriesRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		id, err := seriesService.AddSeries(dao)
+		id, err := seriesService.AddSeries(req)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

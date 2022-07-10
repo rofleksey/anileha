@@ -9,6 +9,14 @@ import (
 	"go.uber.org/fx"
 )
 
+// TODO: improve logs
+
+//logger.Info("APNS: Connection error before reading complete response",
+//zap.Int("connectionId", conn.id),
+//zap.Int("n", n),
+//zap.Error(err),
+//)
+
 func main() {
 	fx.New(
 		// main components
@@ -22,10 +30,12 @@ func main() {
 		service.HealthServiceExport,
 		service.SeriesServiceExport,
 		service.ThumbnailServiceExport,
+		service.TorrentServiceExport,
 
 		// rest controllers
 		controller.HealthControllerExport,
 		controller.SeriesControllerExport,
 		controller.ThumbnailControllerExport,
+		controller.TorrentControllerExport,
 	).Run()
 }

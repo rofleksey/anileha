@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"os"
 	"path"
@@ -16,24 +17,29 @@ import (
 
 type ThumbnailService struct {
 	db           *gorm.DB
+	log          *zap.Logger
 	fileService  *FileService
 	thumbnailDir string
 }
 
-func NewThumbnailService(db *gorm.DB, config *config.Config, fileService *FileService) (*ThumbnailService, error) {
-	thumbnailDir := path.Join(config.Data.Dir, util.ThumbSubDir)
-	err := os.MkdirAll(thumbnailDir, os.ModePerm)
+func NewThumbnailService(db *gorm.DB, config *config.Config, log *zap.Logger, fileService *FileService) (*ThumbnailService, error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	thumbnailDir := path.Join(workingDir, config.Data.Dir, util.ThumbSubDir)
+	err = os.MkdirAll(thumbnailDir, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
 	return &ThumbnailService{
-		db, fileService, thumbnailDir,
+		db, log, fileService, thumbnailDir,
 	}, nil
 }
 
 func (s *ThumbnailService) GetThumbnailById(id uint) (*db.Thumbnail, error) {
 	var thumb db.Thumbnail
-	queryResult := s.db.Where("id = ?", id).First(&thumb)
+	queryResult := s.db.First(&thumb, "id = ?", id)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -64,7 +70,7 @@ func (s *ThumbnailService) DeleteThumbnailsById(id uint) error {
 }
 
 func (s *ThumbnailService) AddThumbnail(name string, tempPath string) (uint, error) {
-	newPath, err := s.fileService.GetFileDst(util.ThumbSubDir, tempPath)
+	newPath, err := s.fileService.GetFileDst(s.thumbnailDir, tempPath)
 	if err != nil {
 		return 0, err
 	}
@@ -72,15 +78,24 @@ func (s *ThumbnailService) AddThumbnail(name string, tempPath string) (uint, err
 	if err != nil {
 		return 0, err
 	}
-	downloadUrl := fmt.Sprintf("/%s/%s", util.ThumbRoute, filepath.Base(newPath))
+	downloadUrl := fmt.Sprintf("%s/%s", util.ThumbRoute, filepath.Base(newPath))
 	thumb := db.NewThumbnail(name, tempPath, downloadUrl)
 	queryResult := s.db.Create(&thumb)
 	if queryResult.Error != nil {
+		deleteErr := os.Remove(newPath)
+		if deleteErr != nil {
+			s.log.Error("error deleting thumbnail on error", zap.Error(deleteErr))
+		}
 		return 0, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
+		deleteErr := os.Remove(newPath)
+		if deleteErr != nil {
+			s.log.Error("error deleting thumbnail on error", zap.Error(deleteErr))
+		}
 		return 0, errors.New("creation failed")
 	}
+	s.log.Info("created thumbnail", zap.Uint("thumbId", thumb.ID), zap.String("thumbName", name))
 	return thumb.ID, nil
 }
 
