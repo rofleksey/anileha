@@ -45,7 +45,7 @@ type TorrentStatus string
 const (
 	TORRENT_CREATING       TorrentStatus = "creating"
 	TORRENT_IDLE           TorrentStatus = "idle"
-	TORRENT_DOWNLOADING    TorrentStatus = "downloading"
+	TORRENT_DOWNLOADING    TorrentStatus = "downloading" // torrentLib should only have torrents in this state
 	TORRENT_POSTPROCESSING TorrentStatus = "post_processing"
 	TORRENT_ERROR          TorrentStatus = "error"
 	TORRENT_READY          TorrentStatus = "ready"

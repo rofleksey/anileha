@@ -3,7 +3,7 @@ package service
 import (
 	"anileha/dao"
 	"anileha/db"
-	"errors"
+	"anileha/util"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -27,7 +27,7 @@ func (s *SeriesService) GetSeriesById(id uint) (*db.Series, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, errors.New("not found")
+		return nil, util.ErrNotFound
 	}
 	return &series, nil
 }
@@ -47,7 +47,7 @@ func (s *SeriesService) DeleteSeriesById(id uint) error {
 		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return errors.New("not found")
+		return util.ErrNotFound
 	}
 	return nil
 }
@@ -59,7 +59,7 @@ func (s *SeriesService) AddSeries(req dao.SeriesRequestDao) (uint, error) {
 		return 0, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return 0, errors.New("creation failed")
+		return 0, util.ErrCreationFailed
 	}
 	s.log.Info("created series", zap.Uint("seriesId", series.ID), zap.String("seriesName", req.Name))
 	return series.ID, nil

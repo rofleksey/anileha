@@ -4,7 +4,6 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/util"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -44,7 +43,7 @@ func (s *ThumbnailService) GetThumbnailById(id uint) (*db.Thumbnail, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, errors.New("not found")
+		return nil, util.ErrNotFound
 	}
 	return &thumb, nil
 }
@@ -58,14 +57,15 @@ func (s *ThumbnailService) GetAllThumbnails() ([]db.Thumbnail, error) {
 	return thumbArr, nil
 }
 
-func (s *ThumbnailService) DeleteThumbnailsById(id uint) error {
+func (s *ThumbnailService) DeleteThumbnailById(id uint) error {
 	queryResult := s.db.Delete(&db.Thumbnail{}, id)
 	if queryResult.Error != nil {
 		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return errors.New("not found")
+		return util.ErrNotFound
 	}
+	s.log.Info("deleted thumbnail", zap.Uint("thumbId", id))
 	return nil
 }
 
@@ -93,7 +93,7 @@ func (s *ThumbnailService) AddThumbnail(name string, tempPath string) (uint, err
 		if deleteErr != nil {
 			s.log.Error("error deleting thumbnail on error", zap.Error(deleteErr))
 		}
-		return 0, errors.New("creation failed")
+		return 0, util.ErrCreationFailed
 	}
 	s.log.Info("created thumbnail", zap.Uint("thumbId", thumb.ID), zap.String("thumbName", name))
 	return thumb.ID, nil

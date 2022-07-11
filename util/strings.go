@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"unicode"
@@ -16,10 +15,10 @@ func RemoveWhitespace(str string) string {
 	}, str)
 }
 
-// parseFileIndices parses strings like '1,2-4,5' into a set of uints
+// ParseFileIndices parses strings like '1,2-4,5' into a set of uints
 func ParseFileIndices(str string) (map[uint]struct{}, error) {
 	// This is the closest thing to Set in golang, struct{} is a Unit type
-	// using map[uint]bool uses unnecessary memory :)
+	// map[uint]bool uses unnecessary memory :)
 	result := make(map[uint]struct{})
 	strNoWhitespace := RemoveWhitespace(str)
 	items := strings.Split(strNoWhitespace, ",")
@@ -28,31 +27,31 @@ func ParseFileIndices(str string) (map[uint]struct{}, error) {
 		switch len(dashSplit) {
 		case 1:
 			if len(dashSplit[0]) == 0 {
-				return nil, errors.New("invalid indices string")
+				return nil, ErrInvalidIndicesString
 			}
 			num, err := strconv.ParseUint(dashSplit[0], 10, 64)
 			if err != nil {
-				return nil, errors.New("invalid indices string")
+				return nil, ErrInvalidIndicesString
 			}
 			result[uint(num)] = struct{}{}
 		case 2:
 			if len(dashSplit[0]) == 0 || len(dashSplit[1]) == 0 {
-				return nil, errors.New("invalid indices string")
+				return nil, ErrInvalidIndicesString
 			}
 			start, err := strconv.ParseUint(dashSplit[0], 10, 64)
 			if err != nil {
-				return nil, errors.New("invalid indices string")
+				return nil, ErrInvalidIndicesString
 			}
 			end, err := strconv.ParseUint(dashSplit[0], 10, 64)
 			if err != nil {
-				return nil, errors.New("invalid indices string")
+				return nil, ErrInvalidIndicesString
 			}
 			for pointer := start; pointer <= end; pointer++ {
 				result[uint(pointer)] = struct{}{}
 				pointer++
 			}
 		default:
-			return nil, errors.New("invalid indices string")
+			return nil, ErrInvalidIndicesString
 		}
 	}
 	return result, nil
