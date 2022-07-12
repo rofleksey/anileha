@@ -31,6 +31,7 @@ func main() {
 		service.SeriesServiceExport,
 		service.ThumbnailServiceExport,
 		service.TorrentServiceExport,
+		service.ConversionServiceExport,
 
 		// rest controllers
 		controller.HealthControllerExport,

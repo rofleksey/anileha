@@ -21,8 +21,7 @@ import (
 type TorrentService struct {
 	db              *gorm.DB
 	client          *torrentLib.Client
-	cTorrentMap     map[uint]*torrentLib.Torrent // TODO: use concurrent map
-	cTorrentLock    sync.RWMutex
+	cTorrentMap     sync.Map // cTorrentMap Stores torrentLib.Client torrent entries [uint -> *torrentLib.Torrent]
 	fileService     *FileService
 	log             *zap.Logger
 	infoFolder      string
@@ -78,7 +77,6 @@ func NewTorrentService(lifecycle fx.Lifecycle, db *gorm.DB, log *zap.Logger, con
 		infoFolder:      infoFolder,
 		downloadsFolder: downloadsFolder,
 		readyFolder:     readyFolder,
-		cTorrentMap:     make(map[uint]*torrentLib.Torrent),
 	}, nil
 }
 
@@ -91,9 +89,17 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.TorrentWithProgress, error
 	if queryResult.RowsAffected == 0 {
 		return nil, util.ErrNotFound
 	}
-	s.cTorrentLock.RLock()
-	cTorrent := s.cTorrentMap[torrent.ID]
-	s.cTorrentLock.RUnlock()
+	mapValue, exists := s.cTorrentMap.Load(torrent.ID)
+	if !exists {
+		return &db.TorrentWithProgress{
+			Torrent:      torrent,
+			Progress:     0,
+			BytesRead:    0,
+			BytesMissing: 0,
+		}, nil
+	}
+	cTorrent := mapValue.(*torrentLib.Torrent)
+	bytesTotal := torrent.TotalDownloadLength
 	cFiles := cTorrent.Files()
 	bytesRead := int64(0)
 	for i, file := range torrent.Files {
@@ -102,7 +108,6 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.TorrentWithProgress, error
 			bytesRead += cFile.BytesCompleted()
 		}
 	}
-	bytesTotal := torrent.TotalDownloadLength
 	bytesMissing := bytesTotal - bytesRead
 	var progress float64
 	if bytesTotal > 0 {
@@ -152,24 +157,18 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 
 // cleanUpTorrent Drops cTorrent, removes all torrent files
 func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
-	s.cTorrentLock.Lock()
-	cTorrent := s.cTorrentMap[torrent.ID]
-	delete(s.cTorrentMap, torrent.ID)
-	s.cTorrentLock.Unlock()
+	mapValue, exists := s.cTorrentMap.LoadAndDelete(torrent.ID)
 
-	if cTorrent != nil {
+	if exists {
+		cTorrent := mapValue.(*torrentLib.Torrent)
 		cTorrent.Drop()
 		<-cTorrent.Closed()
-		s.cTorrentLock.Lock()
-		delete(s.cTorrentMap, torrent.ID)
-		s.cTorrentLock.Unlock()
-	}
-
-	for _, cFile := range cTorrent.Files() {
-		cFilePath := path.Join(s.downloadsFolder, cFile.DisplayPath())
-		err := os.RemoveAll(cFilePath)
-		if err != nil {
-			s.log.Warn("failed to cleanup torrent file", zap.String("path", cFilePath), zap.Error(err))
+		for _, cFile := range cTorrent.Files() {
+			cFilePath := path.Join(s.downloadsFolder, cFile.DisplayPath())
+			err := os.RemoveAll(cFilePath)
+			if err != nil {
+				s.log.Warn("failed to cleanup torrent file", zap.String("path", cFilePath), zap.Error(err))
+			}
 		}
 	}
 
@@ -295,10 +294,8 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 			ticker.Stop()
 
 			cTorrent.Drop()
+			s.cTorrentMap.Delete(id)
 			<-cTorrent.Closed()
-			s.cTorrentLock.Lock()
-			delete(s.cTorrentMap, id)
-			s.cTorrentLock.Unlock()
 
 			s.onTorrentCompletion(id)
 			return
@@ -358,13 +355,11 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 		return
 	}
 	if queryResult.RowsAffected == 0 {
-		s.onFailedImport(torrent, errors.New("file mapping failed"))
+		s.onFailedImport(torrent, util.ErrFileMapping)
 		return
 	}
 
-	s.cTorrentLock.Lock()
-	s.cTorrentMap[torrent.ID] = cTorrent
-	s.cTorrentLock.Unlock()
+	s.cTorrentMap.Store(torrent.ID, cTorrent)
 
 	queryResult = s.db.Save(&torrent)
 	if queryResult.Error != nil {
@@ -372,7 +367,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 		return
 	}
 	if queryResult.RowsAffected == 0 {
-		s.onFailedImport(torrent, errors.New("can't find torrent to update"))
+		s.onFailedImport(torrent, util.ErrNotFound)
 		return
 	}
 	go s.torrentCompletionWatcher(torrent.ID, torrent.Name, files, downloadLength, cTorrent)

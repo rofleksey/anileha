@@ -125,23 +125,21 @@ type Probe struct {
 type ConversionStatus string
 
 const (
-	CONVERSION_CREATED     ConversionStatus = "created"
-	CONVERSION_DOWNLOADING ConversionStatus = "processing"
-	CONVERSION_ERROR       ConversionStatus = "error"
-	CONVERSION_READY       ConversionStatus = "ready"
+	CONVERSION_CREATED    ConversionStatus = "created"
+	CONVERSION_PROCESSING ConversionStatus = "processing"
+	CONVERSION_ERROR      ConversionStatus = "error"
+	CONVERSION_READY      ConversionStatus = "ready"
 )
 
 // EpisodeConversion Represents info about a single attempt to convert TorrentFile to Episode
 type EpisodeConversion struct {
 	gorm.Model
 	SeriesId      uint
-	TorrentId     uint
 	TorrentFileId uint
 	EpisodeId     *uint
 	Name          string
-	LogPath       *string
-	OutputPath    *string
-	Commands      string
+	OutputPath    string
+	FFmpegCommand string
 	Status        ConversionStatus
 }
 
@@ -149,11 +147,11 @@ type EpisodeConversion struct {
 type Episode struct {
 	gorm.Model
 	SeriesId     uint
-	ConversionId uint
+	ConversionId *uint
 	Name         string
 	ThumbnailID  uint
-	Thumbnail    Thumbnail
-	Size         uint // Size in bytes
-	Duration     uint // Duration in ms
+	Thumbnail    Thumbnail `gorm:"references:ID"`
+	Size         uint      // Size in bytes
+	Duration     uint      // Duration in ms
 	Path         string
 }
