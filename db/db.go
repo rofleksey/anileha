@@ -14,7 +14,7 @@ func initDB(config *config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.AutoMigrate(&Series{}, &Thumbnail{}, &Torrent{}, &TorrentFile{}, &Probe{}, &EpisodeConversion{}, &Episode{})
+	err = db.AutoMigrate(&Series{}, &Thumbnail{}, &Torrent{}, &TorrentFile{}, &EpisodeConversion{}, &Episode{})
 	if err != nil {
 		return nil, err
 	}

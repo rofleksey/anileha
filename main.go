@@ -1,6 +1,7 @@
 package main
 
 import (
+	"anileha/analyze"
 	"anileha/config"
 	"anileha/controller"
 	"anileha/db"
@@ -9,13 +10,10 @@ import (
 	"go.uber.org/fx"
 )
 
-// TODO: improve logs
+// TODO: embed structs in return type
+// func keklol() (>>orel MyStruct<<)
 
-//logger.Info("APNS: Connection error before reading complete response",
-//zap.Int("connectionId", conn.id),
-//zap.Int("n", n),
-//zap.Error(err),
-//)
+// TODO: support mp4 torrents (?)
 
 func main() {
 	fx.New(
@@ -38,5 +36,9 @@ func main() {
 		controller.SeriesControllerExport,
 		controller.ThumbnailControllerExport,
 		controller.TorrentControllerExport,
+
+		// misc
+		analyze.TextAnalyzerExport,
+		analyze.ProbeAnalyzerExport,
 	).Run()
 }

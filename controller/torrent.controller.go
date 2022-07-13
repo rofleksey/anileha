@@ -12,7 +12,7 @@ import (
 )
 
 func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileResponseDao {
-	var res []dao.TorrentFileResponseDao
+	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
 		res = append(res, dao.TorrentFileResponseDao{
 			Path:     f.TorrentPath,

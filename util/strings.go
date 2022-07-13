@@ -1,10 +1,13 @@
 package util
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 )
+
+var SpacesRegex = regexp.MustCompile("\\s+")
 
 func RemoveWhitespace(str string) string {
 	return strings.Map(func(r rune) rune {
@@ -12,6 +15,15 @@ func RemoveWhitespace(str string) string {
 			return -1
 		}
 		return r
+	}, str)
+}
+
+func RemoveNonAlpha(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return -1
 	}, str)
 }
 

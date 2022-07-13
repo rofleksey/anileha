@@ -141,7 +141,7 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 	if queryResult.RowsAffected == 0 {
 		return util.ErrNotFound
 	}
-	if torrent.Status == db.TORRENT_DOWNLOADING || torrent.Status == db.TORRENT_POSTPROCESSING {
+	if torrent.Status == db.TORRENT_DOWNLOADING {
 		return util.ErrDeleteStartedTorrent
 	}
 	queryResult = s.db.Delete(&db.Torrent{}, id)
@@ -206,29 +206,6 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 	torrentIdStr := strconv.FormatUint(uint64(torrent.ID), 10)
 	torrentReadyRootFolder := path.Join(s.readyFolder, torrentIdStr)
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// update torrent status
-		if err := tx.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Status: db.TORRENT_READY}).Error; err != nil {
-			return err
-		}
-
-		// update downloaded files' statuses
-		for _, file := range torrent.Files {
-			if file.Selected && file.Status != db.TORRENT_FILE_READY {
-				if err := tx.Model(&db.TorrentFile{}).Where("id = ?", file.ID).Updates(db.TorrentFile{Status: db.TORRENT_FILE_READY, ReadyPath: file.ReadyPath}).Error; err != nil {
-					return err
-				}
-			}
-		}
-
-		// apply transaction
-		return nil
-	})
-	if err != nil {
-		s.log.Error("transaction on torrent completion failed", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
-		return
-	}
-
 	for _, file := range torrent.Files {
 		// ignore already downloaded files
 		if file.ReadyPath != nil {
@@ -266,6 +243,29 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 			return
 		}
 		file.ReadyPath = &newPath
+	}
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// update torrent status
+		if err := tx.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Status: db.TORRENT_READY}).Error; err != nil {
+			return err
+		}
+
+		// update downloaded files' statuses
+		for _, file := range torrent.Files {
+			if file.Selected && file.Status != db.TORRENT_FILE_READY {
+				if err := tx.Model(&db.TorrentFile{}).Where("id = ?", file.ID).Updates(db.TorrentFile{Status: db.TORRENT_FILE_READY, ReadyPath: file.ReadyPath}).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		// apply transaction
+		return nil
+	})
+	if err != nil {
+		s.log.Error("transaction on torrent completion failed", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
+		return
 	}
 
 	s.log.Info("torrent finished", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))

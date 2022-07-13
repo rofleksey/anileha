@@ -13,6 +13,7 @@ import (
 type ConversionService struct {
 	db               *gorm.DB
 	log              *zap.Logger
+	maxParallel      uint
 	conversionFolder string
 }
 
@@ -29,6 +30,7 @@ func NewConversionService(lifecycle fx.Lifecycle, db *gorm.DB, log *zap.Logger, 
 	return &ConversionService{
 		db:               db,
 		log:              log,
+		maxParallel:      config.Conversion.MaxParallel,
 		conversionFolder: conversionFolder,
 	}, nil
 }

@@ -1,6 +1,8 @@
 package db
 
-import "github.com/jinzhu/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 // Series Represents one season of something
 type Series struct {
@@ -43,12 +45,11 @@ func NewThumbnail(name string, path string, downloadUrl string) Thumbnail {
 type TorrentStatus string
 
 const (
-	TORRENT_CREATING       TorrentStatus = "creating"
-	TORRENT_IDLE           TorrentStatus = "idle"
-	TORRENT_DOWNLOADING    TorrentStatus = "downloading" // torrentLib should only have torrents in this state
-	TORRENT_POSTPROCESSING TorrentStatus = "post_processing"
-	TORRENT_ERROR          TorrentStatus = "error"
-	TORRENT_READY          TorrentStatus = "ready"
+	TORRENT_CREATING    TorrentStatus = "created"
+	TORRENT_IDLE        TorrentStatus = "idle"
+	TORRENT_DOWNLOADING TorrentStatus = "download" // torrentLib should only have torrents in this state
+	TORRENT_ERROR       TorrentStatus = "error"
+	TORRENT_READY       TorrentStatus = "ready"
 )
 
 type TorrentInfoType string
@@ -84,11 +85,10 @@ func NewTorrent(seriesId uint, infoPath string, infoType TorrentInfoType) Torren
 type TorrentFileStatus string
 
 const (
-	TORRENT_FILE_IDLE           TorrentFileStatus = "idle"
-	TORRENT_FILE_DOWNLOADING    TorrentFileStatus = "downloading"
-	TORRENT_FILE_POSTPROCESSING TorrentFileStatus = "post_processing"
-	TORRENT_FILE_ERROR          TorrentFileStatus = "error"
-	TORRENT_FILE_READY          TorrentFileStatus = "ready"
+	TORRENT_FILE_IDLE        TorrentFileStatus = "idle"
+	TORRENT_FILE_DOWNLOADING TorrentFileStatus = "download"
+	TORRENT_FILE_ERROR       TorrentFileStatus = "error"
+	TORRENT_FILE_READY       TorrentFileStatus = "ready"
 )
 
 // TorrentFile Represents info about a single torrent file
@@ -101,7 +101,6 @@ type TorrentFile struct {
 	Length      uint    // Length in bytes
 	Selected    bool
 	Status      TorrentFileStatus
-	Probe       []Probe `gorm:"foreignKey:TorrentFileId"`
 }
 
 func NewTorrentFile(torrentId uint, index uint, torrentPath string, selected bool, len uint) TorrentFile {
@@ -113,13 +112,6 @@ func NewTorrentFile(torrentId uint, index uint, torrentPath string, selected boo
 		Status:      TORRENT_FILE_IDLE,
 		Length:      len,
 	}
-}
-
-// Probe contains JSON of file probe
-type Probe struct {
-	gorm.Model
-	TorrentFileId uint
-	Content       string
 }
 
 type ConversionStatus string

@@ -3,14 +3,14 @@ module anileha
 go 1.18
 
 require (
-	github.com/anacrolix/torrent v1.46.0
+	github.com/anacrolix/torrent v1.43.0
 	github.com/gin-contrib/zap v0.0.2
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-playground/validator/v10 v10.11.0
 	github.com/gofrs/uuid v4.0.0+incompatible
-	github.com/jinzhu/gorm v1.9.16
 	go.uber.org/fx v1.17.1
 	go.uber.org/zap v1.21.0
+	gopkg.in/vansante/go-ffprobe.v2 v2.1.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.3.8
 	gorm.io/gorm v1.23.8
@@ -23,7 +23,7 @@ require (
 	github.com/anacrolix/chansync v0.3.0 // indirect
 	github.com/anacrolix/dht/v2 v2.16.2-0.20220311024416-dd658f18fd51 // indirect
 	github.com/anacrolix/envpprof v1.2.1 // indirect
-	github.com/anacrolix/generics v0.0.0-20220618083756-f99e35403a60 // indirect
+	github.com/anacrolix/generics v0.0.0-20220510042907-b50562b436ec // indirect
 	github.com/anacrolix/go-libutp v1.2.0 // indirect
 	github.com/anacrolix/log v0.13.1 // indirect
 	github.com/anacrolix/missinggo v1.3.0 // indirect
@@ -35,6 +35,9 @@ require (
 	github.com/anacrolix/sync v0.4.0 // indirect
 	github.com/anacrolix/upnp v0.1.3-0.20220123035249-922794e51c96 // indirect
 	github.com/anacrolix/utp v0.1.0 // indirect
+	github.com/asticode/go-astikit v0.20.0 // indirect
+	github.com/asticode/go-astisub v0.21.0 // indirect
+	github.com/asticode/go-astits v1.8.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/immutable v0.3.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect
@@ -65,7 +68,6 @@ require (
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/lispad/go-generics-tools v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
@@ -89,7 +91,7 @@ require (
 	github.com/pion/webrtc/v3 v3.1.24-0.20220208053747-94262c1b2b38 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/dnscache v0.0.0-20210201191234-295bba877686 // indirect
-	github.com/tidwall/btree v1.3.1 // indirect
+	github.com/tidwall/btree v0.7.2-0.20211211132910-4215444137fc // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

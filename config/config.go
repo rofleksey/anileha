@@ -23,10 +23,15 @@ type DataConfig struct {
 	Dir string `validate:"required"`
 }
 
+type ConversionConfig struct {
+	MaxParallel uint `validate:"maxParallel"`
+}
+
 type Config struct {
-	Db   DbConfig   `validate:"dive,required"`
-	Rest RestConfig `validate:"dive,required"`
-	Data DataConfig `validate:"dive,required"`
+	Db         DbConfig         `validate:"dive,required"`
+	Rest       RestConfig       `validate:"dive,required"`
+	Data       DataConfig       `validate:"dive,required"`
+	Conversion ConversionConfig `validate:"dive,required"`
 }
 
 func loadConfig() (*Config, error) {
