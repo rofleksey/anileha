@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileResponseDao {
+func mapTorrentFilesToResponse(torrentFiles []*db.TorrentFile) []dao.TorrentFileResponseDao {
 	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
 		res = append(res, dao.TorrentFileResponseDao{
@@ -130,7 +130,7 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 		}
 
 		file := files[0]
-		tempDst, err := fileService.GetTempFileDst(file.Filename)
+		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

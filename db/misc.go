@@ -13,5 +13,4 @@ type Progress struct {
 	Eta         float64
 }
 
-type FinishChan chan error
-type ProgressChan chan Progress
+type AnyChannel chan interface{}

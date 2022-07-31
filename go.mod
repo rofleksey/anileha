@@ -6,6 +6,7 @@ require (
 	github.com/anacrolix/torrent v1.43.0
 	github.com/gin-contrib/zap v0.0.2
 	github.com/gin-gonic/gin v1.8.1
+	github.com/go-playground/assert/v2 v2.0.1
 	github.com/go-playground/validator/v10 v10.11.0
 	github.com/gofrs/uuid v4.0.0+incompatible
 	go.uber.org/fx v1.17.1
@@ -35,9 +36,6 @@ require (
 	github.com/anacrolix/sync v0.4.0 // indirect
 	github.com/anacrolix/upnp v0.1.3-0.20220123035249-922794e51c96 // indirect
 	github.com/anacrolix/utp v0.1.0 // indirect
-	github.com/asticode/go-astikit v0.20.0 // indirect
-	github.com/asticode/go-astisub v0.21.0 // indirect
-	github.com/asticode/go-astits v1.8.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benbjohnson/immutable v0.3.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.0 // indirect

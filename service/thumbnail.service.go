@@ -70,7 +70,7 @@ func (s *ThumbnailService) DeleteThumbnailById(id uint) error {
 }
 
 func (s *ThumbnailService) AddThumbnail(name string, tempPath string) (uint, error) {
-	newPath, err := s.fileService.GetFileDst(s.thumbnailDir, tempPath)
+	newPath, err := s.fileService.GenFilePath(s.thumbnailDir, tempPath)
 	if err != nil {
 		return 0, err
 	}

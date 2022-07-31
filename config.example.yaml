@@ -8,3 +8,5 @@ rest:
   port: 3000
 data:
   dir: data
+conversion:
+  parallelism: 1

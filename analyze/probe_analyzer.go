@@ -27,15 +27,15 @@ type ProbeAnalyzer struct {
 	log          *zap.Logger
 }
 
-func NewProbeAnalyzer(textAnalyzer *TextAnalyzer, log *zap.Logger) ProbeAnalyzer {
+func NewProbeAnalyzer(textAnalyzer *TextAnalyzer, log *zap.Logger) *ProbeAnalyzer {
 	videoRegex := regexp.MustCompile("video:(\\d+)([a-z]+)")
 	audioRegex := regexp.MustCompile("audio:(\\d+)([a-z]+)")
 	subRegex := regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
 	regexMap := make(map[StreamType]*regexp.Regexp)
-	regexMap[Video] = videoRegex
-	regexMap[Audio] = audioRegex
-	regexMap[Sub] = subRegex
-	return ProbeAnalyzer{
+	regexMap[StreamVideo] = videoRegex
+	regexMap[StreamAudio] = audioRegex
+	regexMap[StreamSub] = subRegex
+	return &ProbeAnalyzer{
 		textAnalyzer: textAnalyzer,
 		regexMap:     regexMap,
 		log:          log,
@@ -50,12 +50,15 @@ func (p *ProbeAnalyzer) parseStreamSize(sizeCommandResult string, streamType Str
 	lowerCase := strings.ToLower(lastLine)
 	reg := p.regexMap[streamType]
 	matchArr := reg.FindStringSubmatch(lowerCase)
-	number, err := strconv.ParseUint(matchArr[0], 10, 64)
+	if len(matchArr) != 3 {
+		return 0, util.ErrInvalidStreamSize
+	}
+	number, err := strconv.ParseUint(matchArr[1], 10, 64)
 	if err != nil {
 		return 0, err
 	}
 	var multiplier uint64
-	switch matchArr[1] {
+	switch matchArr[2] {
 	case "b":
 		multiplier = 1
 	case "byte":
@@ -83,7 +86,9 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	sizeCommand := ffmpeg.NewCommand(inputFile, 0, "-")
 	streamLetter := streamType[0:1]
 	mapValue := fmt.Sprintf("0:%s:%d", streamLetter, streamIndex)
-	sizeCommand.AddEscapedKeyValue("-map", mapValue, ffmpeg.OptionInput)
+	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
+	sizeCommand.AddKeyValue("-analyzeduration", "2147483647", ffmpeg.OptionBase)
+	sizeCommand.AddKeyValue("-probesize", "2147483647", ffmpeg.OptionBase)
 	sizeCommand.AddKeyValue("-c", "copy", ffmpeg.OptionOutput)
 	sizeCommand.AddKeyValue("-f", "null", ffmpeg.OptionOutput)
 	result, err := sizeCommand.ExecuteSync()
@@ -106,7 +111,7 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	}()
 	sizeCommand := ffmpeg.NewCommand(inputFile, 0, srtFileName)
 	mapValue := fmt.Sprintf("0:s:%d", streamIndex)
-	sizeCommand.AddEscapedKeyValue("-map", mapValue, ffmpeg.OptionInput)
+	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
 	sizeCommand.AddKeyValue("-f", "srt", ffmpeg.OptionOutput)
 	_, err := sizeCommand.ExecuteSync()
 	if err != nil {
@@ -117,6 +122,59 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 		return "", nil
 	}
 	return string(content), nil
+}
+
+func (p *ProbeAnalyzer) getSubsType(stream *ffprobe.Stream) SubsType {
+	switch stream.CodecName {
+	case "hdmv_pgs_subtitle":
+		return SubsPicture
+	case "ass":
+		return SubsText
+	default:
+		return SubsUnknown
+	}
+}
+
+func (p *ProbeAnalyzer) Analyze(inputFile string, allowAmbiguousResults bool) (*Result, error) {
+	scoredResult, err := p.getScoreResult(inputFile)
+	if err != nil {
+		return nil, err
+	}
+	if !allowAmbiguousResults && (len(scoredResult.SubCandidates) == 0 || len(scoredResult.AudioCandidates) == 0) {
+		return nil, util.ErrNoValidStreamsFound
+	}
+	if !allowAmbiguousResults && (len(scoredResult.SubCandidates) > 1 || len(scoredResult.AudioCandidates) > 1 || scoredResult.Ambiguous) {
+		return nil, util.ErrAmbiguousSelection
+	}
+	var audioStream *ResultStream = nil
+	if len(scoredResult.AudioCandidates) > 0 {
+		audioStream = &ResultStream{
+			RelativeIndex: scoredResult.AudioCandidates[0].RelativeIndex,
+		}
+	}
+	var subStream *SubStream = nil
+	if len(scoredResult.SubCandidates) > 0 {
+		subStream = &SubStream{
+			ResultStream: ResultStream{
+				RelativeIndex: scoredResult.SubCandidates[0].RelativeIndex,
+			},
+			Type: p.getSubsType(scoredResult.SubCandidates[0].Stream),
+		}
+	}
+	// TODO: duration / frames
+	return &Result{
+		Video: VideoStream{
+			ResultStream: ResultStream{
+				RelativeIndex: scoredResult.Video.RelativeIndex,
+			},
+			Width:      scoredResult.Video.Width,
+			Height:     scoredResult.Video.Height,
+			DurationMs: int64(0),
+			FrameCount: int64(0),
+		},
+		Audio: audioStream,
+		Sub:   subStream,
+	}, nil
 }
 
 func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
@@ -206,9 +264,9 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	}
 
 	for _, audioStream := range remainingAudio {
-		size, err := p.GetStreamSize(inputFile, Audio, audioStream.RelativeIndex)
+		size, err := p.GetStreamSize(inputFile, StreamAudio, audioStream.RelativeIndex)
 		if err != nil {
-			p.log.Error("failed to get stream size", zap.String("streamType", string(Audio)), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Error(err))
+			p.log.Error("failed to get stream size", zap.String("streamType", string(StreamAudio)), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Error(err))
 			continue
 		}
 		p.log.Info("got audio stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Uint64("size", size))
@@ -224,9 +282,20 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 			p.log.Error("failed to get subtitle text", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
 			continue
 		}
-		numberOfEngWords := p.textAnalyzer.CountEnglishWords(text)
-		subStream.Score = numberOfEngWords
-		p.log.Info("got number of eng words in sub stream", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("wordCount", numberOfEngWords))
+		if len(text) <= 32 {
+			p.log.Info("subtitle doesn't have text, using scoring based on stream size", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
+			size, err := p.GetStreamSize(inputFile, StreamSub, subStream.RelativeIndex)
+			if err != nil {
+				p.log.Error("failed to get stream size", zap.String("streamType", string(StreamSub)), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
+				continue
+			}
+			p.log.Info("got sub stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("size", size))
+			subStream.Score = size
+		} else {
+			numberOfEngWords := p.textAnalyzer.CountEnglishWords(text)
+			subStream.Score = numberOfEngWords
+			p.log.Info("got number of eng words in sub stream", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("wordCount", numberOfEngWords))
+		}
 	}
 	sort.SliceStable(remainingSubs, func(i, j int) bool {
 		return remainingSubs[i].Score > remainingSubs[j].Score

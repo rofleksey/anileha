@@ -24,7 +24,7 @@ type DataConfig struct {
 }
 
 type ConversionConfig struct {
-	MaxParallel uint `validate:"maxParallel"`
+	Parallelism int `validate:"required"`
 }
 
 type Config struct {

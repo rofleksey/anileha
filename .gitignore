@@ -2,3 +2,5 @@
 data/
 anileha
 config.yaml
+tests/input.mkv
+tests/output.mp4

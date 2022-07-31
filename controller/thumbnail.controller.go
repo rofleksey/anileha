@@ -15,7 +15,7 @@ func registerThumbnailController(engine *gin.Engine, fileService *service.FileSe
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		tempDst, err := fileService.GetTempFileDst(file.Filename)
+		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

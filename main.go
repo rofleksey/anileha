@@ -30,12 +30,14 @@ func main() {
 		service.ThumbnailServiceExport,
 		service.TorrentServiceExport,
 		service.ConversionServiceExport,
+		service.EpisodeServiceExport,
 
 		// rest controllers
 		controller.HealthControllerExport,
 		controller.SeriesControllerExport,
 		controller.ThumbnailControllerExport,
 		controller.TorrentControllerExport,
+		controller.ConvertControllerExport,
 
 		// misc
 		analyze.TextAnalyzerExport,

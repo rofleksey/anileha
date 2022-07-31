@@ -5,7 +5,6 @@ import (
 	"anileha/util"
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os/exec"
 	"regexp"
@@ -15,6 +14,8 @@ import (
 	"sync"
 )
 
+// TODO: support videos with hardcoded subs
+
 type Command struct {
 	mutex sync.Mutex
 	opts  []option
@@ -22,6 +23,10 @@ type Command struct {
 	// immutable
 	frameRegex     *regexp.Regexp
 	numberOfFrames int
+}
+
+type CommandSignalEnd struct {
+	Err error
 }
 
 type option struct {
@@ -37,21 +42,14 @@ const (
 	optionInputFile  OptionPriority = 2
 	OptionInput      OptionPriority = 3
 	OptionOutput     OptionPriority = 4
-	optionOutputFile OptionPriority = 5
+	OptionPostOutput OptionPriority = 5
+	optionOutputFile OptionPriority = 6
 )
 
 func (c *Command) AddSingle(key string, optType OptionPriority) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	opt := newOption(key, optType, nil)
-	c.opts = append(c.opts, opt)
-}
-
-func (c *Command) AddEscapedSingle(key string, optType OptionPriority) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	escapedKey := fmt.Sprintf("\"%s\"", key)
-	opt := newOption(escapedKey, optType, nil)
 	c.opts = append(c.opts, opt)
 }
 
@@ -62,23 +60,15 @@ func (c *Command) AddKeyValue(key string, value string, optType OptionPriority) 
 	c.opts = append(c.opts, opt)
 }
 
-func (c *Command) AddEscapedKeyValue(key string, value string, optType OptionPriority) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	escapedValue := fmt.Sprintf("\"%s\"", value)
-	opt := newOption(key, optType, &escapedValue)
-	c.opts = append(c.opts, opt)
-}
-
 func newOption(key string, priority OptionPriority, value *string) option {
 	return option{key, priority, value}
 }
 
-func (o *option) String() string {
+func (o *option) getStrings() []string {
 	if o.value != nil {
-		return fmt.Sprintf("%s %s", o.key, *o.value)
+		return []string{o.key, *o.value}
 	}
-	return o.key
+	return []string{o.key}
 }
 
 func NewCommand(inputFile string, numberOfFrames int, outputFile string) *Command {
@@ -89,13 +79,16 @@ func NewCommand(inputFile string, numberOfFrames int, outputFile string) *Comman
 		numberOfFrames: numberOfFrames,
 	}
 	command.AddSingle("-hide_banner", OptionBase)
-	command.AddKeyValue("-hw_accel", "auto", OptionBase)
-	command.AddEscapedKeyValue("-i", inputFile, optionInputFile)
-	command.AddEscapedSingle(outputFile, optionOutputFile)
+	command.AddSingle("-y", OptionBase)
+	command.AddKeyValue("-hwaccel", "auto", OptionBase)
+	command.AddKeyValue("-stats_period", "5", OptionBase)
+	//command.AddKeyValue("-progress", "pipe:2", OptionBase)
+	command.AddKeyValue("-i", inputFile, optionInputFile)
+	command.AddSingle(outputFile, optionOutputFile)
 	return &command
 }
 
-func (c *Command) progressWatcher(reader io.ReadCloser, progressChan db.ProgressChan) {
+func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel) {
 	scanner := bufio.NewScanner(reader)
 	var etaCalculator *util.EtaCalculator
 	if c.numberOfFrames != 0 {
@@ -111,18 +104,25 @@ func (c *Command) progressWatcher(reader io.ReadCloser, progressChan db.Progress
 			curFrame, _ := strconv.Atoi(matchResult[0])
 			etaCalculator.Update(float64(curFrame))
 			progress := etaCalculator.GetProgress()
-			progressChan <- progress
+			outputChan <- progress
+		} else {
+			outputChan <- line
 		}
 	}
+	code := cmd.Wait()
+	outputChan <- CommandSignalEnd{
+		Err: code,
+	}
+	close(outputChan)
 }
 
-func (c *Command) completionWatcher(cancelFunc context.CancelFunc, cmd *exec.Cmd, reader io.ReadCloser, finishChan db.FinishChan) {
-	err := cmd.Wait()
-	_ = reader.Close()
-	cancelFunc()
-	finishChan <- err
-	close(finishChan)
-}
+//func (c *Command) completionWatcher(cancelFunc context.CancelFunc, cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel) {
+//	err := cmd.Wait()
+//	_ = reader.Close()
+//	cancelFunc()
+//	finishChan <- err
+//	close(finishChan)
+//}
 
 func (c *Command) prepareArgs(withExecutable bool) []string {
 	sort.SliceStable(c.opts, func(i, j int) bool {
@@ -133,12 +133,12 @@ func (c *Command) prepareArgs(withExecutable bool) []string {
 		args = append(args, "ffmpeg")
 	}
 	for _, opt := range c.opts {
-		args = append(args, opt.String())
+		args = append(args, opt.getStrings()...)
 	}
 	return args
 }
 
-func (c *Command) Execute() (db.ProgressChan, db.FinishChan, context.CancelFunc, error) {
+func (c *Command) Execute() (db.AnyChannel, context.CancelFunc, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	args := c.prepareArgs(false)
@@ -147,18 +147,16 @@ func (c *Command) Execute() (db.ProgressChan, db.FinishChan, context.CancelFunc,
 	stderrReader, err := cmd.StderrPipe()
 	if err != nil {
 		cancelFunc()
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	err = cmd.Start()
 	if err != nil {
 		cancelFunc()
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	finishChan := make(db.FinishChan, 1)
-	progressChan := make(db.ProgressChan, 32)
-	go c.completionWatcher(cancelFunc, cmd, stderrReader, finishChan)
-	go c.progressWatcher(stderrReader, progressChan)
-	return progressChan, finishChan, cancelFunc, nil
+	outputChan := make(db.AnyChannel, 32)
+	go c.processWatcher(cmd, stderrReader, outputChan)
+	return outputChan, cancelFunc, nil
 }
 
 func (c *Command) ExecuteSync() (*string, error) {

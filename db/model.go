@@ -11,10 +11,10 @@ type Series struct {
 	Description string
 	Query       *string // Query to automatically add torrents to this series
 	ThumbnailID uint
-	Thumbnail   Thumbnail           `gorm:"references:ID"`
-	Torrents    []Torrent           `gorm:"foreignKey:SeriesId"`
-	Conversions []EpisodeConversion `gorm:"foreignKey:SeriesId"`
-	Episodes    []Episode           `gorm:"foreignKey:SeriesId"`
+	Thumbnail   Thumbnail    `gorm:"references:ID"`
+	Torrents    []Torrent    `gorm:"foreignKey:SeriesId"`
+	Conversions []Conversion `gorm:"foreignKey:SeriesId"`
+	Episodes    []Episode    `gorm:"foreignKey:SeriesId"`
 }
 
 func NewSeries(name string, description string, query *string, thumbnailId uint) Series {
@@ -69,8 +69,8 @@ type Torrent struct {
 	TotalLength         int64 // TotalLength total size of ALL torrent files in bytes
 	TotalDownloadLength int64 // TotalDownloadLength total size of SELECTED torrent files in bytes
 	Status              TorrentStatus
-	Source              *string       // Source link to torrent url in case it was added automatically via query
-	Files               []TorrentFile `gorm:"foreignKey:TorrentId"`
+	Source              *string        // Source link to torrent url in case it was added automatically via query
+	Files               []*TorrentFile `gorm:"foreignKey:TorrentId"`
 }
 
 func NewTorrent(seriesId uint, infoPath string, infoType TorrentInfoType) Torrent {
@@ -123,27 +123,41 @@ const (
 	CONVERSION_READY      ConversionStatus = "ready"
 )
 
-// EpisodeConversion Represents info about a single attempt to convert TorrentFile to Episode
-type EpisodeConversion struct {
+// Conversion Represents info about a single attempt to convert TorrentFile to Episode
+type Conversion struct {
 	gorm.Model
+	Progress      `gorm:"embedded"`
 	SeriesId      uint
 	TorrentFileId uint
 	EpisodeId     *uint
 	Name          string
 	OutputPath    string
-	FFmpegCommand string
+	LogsPath      string
+	Command       string
 	Status        ConversionStatus
+}
+
+func NewConversion(seriesId uint, torrentFileId uint, name string, outputPath string, logsPath string, command string) Conversion {
+	return Conversion{
+		SeriesId:      seriesId,
+		TorrentFileId: torrentFileId,
+		Name:          name,
+		OutputPath:    outputPath,
+		LogsPath:      logsPath,
+		Command:       command,
+		Status:        CONVERSION_CREATED,
+	}
 }
 
 // Episode Represents info about a single ready-to-watch episode
 type Episode struct {
 	gorm.Model
 	SeriesId     uint
-	ConversionId *uint
+	ConversionId uint
 	Name         string
 	ThumbnailID  uint
-	Thumbnail    Thumbnail `gorm:"references:ID"`
-	Size         uint      // Size in bytes
-	Duration     uint      // Duration in ms
+	Thumbnail    *Thumbnail `gorm:"references:ID"`
+	Length       uint       // Length in bytes
+	DurationSec  uint       // Duration in seconds
 	Path         string
 }

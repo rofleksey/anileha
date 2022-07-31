@@ -34,7 +34,7 @@ func NewFileService(db *gorm.DB, log *zap.Logger, config *config.Config) (*FileS
 	}, nil
 }
 
-func (s *FileService) GetTempFileDst(originalName string) (string, error) {
+func (s *FileService) GenTempFilePath(originalName string) (string, error) {
 	fakeId, err := uuid.NewV4()
 	if err != nil {
 		return "", err
@@ -44,13 +44,22 @@ func (s *FileService) GetTempFileDst(originalName string) (string, error) {
 	return dstPath, nil
 }
 
-func (s *FileService) GetFileDst(folder string, originalName string) (string, error) {
+func (s *FileService) GenFilePath(folder string, originalName string) (string, error) {
 	fakeId, err := uuid.NewV4()
 	if err != nil {
 		return "", err
 	}
 	ext := filepath.Ext(originalName)
 	dstPath := path.Join(folder, fmt.Sprintf("%s%s", fakeId, ext))
+	return dstPath, nil
+}
+
+func (s *FileService) GenFolderPath(folder string) (string, error) {
+	fakeId, err := uuid.NewV4()
+	if err != nil {
+		return "", err
+	}
+	dstPath := path.Join(folder, fakeId.String())
 	return dstPath, nil
 }
 

@@ -5,17 +5,29 @@ import "gopkg.in/vansante/go-ffprobe.v2"
 type SubsType string
 
 const (
-	Text    SubsType = "text"
-	Picture SubsType = "picture"
+	SubsText    SubsType = "text"
+	SubsPicture SubsType = "picture"
+	SubsUnknown SubsType = "unknown"
 )
+
+// intermediate types
 
 type StreamType string
 
 const (
-	Video StreamType = "video"
-	Audio StreamType = "audio"
-	Sub   StreamType = "subtitle"
+	StreamVideo StreamType = "video"
+	StreamAudio StreamType = "audio"
+	StreamSub   StreamType = "subtitle"
 )
+
+type ParsedStream struct {
+	Index         int
+	RelativeIndex int
+	Language      *string
+	Codec         string
+	CodecFull     string
+	Title         *string
+}
 
 type StreamWithScore struct {
 	*ffprobe.Stream
@@ -30,23 +42,27 @@ type ScoreResult struct {
 	SubCandidates   []StreamWithScore
 }
 
-type ParsedStream struct {
-	Index         int
+// result types
+
+type ResultStream struct {
 	RelativeIndex int
-	Language      *string
-	Codec         string
-	CodecFull     string
-	Title         *string
 }
 
-type ParsedProbe struct {
-	Width      float64
-	Height     float64
-	Fps        float64
-	DurationMs uint
-	Format     string
-	Bitrate    string
-	Video      ParsedStream
-	Subs       []ParsedStream
-	Audio      []ParsedStream
+type VideoStream struct {
+	ResultStream
+	Width      int
+	Height     int
+	DurationMs int64
+	FrameCount int64
+}
+
+type SubStream struct {
+	ResultStream
+	Type SubsType
+}
+
+type Result struct {
+	Video VideoStream
+	Audio *ResultStream
+	Sub   *SubStream
 }

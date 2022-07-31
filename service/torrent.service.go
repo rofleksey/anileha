@@ -123,6 +123,18 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.TorrentWithProgress, error
 	}, nil
 }
 
+func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
+	var file db.TorrentFile
+	queryResult := s.db.First(&file, "id = ?", id)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrNotFound
+	}
+	return &file, nil
+}
+
 func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
 	queryResult := s.db.Find(&torrentArr)
@@ -216,15 +228,15 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 
 		// if file is not selected - delete it and continue
 		if !file.Selected {
-			deleteErr := os.Remove(oldPath)
-			if deleteErr != nil {
-				s.log.Warn("failed to delete unselected file", zap.String("path", oldPath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
-			}
+			_ = os.Remove(oldPath)
+			//if deleteErr != nil {
+			//	s.log.Warn("failed to delete unselected file", zap.String("path", oldPath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
+			//}
 			continue
 		}
 
 		torrentFileName := filepath.Base(file.TorrentPath)
-		newPath, err := s.fileService.GetFileDst(torrentReadyRootFolder, torrentFileName)
+		newPath, err := s.fileService.GenFilePath(torrentReadyRootFolder, torrentFileName)
 		if err != nil {
 			s.log.Error("failed to acquire temp file", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
 			return
@@ -375,7 +387,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 }
 
 func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, fileIndices map[uint]struct{}) (uint, error) {
-	newPath, err := s.fileService.GetFileDst(s.infoFolder, tempPath)
+	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
 		return 0, err
 	}
