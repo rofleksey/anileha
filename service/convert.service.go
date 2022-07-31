@@ -22,6 +22,7 @@ type ConversionService struct {
 	queueChan        chan ffmpeg.OutputMessage
 	fileService      *FileService
 	seriesService    *SeriesService
+	episodeService   *EpisodeService
 	conversionFolder string
 }
 
@@ -30,6 +31,7 @@ func NewConversionService(
 	db *gorm.DB,
 	fileService *FileService,
 	seriesService *SeriesService,
+	episodeService *EpisodeService,
 	log *zap.Logger,
 	config *config.Config,
 ) (*ConversionService, error) {
@@ -52,6 +54,7 @@ func NewConversionService(
 		db:               db,
 		fileService:      fileService,
 		seriesService:    seriesService,
+		episodeService:   episodeService,
 		log:              log,
 		queue:            queue,
 		queueChan:        queueChan,
@@ -91,26 +94,45 @@ func (s *ConversionService) queueWorker() {
 		case ffmpeg.QueueSignalStarted:
 			if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_PROCESSING}).Error; err != nil {
 				s.log.Error("failed to update db on conversion start", zap.Uint("conversionId", update.ID), zap.Error(err))
+				continue
 			}
 		case string:
 			s.log.Info(msg, zap.Uint("conversionId", update.ID))
 		case db.Progress:
-			s.log.Info("Progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.TimeElapsed))
+			if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Progress: msg}).Error; err != nil {
+				s.log.Error("failed to update db on conversion progress", zap.Uint("conversionId", update.ID), zap.Error(err))
+				continue
+			}
+			s.log.Info("conversion progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.Elapsed))
 		case ffmpeg.CommandSignalEnd:
 			if msg.Err == nil {
-				s.log.Info("DONE", zap.Uint("conversionId", update.ID))
+				conversion, err := s.GetConversionById(update.ID)
+				if err != nil {
+					s.log.Error("failed to get conversion by id", zap.Uint("conversionId", update.ID), zap.Error(err))
+					continue
+				}
+				episode, err := s.episodeService.CreateEpisodeFromConversion(conversion)
+				if err != nil {
+					s.log.Error("failed to create episode", zap.Uint("conversionId", update.ID), zap.Error(err))
+					continue
+				}
+				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_READY, EpisodeId: &episode.ID, Progress: db.Progress{Progress: 1}}).Error; err != nil {
+					s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", update.ID), zap.Error(err))
+					continue
+				}
 			} else {
 				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_ERROR}).Error; err != nil {
-					s.log.Error("failed to update db on conversion start", zap.Uint("conversionId", update.ID), zap.Error(err))
+					s.log.Error("failed to update db on conversion error", zap.Uint("conversionId", update.ID), zap.Error(err))
+					continue
 				}
 			}
 		}
 	}
 }
 
-func (s *ConversionService) prepareCommand(inputFile string, outputPath string, analysis *analyze.Result) (*ffmpeg.Command, error) {
+func (s *ConversionService) prepareCommand(inputFile string, outputPath string, logsPath string, analysis *analyze.Result) (*ffmpeg.Command, error) {
 	// TODO: research settings
-	command := ffmpeg.NewCommand(inputFile, 0, outputPath)
+	command := ffmpeg.NewCommand(inputFile, analysis.Video.DurationSec, outputPath)
 	command.AddKeyValue("-acodec", "aac", ffmpeg.OptionOutput)
 	command.AddKeyValue("-b:a", "196k", ffmpeg.OptionOutput)
 	command.AddKeyValue("-ac", "2", ffmpeg.OptionOutput)
@@ -136,11 +158,12 @@ func (s *ConversionService) prepareCommand(inputFile string, outputPath string, 
 	if analysis.Audio != nil {
 		command.AddKeyValue("-map", fmt.Sprintf("0:a:%d", analysis.Audio.RelativeIndex), ffmpeg.OptionOutput)
 	}
+	command.WriteLogsTo(logsPath)
 	return command, nil
 }
 
-func (s *ConversionService) prepareConversion(seriesId uint, torrentFileId uint, videoPath string, command *ffmpeg.Command) (*db.Conversion, error) {
-	conversion := db.NewConversion(seriesId, torrentFileId, "TODO", videoPath, "", command.String())
+func (s *ConversionService) prepareConversion(seriesId uint, torrentFile *db.TorrentFile, videoPath string, logsPath string, command *ffmpeg.Command, durationSec uint64) (*db.Conversion, error) {
+	conversion := db.NewConversion(seriesId, torrentFile.ID, filepath.Base(torrentFile.TorrentPath), videoPath, logsPath, command.String(), durationSec)
 	queryResult := s.db.Create(&conversion)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -153,18 +176,17 @@ func (s *ConversionService) prepareConversion(seriesId uint, torrentFileId uint,
 
 func (s *ConversionService) StartConversion(series *db.Series, torrentFile *db.TorrentFile, analysis *analyze.Result) error {
 	// TODO: parse name
-	// TODO: logs
 	folder, err := s.fileService.GenFolderPath(s.conversionFolder)
 	if err != nil {
 		return err
 	}
 	videoPath := filepath.Join(folder, "video.mp4")
-	// logsPath := filepath.Join(folder, "log.txt")
-	command, err := s.prepareCommand(*torrentFile.ReadyPath, videoPath, analysis)
+	logsPath := filepath.Join(folder, "log.txt")
+	command, err := s.prepareCommand(*torrentFile.ReadyPath, videoPath, logsPath, analysis)
 	if err != nil {
 		return err
 	}
-	conversion, err := s.prepareConversion(series.ID, torrentFile.ID, videoPath, command)
+	conversion, err := s.prepareConversion(series.ID, torrentFile, videoPath, logsPath, command, analysis.Video.DurationSec)
 	if err != nil {
 		return err
 	}

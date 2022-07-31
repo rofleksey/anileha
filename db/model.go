@@ -10,14 +10,14 @@ type Series struct {
 	Name        string
 	Description string
 	Query       *string // Query to automatically add torrents to this series
-	ThumbnailID uint
-	Thumbnail   Thumbnail    `gorm:"references:ID"`
+	ThumbnailID *uint
+	Thumbnail   *Thumbnail   `gorm:"references:ID"`
 	Torrents    []Torrent    `gorm:"foreignKey:SeriesId"`
 	Conversions []Conversion `gorm:"foreignKey:SeriesId"`
 	Episodes    []Episode    `gorm:"foreignKey:SeriesId"`
 }
 
-func NewSeries(name string, description string, query *string, thumbnailId uint) Series {
+func NewSeries(name string, description string, query *string, thumbnailId *uint) Series {
 	return Series{
 		Name:        name,
 		Description: description,
@@ -94,23 +94,25 @@ const (
 // TorrentFile Represents info about a single torrent file
 type TorrentFile struct {
 	gorm.Model
-	TorrentId   uint
-	Index       uint    // Index file index according to .torrent file system
-	TorrentPath string  // TorrentPath file path according to .torrent file system
-	ReadyPath   *string // ReadyPath file location after successful download
-	Length      uint    // Length in bytes
-	Selected    bool
-	Status      TorrentFileStatus
+	TorrentId    uint
+	Index        uint    // Index file index according to .torrent file system
+	TorrentPath  string  // TorrentPath file path according to .torrent file system
+	TorrentOrder uint    // TorrentOrder order in .torrent file system
+	ReadyPath    *string // ReadyPath file location after successful download
+	Length       uint    // Length in bytes
+	Selected     bool
+	Status       TorrentFileStatus
 }
 
-func NewTorrentFile(torrentId uint, index uint, torrentPath string, selected bool, len uint) TorrentFile {
+func NewTorrentFile(torrentId uint, index uint, torrentPath string, torrentOrder uint, selected bool, len uint) TorrentFile {
 	return TorrentFile{
-		TorrentId:   torrentId,
-		Index:       index,
-		TorrentPath: torrentPath,
-		Selected:    selected,
-		Status:      TORRENT_FILE_IDLE,
-		Length:      len,
+		TorrentId:    torrentId,
+		Index:        index,
+		TorrentPath:  torrentPath,
+		TorrentOrder: torrentOrder,
+		Selected:     selected,
+		Status:       TORRENT_FILE_IDLE,
+		Length:       len,
 	}
 }
 
@@ -126,26 +128,28 @@ const (
 // Conversion Represents info about a single attempt to convert TorrentFile to Episode
 type Conversion struct {
 	gorm.Model
-	Progress      `gorm:"embedded"`
-	SeriesId      uint
-	TorrentFileId uint
-	EpisodeId     *uint
-	Name          string
-	OutputPath    string
-	LogsPath      string
-	Command       string
-	Status        ConversionStatus
+	Progress         `gorm:"embedded"`
+	SeriesId         uint
+	TorrentFileId    uint
+	EpisodeId        *uint
+	Name             string
+	OutputPath       string
+	LogsPath         string
+	Command          string
+	VideoDurationSec uint64
+	Status           ConversionStatus
 }
 
-func NewConversion(seriesId uint, torrentFileId uint, name string, outputPath string, logsPath string, command string) Conversion {
+func NewConversion(seriesId uint, torrentFileId uint, name string, outputPath string, logsPath string, command string, videoDurationSec uint64) Conversion {
 	return Conversion{
-		SeriesId:      seriesId,
-		TorrentFileId: torrentFileId,
-		Name:          name,
-		OutputPath:    outputPath,
-		LogsPath:      logsPath,
-		Command:       command,
-		Status:        CONVERSION_CREATED,
+		SeriesId:         seriesId,
+		TorrentFileId:    torrentFileId,
+		Name:             name,
+		OutputPath:       outputPath,
+		LogsPath:         logsPath,
+		Command:          command,
+		VideoDurationSec: videoDurationSec,
+		Status:           CONVERSION_CREATED,
 	}
 }
 
@@ -155,9 +159,23 @@ type Episode struct {
 	SeriesId     uint
 	ConversionId uint
 	Name         string
-	ThumbnailID  uint
+	ThumbnailID  *uint
 	Thumbnail    *Thumbnail `gorm:"references:ID"`
-	Length       uint       // Length in bytes
-	DurationSec  uint       // Duration in seconds
+	Length       uint64     // Length in bytes
+	DurationSec  uint64     // Duration in seconds
 	Path         string
+	Url          string
+}
+
+func NewEpisode(seriesId uint, conversionId uint, name string, thumbnailId *uint, length uint64, durationSec uint64, path string, url string) Episode {
+	return Episode{
+		SeriesId:     seriesId,
+		ConversionId: conversionId,
+		Name:         name,
+		ThumbnailID:  thumbnailId,
+		Length:       length,
+		DurationSec:  durationSec,
+		Path:         path,
+		Url:          url,
+	}
 }

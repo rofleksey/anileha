@@ -8,9 +8,9 @@ type TorrentWithProgress struct {
 }
 
 type Progress struct {
-	Progress    float64
-	TimeElapsed float64
-	Eta         float64
+	Progress float64
+	Elapsed  float64
+	Eta      float64
 }
 
 type AnyChannel chan interface{}

@@ -54,13 +54,15 @@ func ParseFileIndices(str string) (map[uint]struct{}, error) {
 			if err != nil {
 				return nil, ErrInvalidIndicesString
 			}
-			end, err := strconv.ParseUint(dashSplit[0], 10, 64)
+			end, err := strconv.ParseUint(dashSplit[1], 10, 64)
 			if err != nil {
+				return nil, ErrInvalidIndicesString
+			}
+			if end < start {
 				return nil, ErrInvalidIndicesString
 			}
 			for pointer := start; pointer <= end; pointer++ {
 				result[uint(pointer)] = struct{}{}
-				pointer++
 			}
 		default:
 			return nil, ErrInvalidIndicesString

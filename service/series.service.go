@@ -53,7 +53,7 @@ func (s *SeriesService) DeleteSeriesById(id uint) error {
 }
 
 func (s *SeriesService) AddSeries(req dao.SeriesRequestDao) (uint, error) {
-	series := db.NewSeries(req.Name, req.Description, req.Query, req.ThumbnailId)
+	series := db.NewSeries(req.Name, req.Description, req.Query, &req.ThumbnailId)
 	queryResult := s.db.Create(&series)
 	if queryResult.Error != nil {
 		return 0, queryResult.Error

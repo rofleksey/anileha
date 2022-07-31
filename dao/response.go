@@ -38,4 +38,17 @@ type ConversionResponseDao struct {
 	Name          string              `json:"name"`
 	FFmpegCommand string              `json:"ffmpegCommand"`
 	Status        db.ConversionStatus `json:"status"`
+	Eta           float64             `json:"eta"`
+	Progress      float64             `json:"progress"`
+	Elapsed       float64             `json:"elapsed"`
+}
+
+type EpisodeResponseDao struct {
+	ID           uint   `json:"id"`
+	ConversionId uint   `json:"conversionId"`
+	Name         string `json:"name"`
+	ThumbnailId  *uint  `json:"thumbnailId"`
+	Length       uint64 `json:"length"`
+	DurationSec  uint64 `json:"durationSec"`
+	Url          string `json:"link"`
 }

@@ -12,6 +12,8 @@ import (
 	"strconv"
 )
 
+// TODO: stop conversions on torrent/story deletion
+
 func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 	return dao.ConversionResponseDao{
 		ID:            c.ID,
@@ -21,6 +23,9 @@ func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 		Name:          c.Name,
 		FFmpegCommand: c.Command,
 		Status:        c.Status,
+		Eta:           c.Progress.Eta,
+		Progress:      c.Progress.Progress,
+		Elapsed:       c.Progress.Elapsed,
 	}
 }
 
@@ -71,41 +76,41 @@ func registerConvertController(
 		var req dao.ConvertStartRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		series, err := seriesService.GetSeriesById(req.SeriesId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		torrentFile, err := torrentService.GetTorrentFileById(req.TorrentFileId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		if torrentFile.Status != db.TORRENT_FILE_READY {
 			c.Error(util.ErrFileIsNotReadyToBeConverted)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileIsNotReadyToBeConverted})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
 			return
 		}
 		if torrentFile.ReadyPath == nil {
 			c.Error(util.ErrFileStateIsCorrupted)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted.Error()})
 			return
 		}
 		analysis, err := analyzer.Analyze(*torrentFile.ReadyPath, true)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		err = convertService.StartConversion(series, torrentFile, analysis)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	})

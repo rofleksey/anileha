@@ -4,11 +4,14 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/util"
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 type EpisodeService struct {
@@ -29,7 +32,7 @@ func NewEpisodeService(
 	if err != nil {
 		return nil, err
 	}
-	episodeFolder := path.Join(workingDir, config.Data.Dir, util.ConversionSubDir)
+	episodeFolder := path.Join(workingDir, config.Data.Dir, util.EpisodeSubDir)
 	err = os.MkdirAll(episodeFolder, os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -42,7 +45,33 @@ func NewEpisodeService(
 	}, nil
 }
 
-func (s *ConversionService) GetEpisodeById(id uint) (*db.Episode, error) {
+func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) (*db.Episode, error) {
+	// TODO: gen thumbnail
+	episodePath, err := s.fileService.GenFilePath(s.episodeFolder, conversion.OutputPath)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Rename(conversion.OutputPath, episodePath)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := os.Stat(episodePath)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/%s", util.EpisodeRoute, filepath.Base(episodePath))
+	episode := db.NewEpisode(conversion.SeriesId, conversion.ID, conversion.Name, nil, uint64(stat.Size()), conversion.VideoDurationSec, episodePath, url)
+	queryResult := s.db.Create(&episode)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrCreationFailed
+	}
+	return &episode, nil
+}
+
+func (s *EpisodeService) GetEpisodeById(id uint) (*db.Episode, error) {
 	var episode db.Episode
 	queryResult := s.db.First(&episode, "id = ?", id)
 	if queryResult.Error != nil {
@@ -54,9 +83,9 @@ func (s *ConversionService) GetEpisodeById(id uint) (*db.Episode, error) {
 	return &episode, nil
 }
 
-func (s *ConversionService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, error) {
+func (s *EpisodeService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, error) {
 	var episodes []db.Episode
-	queryResult := s.db.Find(&episodes, "seriesId = ?", seriesId)
+	queryResult := s.db.Find(&episodes, "series_id = ?", seriesId)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -66,4 +95,8 @@ func (s *ConversionService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, 
 	return episodes, nil
 }
 
-var EpisodeServiceExport = fx.Options(fx.Provide(NewEpisodeService))
+func registerStaticEpisodes(engine *gin.Engine, config *config.Config) {
+	engine.Static(util.EpisodeRoute, path.Join(config.Data.Dir, util.EpisodeSubDir))
+}
+
+var EpisodeServiceExport = fx.Options(fx.Provide(NewEpisodeService), fx.Invoke(registerStaticEpisodes))

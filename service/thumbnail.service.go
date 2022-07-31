@@ -50,7 +50,9 @@ func (s *ThumbnailService) GetThumbnailById(id uint) (*db.Thumbnail, error) {
 
 func (s *ThumbnailService) GetAllThumbnails() ([]db.Thumbnail, error) {
 	var thumbArr []db.Thumbnail
-	queryResult := s.db.Find(&thumbArr)
+	queryResult := s.db.Find(&thumbArr, func(db *gorm.DB) *gorm.DB {
+		return db.Order("thumbnails.created_at ASC")
+	})
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}

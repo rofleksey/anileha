@@ -82,7 +82,9 @@ func NewTorrentService(lifecycle fx.Lifecycle, db *gorm.DB, log *zap.Logger, con
 
 func (s *TorrentService) GetTorrentById(id uint) (*db.TorrentWithProgress, error) {
 	var torrent db.Torrent
-	queryResult := s.db.Preload("Files").First(&torrent, "id = ?", id)
+	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
+		return db.Order("torrent_files.torrent_order ASC")
+	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -137,7 +139,9 @@ func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
 
 func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
-	queryResult := s.db.Find(&torrentArr)
+	queryResult := s.db.Find(&torrentArr, func(db *gorm.DB) *gorm.DB {
+		return db.Order("torrents.created_at ASC")
+	})
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -146,7 +150,9 @@ func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 
 func (s *TorrentService) DeleteTorrentById(id uint) error {
 	var torrent db.Torrent
-	queryResult := s.db.Preload("Files").First(&torrent, "id = ?", id)
+	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
+		return db.Order("torrent_files.torrent_order ASC")
+	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		return queryResult.Error
 	}
@@ -205,7 +211,9 @@ func (s *TorrentService) onFailedImport(torrent db.Torrent, err error) {
 // onTorrentCompletion Creates READY folder, moves torrent files into it, updates DB entries
 func (s *TorrentService) onTorrentCompletion(id uint) {
 	var torrent db.Torrent
-	queryResult := s.db.Preload("Files").First(&torrent, "id = ?", id)
+	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
+		return db.Order("torrent_files.torrent_order ASC")
+	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		s.log.Error("failed to complete torrent", zap.Uint("torrentId", torrent.ID), zap.Error(queryResult.Error))
 		return
@@ -341,7 +349,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	for i, metaFile := range info.Files {
 		_, isSelected := fileIndices[uint(i)]
-		file := db.NewTorrentFile(torrent.ID, uint(i), metaFile.DisplayPath(info), isSelected, uint(metaFile.Length))
+		file := db.NewTorrentFile(torrent.ID, uint(i), metaFile.DisplayPath(info), uint(i), isSelected, uint(metaFile.Length))
 		files = append(files, file)
 	}
 

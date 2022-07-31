@@ -10,6 +10,26 @@ import (
 	"strconv"
 )
 
+func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
+	return dao.EpisodeResponseDao{
+		ID:           episode.ID,
+		ConversionId: episode.ConversionId,
+		Name:         episode.Name,
+		ThumbnailId:  episode.ThumbnailID,
+		Length:       episode.Length,
+		DurationSec:  episode.DurationSec,
+		Url:          episode.Url,
+	}
+}
+
+func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao {
+	res := make([]dao.EpisodeResponseDao, 0, len(episodes))
+	for _, s := range episodes {
+		res = append(res, mapEpisodeToResponse(s))
+	}
+	return res
+}
+
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 	return dao.SeriesResponseDao{
 		ID:          series.ID,
@@ -28,7 +48,7 @@ func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
 	return res
 }
 
-func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesService) {
+func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesService, episodeService *service.EpisodeService) {
 	engine.GET("/series", func(c *gin.Context) {
 		seriesSlice, err := seriesService.GetAllSeries()
 		if err != nil {
@@ -50,6 +70,20 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 			return
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponse(*series))
+	})
+	engine.GET("/episodes/:id", func(c *gin.Context) {
+		idString := c.Param("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			return
+		}
+		episodes, err := episodeService.GetEpisodesBySeriesId(uint(id))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
 	})
 	engine.DELETE("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")

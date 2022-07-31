@@ -50,10 +50,9 @@ type ResultStream struct {
 
 type VideoStream struct {
 	ResultStream
-	Width      int
-	Height     int
-	DurationMs int64
-	FrameCount int64
+	Width       int
+	Height      int
+	DurationSec uint64
 }
 
 type SubStream struct {

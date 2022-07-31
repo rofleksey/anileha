@@ -10,6 +10,7 @@ import (
 	"gopkg.in/vansante/go-ffprobe.v2"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -50,7 +51,7 @@ func (p *ProbeAnalyzer) parseStreamSize(sizeCommandResult string, streamType Str
 	lowerCase := strings.ToLower(lastLine)
 	reg := p.regexMap[streamType]
 	matchArr := reg.FindStringSubmatch(lowerCase)
-	if len(matchArr) != 3 {
+	if matchArr == nil {
 		return 0, util.ErrInvalidStreamSize
 	}
 	number, err := strconv.ParseUint(matchArr[1], 10, 64)
@@ -93,13 +94,28 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	sizeCommand.AddKeyValue("-f", "null", ffmpeg.OptionOutput)
 	result, err := sizeCommand.ExecuteSync()
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	size, err := p.parseStreamSize(*result, streamType)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	return size, nil
+}
+
+func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (uint64, error) {
+	p.log.Info("getting video duration in seconds", zap.String("inputFile", inputFile))
+	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", inputFile)
+	outputBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		return 0, err
+	}
+	outputStr := strings.Trim(string(outputBytes), " \n")
+	number, err := strconv.ParseFloat(outputStr, 64)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(number), nil
 }
 
 // ExtractSubText gets sub stream text
@@ -115,11 +131,11 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	sizeCommand.AddKeyValue("-f", "srt", ffmpeg.OptionOutput)
 	_, err := sizeCommand.ExecuteSync()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	content, err := ioutil.ReadFile(srtFileName)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return string(content), nil
 }
@@ -161,16 +177,18 @@ func (p *ProbeAnalyzer) Analyze(inputFile string, allowAmbiguousResults bool) (*
 			Type: p.getSubsType(scoredResult.SubCandidates[0].Stream),
 		}
 	}
-	// TODO: duration / frames
+	duration, err := p.GetVideoDurationSec(inputFile)
+	if err != nil {
+		return nil, err
+	}
 	return &Result{
 		Video: VideoStream{
 			ResultStream: ResultStream{
 				RelativeIndex: scoredResult.Video.RelativeIndex,
 			},
-			Width:      scoredResult.Video.Width,
-			Height:     scoredResult.Video.Height,
-			DurationMs: int64(0),
-			FrameCount: int64(0),
+			Width:       scoredResult.Video.Width,
+			Height:      scoredResult.Video.Height,
+			DurationSec: duration,
 		},
 		Audio: audioStream,
 		Sub:   subStream,
@@ -266,7 +284,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	for _, audioStream := range remainingAudio {
 		size, err := p.GetStreamSize(inputFile, StreamAudio, audioStream.RelativeIndex)
 		if err != nil {
-			p.log.Error("failed to get stream size", zap.String("streamType", string(StreamAudio)), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Error(err))
+			p.log.Warn("failed to get stream size", zap.String("streamType", string(StreamAudio)), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Error(err))
 			continue
 		}
 		p.log.Info("got audio stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Uint64("size", size))
@@ -279,8 +297,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	for _, subStream := range remainingSubs {
 		text, err := p.ExtractSubText(inputFile, subStream.RelativeIndex)
 		if err != nil {
-			p.log.Error("failed to get subtitle text", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
-			continue
+			p.log.Warn("failed to get subtitle text", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
 		}
 		if len(text) <= 32 {
 			p.log.Info("subtitle doesn't have text, using scoring based on stream size", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))

@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-const MinTimeDiffMs int64 = 1000
-const SmoothingFactor float64 = 0.1
+const MinTimeDiffMs float64 = 1
+const SmoothingFactor float64 = 0.3
 
 type EtaCalculator struct {
 	mutex       sync.Mutex
@@ -62,11 +62,11 @@ func (c *EtaCalculator) Update(newValue float64) {
 		c.lastTime = now
 		return
 	}
-	timeDiff := now.Sub(c.startTime)
-	if timeDiff.Milliseconds() < MinTimeDiffMs {
+	timeDiff := now.Sub(c.lastTime)
+	if timeDiff.Seconds() < MinTimeDiffMs {
 		return
 	}
-	speed := (newValue - c.lastValue) / float64(timeDiff)
+	speed := (newValue - c.lastValue) / timeDiff.Seconds()
 	c.approxSpeed = c.approxSpeed*(1-SmoothingFactor) + speed*SmoothingFactor
 	c.lastTime = now
 	c.lastValue = newValue
@@ -87,9 +87,9 @@ func (c *EtaCalculator) getElapsedTime() float64 {
 		return math.NaN()
 	}
 	if c.isFinished {
-		return float64(c.lastTime.Sub(c.startTime).Milliseconds())
+		return c.lastTime.Sub(c.startTime).Seconds()
 	}
-	return float64(time.Since(c.startTime))
+	return time.Since(c.startTime).Seconds()
 }
 
 func (c *EtaCalculator) getProgressImpl() float64 {
@@ -106,8 +106,8 @@ func (c *EtaCalculator) GetProgress() db.Progress {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return db.Progress{
-		Progress:    c.getProgressImpl(),
-		Eta:         c.getEta(),
-		TimeElapsed: c.getElapsedTime(),
+		Progress: c.getProgressImpl(),
+		Eta:      c.getEta(),
+		Elapsed:  c.getElapsedTime(),
 	}
 }

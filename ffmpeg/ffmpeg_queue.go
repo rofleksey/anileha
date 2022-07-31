@@ -97,7 +97,6 @@ func (q *Queue) processItem(cur *queueItem) {
 				Err: util.ErrCancelled,
 			},
 		}
-		q.workerFeedBackChan <- cur.ID
 		return
 	default:
 	}
@@ -112,7 +111,6 @@ func (q *Queue) processItem(cur *queueItem) {
 			ID:  cur.ID,
 			Msg: err,
 		}
-		q.workerFeedBackChan <- cur.ID
 		return
 	}
 	for {

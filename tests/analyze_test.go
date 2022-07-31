@@ -36,6 +36,21 @@ func TestAnalyzeSubs(t *testing.T) {
 	t.Log(text)
 }
 
+func TestVideoDuration(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
+	textAnalyzer := analyze.NewTextAnalyzer(logger)
+	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, logger)
+	duration, err := probeAnalyzer.GetVideoDurationSec("input.mkv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEqual(t, duration, 0)
+	t.Log(duration)
+}
+
 func TestAnalyzeStream(t *testing.T) {
 	logger, err := zap.NewProduction()
 	if err != nil {

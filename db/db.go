@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// TODO: ordering, indices, cascading
+
 func initDB(config *config.Config) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=disable",
 		config.Db.Host, config.Db.Port, config.Db.DbName, config.Db.User, config.Db.Password)), &gorm.Config{})

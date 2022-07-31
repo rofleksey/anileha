@@ -9,3 +9,4 @@ const ConversionSubDir = "conversions"
 const EpisodeSubDir = "episodes"
 
 const ThumbRoute = "/th"
+const EpisodeRoute = "/ep"
