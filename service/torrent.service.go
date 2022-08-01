@@ -80,6 +80,20 @@ func NewTorrentService(lifecycle fx.Lifecycle, db *gorm.DB, log *zap.Logger, con
 	}, nil
 }
 
+func (s *TorrentService) GetTorrentByIdSimple(id uint) (*db.Torrent, error) {
+	var torrent db.Torrent
+	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
+		return db.Order("torrent_files.torrent_order ASC")
+	}).First(&torrent, "id = ?", id)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrNotFound
+	}
+	return &torrent, nil
+}
+
 func (s *TorrentService) GetTorrentById(id uint) (*db.TorrentWithProgress, error) {
 	var torrent db.Torrent
 	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
@@ -160,7 +174,10 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 		return util.ErrNotFound
 	}
 	if torrent.Status == db.TORRENT_DOWNLOADING {
-		return util.ErrDeleteStartedTorrent
+		err := s.StopTorrent(torrent)
+		if err != nil {
+			return err
+		}
 	}
 	queryResult = s.db.Delete(&db.Torrent{}, id)
 	if queryResult.Error != nil {
@@ -190,11 +207,9 @@ func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
 		}
 	}
 
-	if torrent.InfoType == db.TORRENT_INFO_FILE {
-		deleteErr := os.Remove(torrent.InfoPath)
-		if deleteErr != nil {
-			s.log.Warn("failed to cleanup torrent info", zap.String("path", torrent.InfoPath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
-		}
+	deleteErr := os.Remove(torrent.FilePath)
+	if deleteErr != nil {
+		s.log.Warn("failed to cleanup torrent info", zap.String("path", torrent.FilePath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
 	}
 }
 
@@ -292,7 +307,7 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 }
 
 // torrentCompletionWatcher Polls for torrent's completion, calls onTorrentCompletion
-func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []db.TorrentFile, totalDownloadLength int64, cTorrent *torrentLib.Torrent) {
+func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []*db.TorrentFile, totalDownloadLength int64, cTorrent *torrentLib.Torrent) {
 	ticker := time.NewTicker(3 * time.Second)
 	cFiles := cTorrent.Files()
 	for {
@@ -323,22 +338,16 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 	}
 }
 
-func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]struct{}) {
-	var cTorrent *torrentLib.Torrent
-	var err error
-	switch torrent.InfoType {
-	case db.TORRENT_INFO_FILE:
-		cTorrent, err = s.client.AddTorrentFromFile(torrent.InfoPath)
-	case db.TORRENT_INFO_MAGNET:
-		cTorrent, err = s.client.AddMagnet(torrent.InfoPath)
-	default:
-		err = util.ErrInvalidInfoType
-	}
+// TODO: restore cTorrent on startup
+
+func (s *TorrentService) initTorrent(torrent db.Torrent) error {
+	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
 	if err != nil {
 		s.onFailedImport(torrent, err)
-		return
+		return err
 	}
 
+	s.cTorrentMap.Store(torrent.ID, cTorrent)
 	<-cTorrent.GotInfo()
 	info := cTorrent.Info()
 
@@ -348,8 +357,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	for i, metaFile := range info.Files {
-		_, isSelected := fileIndices[uint(i)]
-		file := db.NewTorrentFile(torrent.ID, uint(i), metaFile.DisplayPath(info), uint(i), isSelected, uint(metaFile.Length))
+		file := db.NewTorrentFile(torrent.ID, uint(i), metaFile.DisplayPath(info), uint(i), false, uint(metaFile.Length))
 		files = append(files, file)
 	}
 
@@ -360,41 +368,32 @@ func (s *TorrentService) initTorrent(torrent db.Torrent, fileIndices map[uint]st
 	}
 	torrent.TotalLength = totalLength
 
-	downloadLength := int64(0)
-	for i, cFile := range cTorrent.Files() {
-		if _, isSelected := fileIndices[uint(i)]; isSelected {
-			cFile.SetPriority(torrentLib.PiecePriorityNormal)
-			downloadLength += cFile.Length()
-		}
-	}
-	torrent.TotalDownloadLength = downloadLength
-
 	queryResult := s.db.Create(&files)
 	if queryResult.Error != nil {
 		s.onFailedImport(torrent, queryResult.Error)
-		return
+		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
 		s.onFailedImport(torrent, util.ErrFileMapping)
-		return
+		return util.ErrFileMapping
 	}
-
-	s.cTorrentMap.Store(torrent.ID, cTorrent)
 
 	queryResult = s.db.Save(&torrent)
 	if queryResult.Error != nil {
 		s.onFailedImport(torrent, queryResult.Error)
-		return
+		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
 		s.onFailedImport(torrent, util.ErrNotFound)
-		return
+		return util.ErrNotFound
 	}
-	go s.torrentCompletionWatcher(torrent.ID, torrent.Name, files, downloadLength, cTorrent)
+	cTorrent.Drop()
+	s.cTorrentMap.Delete(torrent.ID)
 	s.log.Info("torrent initialized", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
+	return nil
 }
 
-func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, fileIndices map[uint]struct{}) (uint, error) {
+func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) (uint, error) {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
 		return 0, err
@@ -403,7 +402,7 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, file
 	if err != nil {
 		return 0, err
 	}
-	torrent := db.NewTorrent(seriesId, newPath, db.TORRENT_INFO_FILE)
+	torrent := db.NewTorrent(seriesId, newPath)
 	queryResult := s.db.Create(&torrent)
 	if queryResult.Error != nil {
 		deleteErr := os.Remove(newPath)
@@ -420,8 +419,85 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, file
 		return 0, util.ErrCreationFailed
 	}
 	s.log.Info("added new torrent", zap.Uint("seriesId", seriesId), zap.Uint("torrentId", torrent.ID))
-	go s.initTorrent(torrent, fileIndices)
+	err = s.initTorrent(torrent)
+	if err != nil {
+		return 0, err
+	}
 	return torrent.ID, nil
+}
+
+func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices map[uint]struct{}) error {
+	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
+	if exists {
+		cTorrent, castOk := mapEntry.(*torrentLib.Torrent)
+		if castOk {
+			cTorrent.Drop()
+			<-cTorrent.Closed()
+		}
+	}
+	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
+	if err != nil {
+		return err
+	}
+	s.cTorrentMap.Store(torrent.ID, cTorrent)
+	<-cTorrent.GotInfo()
+	downloadLength := int64(0)
+	for i, cFile := range cTorrent.Files() {
+		cFile.SetPriority(torrentLib.PiecePriorityNone)
+		torrent.Files[i].Selected = false
+		torrent.Files[i].Status = db.TORRENT_FILE_IDLE
+	}
+	for i, cFile := range cTorrent.Files() {
+		if _, isSelected := fileIndices[uint(i)]; isSelected {
+			cFile.SetPriority(torrentLib.PiecePriorityNormal)
+			downloadLength += cFile.Length()
+			torrent.Files[i].Selected = true
+			torrent.Files[i].Status = db.TORRENT_FILE_DOWNLOADING
+		}
+	}
+	err = s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TORRENT_DOWNLOADING, TotalDownloadLength: downloadLength}).Error
+	if err != nil {
+		return err
+	}
+	queryResult := s.db.Updates(torrent.Files)
+	if queryResult.Error != nil {
+		return queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return util.ErrFileMapping
+	}
+	go s.torrentCompletionWatcher(torrent.ID, torrent.Name, torrent.Files, downloadLength, cTorrent)
+	return nil
+}
+
+func (s *TorrentService) StopTorrent(torrent db.Torrent) error {
+	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
+	if !exists {
+		return util.ErrCTorrentNotFound
+	}
+	cTorrent, castOk := mapEntry.(*torrentLib.Torrent)
+	if !castOk {
+		return util.ErrCTorrentCorrupted
+	}
+	downloadLength := int64(0)
+	for _, file := range torrent.Files {
+		file.Selected = false
+		file.Status = db.TORRENT_FILE_IDLE
+	}
+	cTorrent.Drop()
+	<-cTorrent.Closed()
+	err := s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TORRENT_DOWNLOADING, TotalDownloadLength: downloadLength}).Error
+	if err != nil {
+		return err
+	}
+	queryResult := s.db.Updates(torrent.Files)
+	if queryResult.Error != nil {
+		return queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return util.ErrFileMapping
+	}
+	return nil
 }
 
 var TorrentServiceExport = fx.Options(fx.Provide(NewTorrentService))

@@ -14,6 +14,9 @@ import (
 // func keklol() (>>orel MyStruct<<)
 
 // TODO: support mp4 torrents (?)
+// TODO: replace all model pointers to objects (where possible)
+// TODO: replace all db full updates with partial updates
+// TODO: properly recover from all errors
 
 func main() {
 	fx.New(

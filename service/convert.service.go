@@ -198,4 +198,13 @@ func (s *ConversionService) StartConversion(series *db.Series, torrentFile *db.T
 	return nil
 }
 
+func (s *ConversionService) StopConversion(conversionId uint) error {
+	s.queue.Cancel(conversionId)
+	err := s.db.Model(&db.Conversion{}).Where("id = ?", conversionId).Updates(db.Conversion{Status: db.CONVERSION_CANCELLED}).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 var ConversionServiceExport = fx.Options(fx.Provide(NewConversionService))

@@ -27,6 +27,30 @@ func RemoveNonAlpha(str string) string {
 	}, str)
 }
 
+func SubstrStart(input string, start int) string {
+	asRunes := []rune(input)
+
+	if start >= len(asRunes) {
+		return ""
+	}
+
+	return string(asRunes[start:])
+}
+
+func Substr(input string, start int, end int) string {
+	asRunes := []rune(input)
+
+	if start >= len(asRunes) {
+		return ""
+	}
+
+	if end > len(asRunes) {
+		end = len(asRunes)
+	}
+
+	return string(asRunes[start:end])
+}
+
 // ParseFileIndices parses strings like '1,2-4,5' into a set of uints
 func ParseFileIndices(str string) (map[uint]struct{}, error) {
 	// This is the closest thing to Set in golang, struct{} is a Unit type

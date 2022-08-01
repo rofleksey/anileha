@@ -71,7 +71,7 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponse(*series))
 	})
-	engine.GET("/episodes/:id", func(c *gin.Context) {
+	engine.GET("/series/:id/episodes", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {

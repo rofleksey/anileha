@@ -76,24 +76,24 @@ func registerConvertController(
 		var req dao.ConvertStartRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		series, err := seriesService.GetSeriesById(req.SeriesId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		torrentFile, err := torrentService.GetTorrentFileById(req.TorrentFileId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		if torrentFile.Status != db.TORRENT_FILE_READY {
 			c.Error(util.ErrFileIsNotReadyToBeConverted)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
 			return
 		}
 		if torrentFile.ReadyPath == nil {
@@ -113,6 +113,22 @@ func registerConvertController(
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+		c.String(http.StatusOK, "OK")
+	})
+	engine.POST("/convert/stop", func(c *gin.Context) {
+		var req dao.ConvertIdRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := convertService.StopConversion(req.ConversionId)
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.String(http.StatusOK, "OK")
 	})
 }
 

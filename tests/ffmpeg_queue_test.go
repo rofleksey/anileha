@@ -90,7 +90,7 @@ func TestQueueInterruptFuture(t *testing.T) {
 		queue.Cancel(1)
 	}()
 	output := make([]interface{}, 0, 10)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 		output = append(output, <-outputChan)
 	}
 	expected := []interface{}{
@@ -101,10 +101,6 @@ func TestQueueInterruptFuture(t *testing.T) {
 		ffmpeg.OutputMessage{
 			ID:  0,
 			Msg: "test",
-		},
-		ffmpeg.OutputMessage{
-			ID:  1,
-			Msg: util.ErrCancelled,
 		},
 		ffmpeg.OutputMessage{
 			ID:  2,

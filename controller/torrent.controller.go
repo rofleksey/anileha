@@ -82,21 +82,72 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 		}
 		c.JSON(http.StatusOK, mapTorrentWithProgressToResponse(*torrent))
 	})
-	engine.DELETE("/torrent/:id", func(c *gin.Context) {
-		idString := c.Param("id")
-		id, err := strconv.ParseUint(idString, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+	engine.POST("/torrent/start", func(c *gin.Context) {
+		var req dao.TorrentStartRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err = torrentService.DeleteTorrentById(uint(id))
+		fileIndices, err := util.ParseFileIndices(req.FileIndices)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		torrent, err := torrentService.GetTorrentByIdSimple(req.TorrentId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if torrent.Status == db.TORRENT_DOWNLOADING {
+			c.JSON(http.StatusBadRequest, gin.H{"error": util.ErrAlreadyStarted.Error()})
+			return
+		}
+		err = torrentService.StartTorrent(*torrent, fileIndices)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.POST("/torrent/file", func(c *gin.Context) {
+	engine.POST("/torrent/stop", func(c *gin.Context) {
+		var req dao.TorrentIdRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		torrent, err := torrentService.GetTorrentByIdSimple(req.TorrentId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if torrent.Status != db.TORRENT_DOWNLOADING {
+			c.JSON(http.StatusBadRequest, gin.H{"error": util.ErrAlreadyStopped.Error()})
+			return
+		}
+		err = torrentService.StopTorrent(*torrent)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.String(http.StatusOK, "OK")
+	})
+	engine.DELETE("/torrent", func(c *gin.Context) {
+		var req dao.TorrentIdRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := torrentService.DeleteTorrentById(req.TorrentId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.String(http.StatusOK, "OK")
+	})
+	engine.POST("/torrent", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -113,22 +164,11 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse seriesId"})
 			return
 		}
-		fileIndicesArr := form.Value["fileIndices"]
-		if fileIndicesArr == nil || len(fileIndicesArr) != 1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting fileIndices"})
-			return
-		}
-		fileIndices, err := util.ParseFileIndices(fileIndicesArr[0])
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
 		files := form.File["file"]
 		if files == nil || len(files) != 1 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of files sent"})
 			return
 		}
-
 		file := files[0]
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
@@ -141,7 +181,7 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		id, err := torrentService.AddTorrentFromFile(uint(seriesId), tempDst, fileIndices)
+		id, err := torrentService.AddTorrentFromFile(uint(seriesId), tempDst)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

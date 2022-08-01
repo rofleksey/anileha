@@ -45,7 +45,6 @@ func NewThumbnail(name string, path string, downloadUrl string) Thumbnail {
 type TorrentStatus string
 
 const (
-	TORRENT_CREATING    TorrentStatus = "created"
 	TORRENT_IDLE        TorrentStatus = "idle"
 	TORRENT_DOWNLOADING TorrentStatus = "download" // torrentLib should only have torrents in this state
 	TORRENT_ERROR       TorrentStatus = "error"
@@ -63,8 +62,7 @@ const (
 type Torrent struct {
 	gorm.Model
 	SeriesId            uint
-	InfoType            TorrentInfoType
-	InfoPath            string // InfoPath see TorrentInfoType
+	FilePath            string // FilePath path to .torrent file
 	Name                string
 	TotalLength         int64 // TotalLength total size of ALL torrent files in bytes
 	TotalDownloadLength int64 // TotalDownloadLength total size of SELECTED torrent files in bytes
@@ -73,12 +71,11 @@ type Torrent struct {
 	Files               []*TorrentFile `gorm:"foreignKey:TorrentId"`
 }
 
-func NewTorrent(seriesId uint, infoPath string, infoType TorrentInfoType) Torrent {
+func NewTorrent(seriesId uint, filePath string) Torrent {
 	return Torrent{
 		SeriesId: seriesId,
-		Status:   TORRENT_CREATING,
-		InfoPath: infoPath,
-		InfoType: infoType,
+		Status:   TORRENT_IDLE,
+		FilePath: filePath,
 	}
 }
 
@@ -118,10 +115,13 @@ func NewTorrentFile(torrentId uint, index uint, torrentPath string, torrentOrder
 
 type ConversionStatus string
 
+// TODO: make sure cancelling a running conversion produces CANCELLED status
+
 const (
 	CONVERSION_CREATED    ConversionStatus = "created"
 	CONVERSION_PROCESSING ConversionStatus = "processing"
 	CONVERSION_ERROR      ConversionStatus = "error"
+	CONVERSION_CANCELLED  ConversionStatus = "cancelled"
 	CONVERSION_READY      ConversionStatus = "ready"
 )
 

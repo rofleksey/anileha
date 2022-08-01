@@ -91,12 +91,6 @@ func (q *Queue) processItem(cur *queueItem) {
 	}()
 	select {
 	case <-cur.CloseChan:
-		q.outputChan <- OutputMessage{
-			ID: cur.ID,
-			Msg: CommandSignalEnd{
-				Err: util.ErrCancelled,
-			},
-		}
 		return
 	default:
 	}
