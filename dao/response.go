@@ -28,6 +28,8 @@ type TorrentFileResponseDao struct {
 	Status   db.TorrentFileStatus `json:"status"`
 	Selected bool                 `json:"selected"`
 	Length   uint                 `json:"length"`
+	Episode  string               `json:"episode"`
+	Season   string               `json:"season"`
 }
 
 type ConversionResponseDao struct {
@@ -35,6 +37,7 @@ type ConversionResponseDao struct {
 	SeriesId      uint                `json:"seriesId"`
 	TorrentFileId uint                `json:"torrentFileId"`
 	EpisodeId     *uint               `json:"episodeId"`
+	EpisodeName   string              `json:"episodeName"`
 	Name          string              `json:"name"`
 	FFmpegCommand string              `json:"ffmpegCommand"`
 	Status        db.ConversionStatus `json:"status"`

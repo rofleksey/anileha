@@ -35,7 +35,7 @@ func (s *SeriesService) GetSeriesById(id uint) (*db.Series, error) {
 func (s *SeriesService) GetAllSeries() ([]db.Series, error) {
 	var seriesArr []db.Series
 	queryResult := s.db.Preload("Thumbnail").Find(&seriesArr, func(db *gorm.DB) *gorm.DB {
-		return db.Order("series.created_at ASC")
+		return db.Order("series.created_at DESC")
 	})
 	if queryResult.Error != nil {
 		return nil, queryResult.Error

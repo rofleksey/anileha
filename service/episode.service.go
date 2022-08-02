@@ -60,7 +60,7 @@ func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) 
 		return nil, err
 	}
 	url := fmt.Sprintf("%s/%s", util.EpisodeRoute, filepath.Base(episodePath))
-	episode := db.NewEpisode(conversion.SeriesId, conversion.ID, conversion.Name, nil, uint64(stat.Size()), conversion.VideoDurationSec, episodePath, url)
+	episode := db.NewEpisode(conversion.SeriesId, conversion.ID, conversion.EpisodeName, nil, uint64(stat.Size()), conversion.VideoDurationSec, episodePath, url)
 	queryResult := s.db.Create(&episode)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -85,12 +85,9 @@ func (s *EpisodeService) GetEpisodeById(id uint) (*db.Episode, error) {
 
 func (s *EpisodeService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, error) {
 	var episodes []db.Episode
-	queryResult := s.db.Find(&episodes, "series_id = ?", seriesId)
+	queryResult := s.db.Where("series_id = ?", seriesId).Order("episodes.name ASC").Find(&episodes)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
 	}
 	return episodes, nil
 }

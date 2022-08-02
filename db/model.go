@@ -45,6 +45,7 @@ func NewThumbnail(name string, path string, downloadUrl string) Thumbnail {
 type TorrentStatus string
 
 const (
+	TORRENT_CREATING    TorrentStatus = "creating"
 	TORRENT_IDLE        TorrentStatus = "idle"
 	TORRENT_DOWNLOADING TorrentStatus = "download" // torrentLib should only have torrents in this state
 	TORRENT_ERROR       TorrentStatus = "error"
@@ -67,14 +68,14 @@ type Torrent struct {
 	TotalLength         int64 // TotalLength total size of ALL torrent files in bytes
 	TotalDownloadLength int64 // TotalDownloadLength total size of SELECTED torrent files in bytes
 	Status              TorrentStatus
-	Source              *string        // Source link to torrent url in case it was added automatically via query
-	Files               []*TorrentFile `gorm:"foreignKey:TorrentId"`
+	Source              *string       // Source link to torrent url in case it was added automatically via query
+	Files               []TorrentFile `gorm:"foreignKey:TorrentId"`
 }
 
 func NewTorrent(seriesId uint, filePath string) Torrent {
 	return Torrent{
 		SeriesId: seriesId,
-		Status:   TORRENT_IDLE,
+		Status:   TORRENT_CREATING,
 		FilePath: filePath,
 	}
 }
@@ -92,21 +93,28 @@ const (
 type TorrentFile struct {
 	gorm.Model
 	TorrentId    uint
-	Index        uint    // Index file index according to .torrent file system
+	TorrentIndex uint    // TorrentIndex file index according to .torrent file system
 	TorrentPath  string  // TorrentPath file path according to .torrent file system
-	TorrentOrder uint    // TorrentOrder order in .torrent file system
 	ReadyPath    *string // ReadyPath file location after successful download
 	Length       uint    // Length in bytes
+	Season       string
+	Episode      string
+	EpisodeIndex uint // EpisodeIndex file index according season/episode ordering
 	Selected     bool
 	Status       TorrentFileStatus
 }
 
-func NewTorrentFile(torrentId uint, index uint, torrentPath string, torrentOrder uint, selected bool, len uint) TorrentFile {
+func NewTorrentFile(
+	torrentId uint,
+	torrentIndex uint,
+	torrentPath string,
+	selected bool,
+	len uint,
+) TorrentFile {
 	return TorrentFile{
 		TorrentId:    torrentId,
-		Index:        index,
+		TorrentIndex: torrentIndex,
 		TorrentPath:  torrentPath,
-		TorrentOrder: torrentOrder,
 		Selected:     selected,
 		Status:       TORRENT_FILE_IDLE,
 		Length:       len,
@@ -133,6 +141,7 @@ type Conversion struct {
 	TorrentFileId    uint
 	EpisodeId        *uint
 	Name             string
+	EpisodeName      string
 	OutputPath       string
 	LogsPath         string
 	Command          string
@@ -140,11 +149,12 @@ type Conversion struct {
 	Status           ConversionStatus
 }
 
-func NewConversion(seriesId uint, torrentFileId uint, name string, outputPath string, logsPath string, command string, videoDurationSec uint64) Conversion {
+func NewConversion(seriesId uint, torrentFileId uint, name string, episodeName string, outputPath string, logsPath string, command string, videoDurationSec uint64) Conversion {
 	return Conversion{
 		SeriesId:         seriesId,
 		TorrentFileId:    torrentFileId,
 		Name:             name,
+		EpisodeName:      episodeName,
 		OutputPath:       outputPath,
 		LogsPath:         logsPath,
 		Command:          command,

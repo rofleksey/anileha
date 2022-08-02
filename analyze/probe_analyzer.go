@@ -94,10 +94,12 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	sizeCommand.AddKeyValue("-f", "null", ffmpeg.OptionOutput)
 	result, err := sizeCommand.ExecuteSync()
 	if err != nil {
+		p.log.Error(fmt.Sprintf("failed to get stream size: %s", *result), zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex), zap.Error(err))
 		return 0, err
 	}
 	size, err := p.parseStreamSize(*result, streamType)
 	if err != nil {
+		p.log.Error("failed to get stream size", zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex), zap.Error(err))
 		return 0, err
 	}
 	return size, nil
@@ -108,11 +110,13 @@ func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (uint64, error) {
 	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", inputFile)
 	outputBytes, err := cmd.CombinedOutput()
 	if err != nil {
+		p.log.Error(fmt.Sprintf("failed to get video duration: %s", string(outputBytes)), zap.String("inputFile", inputFile), zap.Error(err))
 		return 0, err
 	}
 	outputStr := strings.Trim(string(outputBytes), " \n")
 	number, err := strconv.ParseFloat(outputStr, 64)
 	if err != nil {
+		p.log.Error("failed to get video duration", zap.String("inputFile", inputFile), zap.Error(err))
 		return 0, err
 	}
 	return uint64(number), nil
@@ -129,8 +133,9 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	mapValue := fmt.Sprintf("0:s:%d", streamIndex)
 	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
 	sizeCommand.AddKeyValue("-f", "srt", ffmpeg.OptionOutput)
-	_, err := sizeCommand.ExecuteSync()
+	output, err := sizeCommand.ExecuteSync()
 	if err != nil {
+		p.log.Warn(fmt.Sprintf("failed to get sub text: %s", *output), zap.String("inputFile", inputFile), zap.Int("streamIndex", streamIndex), zap.Error(err))
 		return "", err
 	}
 	content, err := ioutil.ReadFile(srtFileName)
@@ -203,8 +208,8 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		return nil, err
 	}
 	var videoStream *StreamWithScore
-	audioStreams := make([]StreamWithScore, 0, 10)
-	subStreams := make([]StreamWithScore, 0, 10)
+	audioStreams := make([]*StreamWithScore, 0, 10)
+	subStreams := make([]*StreamWithScore, 0, 10)
 	for _, stream := range probe.Streams {
 		switch stream.CodecType {
 		case "video":
@@ -216,12 +221,12 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 				RelativeIndex: 0,
 			}
 		case "audio":
-			audioStreams = append(audioStreams, StreamWithScore{
+			audioStreams = append(audioStreams, &StreamWithScore{
 				Stream:        stream,
 				RelativeIndex: len(audioStreams),
 			})
 		case "subtitle":
-			subStreams = append(subStreams, StreamWithScore{
+			subStreams = append(subStreams, &StreamWithScore{
 				Stream:        stream,
 				RelativeIndex: len(subStreams),
 			})
@@ -235,13 +240,13 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	if len(audioStreams) == 1 && len(subStreams) == 1 {
 		p.log.Info("has single audio and sub stream", zap.String("inputFile", inputFile))
 		return &ScoreResult{
-			Video:           *videoStream,
+			Video:           videoStream,
 			AudioCandidates: audioStreams,
 			SubCandidates:   subStreams,
 		}, nil
 	}
 
-	japaneseAudio := make([]StreamWithScore, 0, len(audioStreams))
+	japaneseAudio := make([]*StreamWithScore, 0, len(audioStreams))
 	for _, stream := range audioStreams {
 		lang, err := stream.Stream.TagList.GetString("language")
 		if err != nil && lang == "jpn" {
@@ -249,7 +254,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		}
 	}
 
-	englishSubs := make([]StreamWithScore, 0, len(subStreams))
+	englishSubs := make([]*StreamWithScore, 0, len(subStreams))
 	for _, stream := range subStreams {
 		lang, err := stream.Stream.TagList.GetString("language")
 		if err != nil && lang == "eng" {
@@ -260,14 +265,14 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	if len(englishSubs) == 1 && len(japaneseAudio) == 1 {
 		p.log.Info("has exactly 1 eng sub and jpn audio", zap.String("inputFile", inputFile))
 		return &ScoreResult{
-			Video:           *videoStream,
+			Video:           videoStream,
 			AudioCandidates: japaneseAudio,
 			SubCandidates:   englishSubs,
 		}, nil
 	}
 
-	var remainingAudio []StreamWithScore
-	var remainingSubs []StreamWithScore
+	var remainingAudio []*StreamWithScore
+	var remainingSubs []*StreamWithScore
 
 	if len(japaneseAudio) == 0 {
 		remainingAudio = audioStreams
@@ -284,7 +289,6 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	for _, audioStream := range remainingAudio {
 		size, err := p.GetStreamSize(inputFile, StreamAudio, audioStream.RelativeIndex)
 		if err != nil {
-			p.log.Warn("failed to get stream size", zap.String("streamType", string(StreamAudio)), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Error(err))
 			continue
 		}
 		p.log.Info("got audio stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Uint64("size", size))
@@ -303,7 +307,6 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 			p.log.Info("subtitle doesn't have text, using scoring based on stream size", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
 			size, err := p.GetStreamSize(inputFile, StreamSub, subStream.RelativeIndex)
 			if err != nil {
-				p.log.Error("failed to get stream size", zap.String("streamType", string(StreamSub)), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
 				continue
 			}
 			p.log.Info("got sub stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("size", size))
@@ -321,7 +324,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	p.log.Warn("has ambiguous selection of subs/audio", zap.String("inputFile", inputFile))
 	return &ScoreResult{
 		Ambiguous:       true,
-		Video:           *videoStream,
+		Video:           videoStream,
 		AudioCandidates: remainingAudio,
 		SubCandidates:   remainingSubs,
 	}, nil

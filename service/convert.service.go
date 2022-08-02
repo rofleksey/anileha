@@ -28,13 +28,16 @@ type ConversionService struct {
 
 func NewConversionService(
 	lifecycle fx.Lifecycle,
-	db *gorm.DB,
+	database *gorm.DB,
 	fileService *FileService,
 	seriesService *SeriesService,
 	episodeService *EpisodeService,
 	log *zap.Logger,
 	config *config.Config,
 ) (*ConversionService, error) {
+	if err := database.Model(&db.Conversion{}).Where("status = ? OR status = ?", db.CONVERSION_PROCESSING, db.CONVERSION_CREATED).Updates(db.Conversion{Status: db.CONVERSION_ERROR}).Error; err != nil {
+		log.Error("failed to update conversions on service startup", zap.Error(err))
+	}
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -51,7 +54,7 @@ func NewConversionService(
 	}
 	queue.Start()
 	service := &ConversionService{
-		db:               db,
+		db:               database,
 		fileService:      fileService,
 		seriesService:    seriesService,
 		episodeService:   episodeService,
@@ -78,7 +81,7 @@ func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
 
 func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
-	queryResult := s.db.Find(&conversions, "seriesId = ?", seriesId)
+	queryResult := s.db.Where("series_id = ?", seriesId).Order("updated_at DESC").Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -103,7 +106,7 @@ func (s *ConversionService) queueWorker() {
 				s.log.Error("failed to update db on conversion progress", zap.Uint("conversionId", update.ID), zap.Error(err))
 				continue
 			}
-			s.log.Info("conversion progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.Elapsed))
+			//s.log.Info("conversion progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.Elapsed))
 		case ffmpeg.CommandSignalEnd:
 			if msg.Err == nil {
 				conversion, err := s.GetConversionById(update.ID)
@@ -162,8 +165,22 @@ func (s *ConversionService) prepareCommand(inputFile string, outputPath string, 
 	return command, nil
 }
 
-func (s *ConversionService) prepareConversion(seriesId uint, torrentFile *db.TorrentFile, videoPath string, logsPath string, command *ffmpeg.Command, durationSec uint64) (*db.Conversion, error) {
-	conversion := db.NewConversion(seriesId, torrentFile.ID, filepath.Base(torrentFile.TorrentPath), videoPath, logsPath, command.String(), durationSec)
+func (s *ConversionService) prepareConversion(seriesId uint, torrentName string, torrentFile db.TorrentFile, videoPath string, logsPath string, command *ffmpeg.Command, durationSec uint64) (*db.Conversion, error) {
+	var conversionName string
+	if torrentFile.Season != "" {
+		conversionName = fmt.Sprintf("%s - %s - %s", torrentName, torrentFile.Season, torrentFile.Episode)
+	} else {
+		conversionName = fmt.Sprintf("%s - %s", torrentName, torrentFile.Episode)
+	}
+
+	var episodeName string
+	if torrentFile.Season != "" {
+		episodeName = fmt.Sprintf("%s • %s", torrentFile.Season, torrentFile.Episode)
+	} else {
+		episodeName = torrentFile.Episode
+	}
+
+	conversion := db.NewConversion(seriesId, torrentFile.ID, conversionName, episodeName, videoPath, logsPath, command.String(), durationSec)
 	queryResult := s.db.Create(&conversion)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -174,27 +191,29 @@ func (s *ConversionService) prepareConversion(seriesId uint, torrentFile *db.Tor
 	return &conversion, nil
 }
 
-func (s *ConversionService) StartConversion(series *db.Series, torrentFile *db.TorrentFile, analysis *analyze.Result) error {
+func (s *ConversionService) StartConversion(seriesID uint, torrentName string, torrentFiles []db.TorrentFile, analysisArr []*analyze.Result) error {
 	// TODO: parse name
-	folder, err := s.fileService.GenFolderPath(s.conversionFolder)
-	if err != nil {
-		return err
+	for i := range torrentFiles {
+		folder, err := s.fileService.GenFolderPath(s.conversionFolder)
+		if err != nil {
+			return err
+		}
+		videoPath := filepath.Join(folder, "video.mp4")
+		logsPath := filepath.Join(folder, "log.txt")
+		command, err := s.prepareCommand(*torrentFiles[i].ReadyPath, videoPath, logsPath, analysisArr[i])
+		if err != nil {
+			return err
+		}
+		conversion, err := s.prepareConversion(seriesID, torrentName, torrentFiles[i], videoPath, logsPath, command, analysisArr[i].Video.DurationSec)
+		if err != nil {
+			return err
+		}
+		err = os.MkdirAll(folder, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		s.queue.Enqueue(conversion.ID, command)
 	}
-	videoPath := filepath.Join(folder, "video.mp4")
-	logsPath := filepath.Join(folder, "log.txt")
-	command, err := s.prepareCommand(*torrentFile.ReadyPath, videoPath, logsPath, analysis)
-	if err != nil {
-		return err
-	}
-	conversion, err := s.prepareConversion(series.ID, torrentFile, videoPath, logsPath, command, analysis.Video.DurationSec)
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(folder, os.ModePerm)
-	if err != nil {
-		return err
-	}
-	s.queue.Enqueue(conversion.ID, command)
 	return nil
 }
 

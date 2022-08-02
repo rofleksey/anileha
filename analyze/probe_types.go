@@ -37,9 +37,9 @@ type StreamWithScore struct {
 
 type ScoreResult struct {
 	Ambiguous       bool
-	Video           StreamWithScore
-	AudioCandidates []StreamWithScore
-	SubCandidates   []StreamWithScore
+	Video           *StreamWithScore
+	AudioCandidates []*StreamWithScore
+	SubCandidates   []*StreamWithScore
 }
 
 // result types

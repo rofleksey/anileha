@@ -225,11 +225,8 @@ func (c *Command) ExecuteSync() (*string, error) {
 	args := c.prepareArgs(false)
 	cmd := exec.Command("ffmpeg", args...)
 	outputBytes, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
 	outputStr := string(outputBytes)
-	return &outputStr, nil
+	return &outputStr, err
 }
 
 func (c *Command) String() string {
