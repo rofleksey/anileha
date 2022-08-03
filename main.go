@@ -22,6 +22,8 @@ import (
 // TODO: maximum 2-3 decimal places everywhere
 // TODO: check there's is no .model.updates with null values in them
 
+// TODO: MAKE ERRORS MORE INFORMATIVE :/
+
 func main() {
 	fx.New(
 		// main components

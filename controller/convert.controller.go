@@ -6,10 +6,13 @@ import (
 	"anileha/db"
 	"anileha/service"
 	"anileha/util"
+	"context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"gopkg.in/vansante/go-ffprobe.v2"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // TODO: stop conversions on torrent/story deletion
@@ -123,6 +126,40 @@ func registerConvertController(
 			return
 		}
 		c.String(http.StatusOK, "OK")
+	})
+	engine.POST("/convert/probe", func(c *gin.Context) {
+		var req dao.TorrentWithFileIndexRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		torrent, err := torrentService.GetTorrentById(req.TorrentId)
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		file := torrent.Files[req.FileIndex]
+		if file.Status != db.TORRENT_FILE_READY {
+			c.Error(util.ErrFileIsNotReadyToBeConverted)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
+			return
+		}
+		if file.ReadyPath == nil {
+			c.Error(util.ErrFileStateIsCorrupted)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		probe, err := ffprobe.ProbeURL(ctx, *file.ReadyPath)
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, probe)
 	})
 	engine.POST("/convert/stop", func(c *gin.Context) {
 		var req dao.ConvertIdRequestDao

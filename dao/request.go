@@ -16,6 +16,11 @@ type TorrentWithFileIndicesRequestDao struct {
 	FileIndices string `json:"fileIndices" binding:"required"`
 }
 
+type TorrentWithFileIndexRequestDao struct {
+	TorrentId uint `json:"torrentId" binding:"required"`
+	FileIndex uint `json:"fileIndex" binding:"required"`
+}
+
 type TorrentIdRequestDao struct {
 	TorrentId uint `json:"torrentId" binding:"required"`
 }

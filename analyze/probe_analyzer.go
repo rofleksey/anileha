@@ -213,6 +213,10 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 	for _, stream := range probe.Streams {
 		switch stream.CodecType {
 		case "video":
+			// probably a video cover
+			if stream.CodecName == "mjpeg" {
+				continue
+			}
 			if videoStream != nil {
 				return nil, util.ErrMoreThanOneVideoStream
 			}
