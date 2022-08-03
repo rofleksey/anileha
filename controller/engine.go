@@ -12,7 +12,7 @@ import (
 )
 
 func newEngine(logger *zap.Logger) (*gin.Engine, error) {
-	// gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	engine.MaxMultipartMemory = 1024 * 1024 * 5
 	err := engine.SetTrustedProxies(nil)
@@ -28,9 +28,9 @@ func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config,
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				log.Info("application started", zap.Uint("port", config.Rest.Port))
+				log.Info("server started", zap.Uint("port", config.Rest.Port))
 				go func() {
-					err := gin.Run(fmt.Sprintf(":%d", config.Rest.Port))
+					err := gin.Run(fmt.Sprintf("0.0.0.0:%d", config.Rest.Port))
 					log.Error("gin fatal error", zap.Error(err))
 					err = shutdowner.Shutdown()
 					if err != nil {

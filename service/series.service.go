@@ -43,6 +43,15 @@ func (s *SeriesService) GetAllSeries() ([]db.Series, error) {
 	return seriesArr, nil
 }
 
+func (s *SeriesService) SearchSeries(query string) ([]db.Series, error) {
+	var seriesArr []db.Series
+	queryResult := s.db.Where("name ILIKE '%' || ? || '%'", query).Order("series.created_at DESC").Preload("Thumbnail").Find(&seriesArr)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	return seriesArr, nil
+}
+
 func (s *SeriesService) DeleteSeriesById(id uint) error {
 	queryResult := s.db.Delete(&db.Series{}, id)
 	if queryResult.Error != nil {

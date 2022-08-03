@@ -20,6 +20,7 @@ import (
 // TODO: check there is no & inside loops for FOR loop variables
 // TODO: replace uint with int where possible
 // TODO: maximum 2-3 decimal places everywhere
+// TODO: check there's is no .model.updates with null values in them
 
 func main() {
 	fx.New(

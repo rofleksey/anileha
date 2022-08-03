@@ -57,6 +57,19 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
 	})
+	engine.POST("/series/search", func(c *gin.Context) {
+		var req dao.QueryRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		series, err := seriesService.SearchSeries(req.Query)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapSeriesToResponseSlice(series))
+	})
 	engine.GET("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)

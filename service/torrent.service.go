@@ -65,10 +65,10 @@ func NewTorrentService(
 	fileService *FileService,
 ) (*TorrentService, error) {
 	if err := database.Model(&db.Torrent{}).Where("status = ? or status = ?", db.TORRENT_DOWNLOADING, db.TORRENT_CREATING).Updates(db.Torrent{Status: db.TORRENT_ERROR}).Error; err != nil {
-		log.Error("failed to update torrents on service startup", zap.Error(err))
+		return nil, err
 	}
-	if err := database.Model(&db.TorrentFile{}).Where("status = ?", db.TORRENT_FILE_DOWNLOADING).Updates(db.TorrentFile{Status: db.TORRENT_FILE_ERROR}).Error; err != nil {
-		log.Error("failed to update torrent files on service startup", zap.Error(err))
+	if err := database.Model(&db.TorrentFile{}).Where("status = ?", db.TORRENT_FILE_DOWNLOADING).Updates(map[string]interface{}{"status": db.TORRENT_FILE_ERROR, "selected": false}).Error; err != nil {
+		return nil, err
 	}
 	infoFolder, downloadsFolder, readyFolder, err := createDirs(config)
 	if err != nil {

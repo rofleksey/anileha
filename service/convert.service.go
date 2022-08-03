@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 )
 
+// TODO: delete conversion video on failure or on startup error check
+
 type ConversionService struct {
 	db               *gorm.DB
 	log              *zap.Logger
@@ -36,7 +38,7 @@ func NewConversionService(
 	config *config.Config,
 ) (*ConversionService, error) {
 	if err := database.Model(&db.Conversion{}).Where("status = ? OR status = ?", db.CONVERSION_PROCESSING, db.CONVERSION_CREATED).Updates(db.Conversion{Status: db.CONVERSION_ERROR}).Error; err != nil {
-		log.Error("failed to update conversions on service startup", zap.Error(err))
+		return nil, err
 	}
 	workingDir, err := os.Getwd()
 	if err != nil {
