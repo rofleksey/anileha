@@ -10,18 +10,15 @@ import (
 	"go.uber.org/fx"
 )
 
-// TODO: embed structs in return type
+// HINT: embed structs in return type (?)
 // func keklol() (>>orel MyStruct<<)
+// HINT: replace all model pointers to objects (where possible)
+// HINT: properly recover from all errors
+// HINT: remove rows changed check where possible
 
-// TODO: support mp4 torrents (?)
-// TODO: replace all model pointers to objects (where possible)
-// TODO: replace all db full updates with partial updates
-// TODO: properly recover from all errors
-// TODO: check there is no & inside loops for FOR loop variables
-// TODO: replace uint with int where possible
-// TODO: maximum 2-3 decimal places everywhere
-// TODO: check there's is no .model.updates with null values in them
+// FEATURE: support mp4 torrents (?)
 
+// TODO: properly delete series, torrents, episodes, gc conversions
 // TODO: MAKE ERRORS MORE INFORMATIVE :/
 
 func main() {
@@ -48,6 +45,7 @@ func main() {
 		controller.TorrentControllerExport,
 		controller.ConvertControllerExport,
 		controller.ProbeControllerExport,
+		controller.EpisodeControllerExport,
 
 		// misc
 		analyze.TextAnalyzerExport,

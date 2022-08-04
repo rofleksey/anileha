@@ -8,30 +8,33 @@ import (
 )
 
 type DbConfig struct {
-	Host     string `validate:"required"`
-	Port     uint   `validate:"gt=0,required"`
-	DbName   string `validate:"required"`
-	User     string `validate:"required"`
-	Password string `validate:"required"`
+	Host     string `validate:"required" yaml:"host"`
+	Port     uint   `validate:"gt=0,required" yaml:"port"`
+	DbName   string `validate:"required" yaml:"dbName"`
+	Username string `validate:"required" yaml:"username"`
+	Password string `validate:"required" yaml:"password"`
 }
 
 type RestConfig struct {
-	Port uint `validate:"gt=0,required"`
+	Port uint `validate:"gt=0,required" yaml:"port"`
 }
 
 type DataConfig struct {
-	Dir string `validate:"required"`
+	Dir string `validate:"required" yaml:"dir"`
 }
 
 type ConversionConfig struct {
-	Parallelism int `validate:"required"`
+	Parallelism   int    `validate:"required" yaml:"parallelism"`
+	PrefAudioLang string `validate:"required" yaml:"prefAudioLang"`
+	PrefSubLang   string `validate:"required" yaml:"prefSubLang"`
+	WordsPath     string `validate:"required" yaml:"wordsPath"`
 }
 
 type Config struct {
-	Db         DbConfig         `validate:"dive,required"`
-	Rest       RestConfig       `validate:"dive,required"`
-	Data       DataConfig       `validate:"dive,required"`
-	Conversion ConversionConfig `validate:"dive,required"`
+	Db         DbConfig         `validate:"dive,required" yaml:"db"`
+	Rest       RestConfig       `validate:"dive,required" yaml:"rest"`
+	Data       DataConfig       `validate:"dive,required" yaml:"data"`
+	Conversion ConversionConfig `validate:"dive,required" yaml:"conversion"`
 }
 
 func loadConfig() (*Config, error) {

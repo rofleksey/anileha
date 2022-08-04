@@ -1,6 +1,9 @@
 package dao
 
-import "anileha/db"
+import (
+	"anileha/db"
+	"anileha/util"
+)
 
 type SeriesResponseDao struct {
 	ID          uint    `json:"id"`
@@ -15,11 +18,10 @@ type TorrentResponseDao struct {
 	Name                string                   `json:"name"`
 	Status              db.TorrentStatus         `json:"status"`
 	Source              *string                  `json:"source"`
-	TotalLength         int64                    `json:"totalLength"`
-	TotalDownloadLength int64                    `json:"totalDownloadLength"`
-	Progress            *float64                 `json:"progress"`
-	BytesRead           *int64                   `json:"bytesRead"`
-	BytesMissing        *int64                   `json:"bytesMissing"`
+	TotalLength         uint                     `json:"totalLength"`
+	TotalDownloadLength uint                     `json:"totalDownloadLength"`
+	Progress            util.Progress            `json:"progress"`
+	BytesRead           uint                     `json:"bytesRead"`
 	Files               []TorrentFileResponseDao `json:"files"`
 }
 
@@ -42,9 +44,7 @@ type ConversionResponseDao struct {
 	Name          string              `json:"name"`
 	FFmpegCommand string              `json:"ffmpegCommand"`
 	Status        db.ConversionStatus `json:"status"`
-	Eta           float64             `json:"eta"`
-	Progress      float64             `json:"progress"`
-	Elapsed       float64             `json:"elapsed"`
+	Progress      util.Progress       `json:"progress"`
 }
 
 type EpisodeResponseDao struct {

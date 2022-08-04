@@ -39,7 +39,7 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 	}
 }
 
-func mapTorrentWithProgressToResponse(torrent db.TorrentWithProgress) dao.TorrentResponseDao {
+func mapTorrentWithProgressToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 	return dao.TorrentResponseDao{
 		ID:                  torrent.ID,
 		Name:                torrent.Name,
@@ -47,9 +47,8 @@ func mapTorrentWithProgressToResponse(torrent db.TorrentWithProgress) dao.Torren
 		Source:              torrent.Source,
 		TotalLength:         torrent.TotalLength,
 		TotalDownloadLength: torrent.TotalDownloadLength,
-		Progress:            &torrent.Progress,
-		BytesRead:           &torrent.BytesRead,
-		BytesMissing:        &torrent.BytesMissing,
+		Progress:            torrent.Progress,
+		BytesRead:           torrent.BytesRead,
 		Files:               mapTorrentFilesToResponse(torrent.Files),
 	}
 }
@@ -101,7 +100,7 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		torrent, err := torrentService.GetTorrentByIdSimple(req.TorrentId)
+		torrent, err := torrentService.GetTorrentById(req.TorrentId)
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -127,7 +126,7 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		torrent, err := torrentService.GetTorrentByIdSimple(req.TorrentId)
+		torrent, err := torrentService.GetTorrentById(req.TorrentId)
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"anileha/config"
 	"anileha/ffmpeg"
 	"anileha/util"
 	"context"
@@ -23,12 +24,18 @@ import (
 // For audio: select the only stream, else selects the only japanese stream, else selects the most heavy one (among japanese or all if not present)
 // For subs: select the only stream, else selects the only english stream, else selects the stream with most occurrences of english words (among english or all if not present)
 type ProbeAnalyzer struct {
-	textAnalyzer *TextAnalyzer
-	regexMap     map[StreamType]*regexp.Regexp
-	log          *zap.Logger
+	textAnalyzer  *TextAnalyzer
+	regexMap      map[StreamType]*regexp.Regexp
+	log           *zap.Logger
+	prefAudioLang string
+	prefSubLang   string
 }
 
-func NewProbeAnalyzer(textAnalyzer *TextAnalyzer, log *zap.Logger) *ProbeAnalyzer {
+func NewProbeAnalyzer(
+	textAnalyzer *TextAnalyzer,
+	config *config.Config,
+	log *zap.Logger,
+) *ProbeAnalyzer {
 	videoRegex := regexp.MustCompile("video:(\\d+)([a-z]+)")
 	audioRegex := regexp.MustCompile("audio:(\\d+)([a-z]+)")
 	subRegex := regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
@@ -37,9 +44,11 @@ func NewProbeAnalyzer(textAnalyzer *TextAnalyzer, log *zap.Logger) *ProbeAnalyze
 	regexMap[StreamAudio] = audioRegex
 	regexMap[StreamSub] = subRegex
 	return &ProbeAnalyzer{
-		textAnalyzer: textAnalyzer,
-		regexMap:     regexMap,
-		log:          log,
+		textAnalyzer:  textAnalyzer,
+		regexMap:      regexMap,
+		log:           log,
+		prefAudioLang: config.Conversion.PrefAudioLang,
+		prefSubLang:   config.Conversion.PrefSubLang,
 	}
 }
 
@@ -252,46 +261,46 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 
 	p.log.Info("has multiple audio or sub streams", zap.Int("audio", len(audioStreams)), zap.Int("sub", len(subStreams)), zap.String("inputFile", inputFile))
 
-	japaneseAudio := make([]*StreamWithScore, 0, len(audioStreams))
+	prefLangAudio := make([]*StreamWithScore, 0, len(audioStreams))
 	for _, stream := range audioStreams {
 		lang, _ := stream.Stream.TagList.GetString("language")
-		if lang == "jpn" {
-			japaneseAudio = append(japaneseAudio, stream)
+		if lang == p.prefAudioLang {
+			prefLangAudio = append(prefLangAudio, stream)
 		}
 	}
 
-	englishSubs := make([]*StreamWithScore, 0, len(subStreams))
+	prefLangSubs := make([]*StreamWithScore, 0, len(subStreams))
 	for _, stream := range subStreams {
 		lang, _ := stream.Stream.TagList.GetString("language")
-		if lang == "eng" {
-			englishSubs = append(englishSubs, stream)
+		if lang == p.prefSubLang {
+			prefLangSubs = append(prefLangSubs, stream)
 		}
 	}
 
-	if len(englishSubs) == 1 && len(japaneseAudio) == 1 {
-		p.log.Info("has exactly 1 eng sub and jpn audio", zap.String("inputFile", inputFile))
+	if len(prefLangSubs) == 1 && len(prefLangAudio) == 1 {
+		p.log.Info("has exactly 1 preferred lang sub and audio", zap.String("inputFile", inputFile))
 		return &ScoreResult{
 			Video:           videoStream,
-			AudioCandidates: japaneseAudio,
-			SubCandidates:   englishSubs,
+			AudioCandidates: prefLangAudio,
+			SubCandidates:   prefLangSubs,
 		}, nil
 	}
 
-	p.log.Info("does NOT have 1 jpn audio and 1 eng sub", zap.Int("audio", len(japaneseAudio)), zap.Int("sub", len(englishSubs)), zap.String("inputFile", inputFile))
+	p.log.Info("does NOT have EXACTLY 1 preferred lang sub and audio", zap.Int("audio", len(prefLangAudio)), zap.Int("sub", len(prefLangSubs)), zap.String("inputFile", inputFile))
 
 	var remainingAudio []*StreamWithScore
 	var remainingSubs []*StreamWithScore
 
-	if len(japaneseAudio) == 0 {
+	if len(prefLangAudio) == 0 {
 		remainingAudio = audioStreams
 	} else {
-		remainingAudio = japaneseAudio
+		remainingAudio = prefLangAudio
 	}
 
-	if len(englishSubs) == 0 {
+	if len(prefLangSubs) == 0 {
 		remainingSubs = subStreams
 	} else {
-		remainingSubs = englishSubs
+		remainingSubs = prefLangSubs
 	}
 
 	for _, audioStream := range remainingAudio {
@@ -329,7 +338,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		return remainingSubs[i].Score > remainingSubs[j].Score
 	})
 
-	p.log.Warn("has ambiguous selection of subs/audio", zap.Int("audio", len(japaneseAudio)), zap.Int("sub", len(englishSubs)), zap.String("inputFile", inputFile))
+	p.log.Warn("has ambiguous selection of subs/audio", zap.Int("audio", len(prefLangAudio)), zap.Int("sub", len(prefLangSubs)), zap.String("inputFile", inputFile))
 	return &ScoreResult{
 		Ambiguous:       true,
 		Video:           videoStream,

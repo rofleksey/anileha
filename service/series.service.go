@@ -1,7 +1,6 @@
 package service
 
 import (
-	"anileha/dao"
 	"anileha/db"
 	"anileha/util"
 	"go.uber.org/fx"
@@ -52,6 +51,8 @@ func (s *SeriesService) SearchSeries(query string) ([]db.Series, error) {
 	return seriesArr, nil
 }
 
+// TODO: delete torrents, torrentFiles, conversions, episodes
+
 func (s *SeriesService) DeleteSeriesById(id uint) error {
 	queryResult := s.db.Delete(&db.Series{}, id)
 	if queryResult.Error != nil {
@@ -63,8 +64,8 @@ func (s *SeriesService) DeleteSeriesById(id uint) error {
 	return nil
 }
 
-func (s *SeriesService) AddSeries(req dao.SeriesRequestDao) (uint, error) {
-	series := db.NewSeries(req.Name, req.Description, req.Query, &req.ThumbnailId)
+func (s *SeriesService) AddSeries(name string, thumbId uint) (uint, error) {
+	series := db.NewSeries(name, "", nil, &thumbId)
 	queryResult := s.db.Create(&series)
 	if queryResult.Error != nil {
 		return 0, queryResult.Error
@@ -72,7 +73,7 @@ func (s *SeriesService) AddSeries(req dao.SeriesRequestDao) (uint, error) {
 	if queryResult.RowsAffected == 0 {
 		return 0, util.ErrCreationFailed
 	}
-	s.log.Info("created series", zap.Uint("seriesId", series.ID), zap.String("seriesName", req.Name))
+	s.log.Info("created series", zap.Uint("seriesId", series.ID), zap.String("seriesName", name))
 	return series.ID, nil
 }
 

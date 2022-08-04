@@ -1,8 +1,8 @@
 db:
   host: localhost
   port: 5432
-  dbname: anileha
-  user: postgres
+  dbName: anileha
+  username: postgres
   password: postgres
 rest:
   port: 3000
@@ -10,3 +10,6 @@ data:
   dir: data
 conversion:
   parallelism: 1
+  prefAudioLang: jpn
+  prefSubLang: eng
+  wordsPath: words.txt

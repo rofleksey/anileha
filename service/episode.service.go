@@ -92,6 +92,17 @@ func (s *EpisodeService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, err
 	return episodes, nil
 }
 
+func (s *EpisodeService) DeleteEpisodeById(id uint) error {
+	queryResult := s.db.Delete(&db.Episode{}, id)
+	if queryResult.Error != nil {
+		return queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return util.ErrNotFound
+	}
+	return nil
+}
+
 func registerStaticEpisodes(engine *gin.Engine, config *config.Config) {
 	engine.Static(util.EpisodeRoute, path.Join(config.Data.Dir, util.EpisodeSubDir))
 }

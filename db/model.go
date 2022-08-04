@@ -1,6 +1,7 @@
 package db
 
 import (
+	"anileha/util"
 	"gorm.io/gorm"
 )
 
@@ -11,10 +12,7 @@ type Series struct {
 	Description string
 	Query       *string // Query to automatically add torrents to this series
 	ThumbnailID *uint
-	Thumbnail   *Thumbnail   `gorm:"references:ID"`
-	Torrents    []Torrent    `gorm:"foreignKey:SeriesId"`
-	Conversions []Conversion `gorm:"foreignKey:SeriesId"`
-	Episodes    []Episode    `gorm:"foreignKey:SeriesId"`
+	Thumbnail   *Thumbnail `gorm:"references:ID"`
 }
 
 func NewSeries(name string, description string, query *string, thumbnailId *uint) Series {
@@ -59,14 +57,16 @@ const (
 	TORRENT_INFO_MAGNET TorrentInfoType = "magnet"
 )
 
-// Torrent Represents info about torrent (e.g. files)
+// Torrent Represents info about torrent (e.g. name, files)
 type Torrent struct {
 	gorm.Model
+	util.Progress       `gorm:"embedded"`
 	SeriesId            uint
 	FilePath            string // FilePath path to .torrent file
 	Name                string
-	TotalLength         int64 // TotalLength total size of ALL torrent files in bytes
-	TotalDownloadLength int64 // TotalDownloadLength total size of SELECTED torrent files in bytes
+	TotalLength         uint // TotalLength total size of ALL torrent files in bytes
+	TotalDownloadLength uint // TotalDownloadLength total size of SELECTED torrent files in bytes
+	BytesRead           uint
 	Status              TorrentStatus
 	Source              *string       // Source link to torrent url in case it was added automatically via query
 	Files               []TorrentFile `gorm:"foreignKey:TorrentId"`
@@ -134,7 +134,7 @@ const (
 // Conversion Represents info about a single attempt to convert TorrentFile to Episode
 type Conversion struct {
 	gorm.Model
-	Progress         `gorm:"embedded"`
+	util.Progress    `gorm:"embedded"`
 	SeriesId         uint
 	TorrentFileId    uint
 	EpisodeId        *uint

@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"anileha/config"
 	"anileha/util"
 	"bufio"
 	_ "embed"
@@ -11,16 +12,13 @@ import (
 
 const NumberOfWords = 371000
 
-//go:embed english_words.txt
-var englishWords string
-
 type TextAnalyzer struct {
 	wordsSet map[string]struct{}
 	log      *zap.Logger
 }
 
-func NewTextAnalyzer(log *zap.Logger) *TextAnalyzer {
-	reader := strings.NewReader(englishWords)
+func NewTextAnalyzer(config *config.Config, log *zap.Logger) *TextAnalyzer {
+	reader := strings.NewReader(config.Conversion.WordsPath)
 	scanner := bufio.NewScanner(reader)
 	words := make(map[string]struct{}, NumberOfWords)
 	for scanner.Scan() {

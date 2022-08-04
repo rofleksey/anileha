@@ -1,14 +1,20 @@
 package util
 
 import (
-	"anileha/db"
 	"math"
 	"sync"
 	"time"
 )
 
 const MinTimeDiffMs float64 = 1
-const SmoothingFactor float64 = 0.3
+const SmoothingFactor float64 = 0.2
+
+type Progress struct {
+	Progress float32
+	Elapsed  uint
+	Eta      uint
+	Speed    float64
+}
 
 type EtaCalculator struct {
 	mutex       sync.Mutex
@@ -36,6 +42,7 @@ func NewUndefinedEtaCalculator() *EtaCalculator {
 		lastValue:   0,
 		endValue:    0,
 		isUndefined: true,
+		approxSpeed: math.NaN(),
 	}
 }
 
@@ -60,6 +67,7 @@ func (c *EtaCalculator) Update(newValue float64) {
 	if newValue == c.endValue {
 		c.isFinished = true
 		c.lastTime = now
+		c.approxSpeed = 0
 		return
 	}
 	timeDiff := now.Sub(c.lastTime)
@@ -102,12 +110,13 @@ func (c *EtaCalculator) getProgressImpl() float64 {
 	return (c.lastValue - c.startValue) / (c.endValue - c.startValue)
 }
 
-func (c *EtaCalculator) GetProgress() db.Progress {
+func (c *EtaCalculator) GetProgress() Progress {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	return db.Progress{
-		Progress: c.getProgressImpl(),
-		Eta:      c.getEta(),
-		Elapsed:  c.getElapsedTime(),
+	return Progress{
+		Progress: float32(c.getProgressImpl()),
+		Eta:      uint(c.getEta()),
+		Elapsed:  uint(c.getElapsedTime()),
+		Speed:    c.approxSpeed,
 	}
 }

@@ -39,8 +39,8 @@ func registerProbeController(
 			return
 		}
 		if file.ReadyPath == nil {
-			c.Error(util.ErrFileStateIsCorrupted)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted.Error()})
+			c.Error(util.ErrReadyFileNotFound)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -73,8 +73,8 @@ func registerProbeController(
 			return
 		}
 		if file.ReadyPath == nil {
-			c.Error(util.ErrFileStateIsCorrupted)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted.Error()})
+			c.Error(util.ErrReadyFileNotFound)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
 			return
 		}
 		result, err := analyzer.Analyze(*file.ReadyPath, true)

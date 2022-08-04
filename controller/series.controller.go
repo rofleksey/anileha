@@ -8,27 +8,8 @@ import (
 	"go.uber.org/fx"
 	"net/http"
 	"strconv"
+	"strings"
 )
-
-func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
-	return dao.EpisodeResponseDao{
-		ID:           episode.ID,
-		ConversionId: episode.ConversionId,
-		Name:         episode.Name,
-		ThumbnailId:  episode.ThumbnailID,
-		Length:       episode.Length,
-		DurationSec:  episode.DurationSec,
-		Url:          episode.Url,
-	}
-}
-
-func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao {
-	res := make([]dao.EpisodeResponseDao, 0, len(episodes))
-	for _, s := range episodes {
-		res = append(res, mapEpisodeToResponse(s))
-	}
-	return res
-}
 
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 	return dao.SeriesResponseDao{
@@ -48,7 +29,12 @@ func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
 	return res
 }
 
-func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesService, episodeService *service.EpisodeService) {
+func registerSeriesController(
+	engine *gin.Engine,
+	fileService *service.FileService,
+	thumbService *service.ThumbnailService,
+	seriesService *service.SeriesService,
+) {
 	engine.GET("/series", func(c *gin.Context) {
 		seriesSlice, err := seriesService.GetAllSeries()
 		if err != nil {
@@ -84,20 +70,6 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponse(*series))
 	})
-	engine.GET("/series/:id/episodes", func(c *gin.Context) {
-		idString := c.Param("id")
-		id, err := strconv.ParseUint(idString, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
-			return
-		}
-		episodes, err := episodeService.GetEpisodesBySeriesId(uint(id))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
-	})
 	engine.DELETE("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
@@ -113,17 +85,52 @@ func registerSeriesController(engine *gin.Engine, seriesService *service.SeriesS
 		c.String(http.StatusOK, "OK")
 	})
 	engine.POST("/series", func(c *gin.Context) {
-		var req dao.SeriesRequestDao
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		form, err := c.MultipartForm()
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		id, err := seriesService.AddSeries(req)
+		names := form.Value["name"]
+		if names == nil || len(names) != 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting series name"})
+			return
+		}
+		name := names[0]
+		// TODO: improve trim everywhere (e.g. use regexp)
+		trimmedName := strings.Trim(name, " \n")
+		if len(trimmedName) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "series name is blank"})
+			return
+		}
+		files := form.File["file"]
+		if files == nil || len(files) != 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of files sent"})
+			return
+		}
+		file := files[0]
+		tempDst, err := fileService.GenTempFilePath(file.Filename)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer fileService.DeleteTempFileAsync(file.Filename)
+		err = c.SaveUploadedFile(file, tempDst)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		thumbnailId, err := thumbService.AddThumbnail(file.Filename, tempDst)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.String(http.StatusOK, strconv.FormatUint(uint64(id), 10))
+		seriesId, err := seriesService.AddSeries(name, thumbnailId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.String(http.StatusOK, strconv.FormatUint(uint64(seriesId), 10))
 	})
 }
 

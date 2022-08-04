@@ -103,7 +103,7 @@ func (s *ConversionService) queueWorker() {
 			}
 		case string:
 			s.log.Info(msg, zap.Uint("conversionId", update.ID))
-		case db.Progress:
+		case util.Progress:
 			if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Progress: msg}).Error; err != nil {
 				s.log.Error("failed to update db on conversion progress", zap.Uint("conversionId", update.ID), zap.Error(err))
 				continue
@@ -121,7 +121,7 @@ func (s *ConversionService) queueWorker() {
 					s.log.Error("failed to create episode", zap.Uint("conversionId", update.ID), zap.Error(err))
 					continue
 				}
-				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_READY, EpisodeId: &episode.ID, Progress: db.Progress{Progress: 1}}).Error; err != nil {
+				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_READY, EpisodeId: &episode.ID, Progress: util.Progress{Progress: 1}}).Error; err != nil {
 					s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", update.ID), zap.Error(err))
 					continue
 				}

@@ -24,9 +24,7 @@ func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 		Name:          c.Name,
 		FFmpegCommand: c.Command,
 		Status:        c.Status,
-		Eta:           c.Progress.Eta,
-		Progress:      c.Progress.Progress,
-		Elapsed:       c.Progress.Elapsed,
+		Progress:      c.Progress,
 	}
 }
 
@@ -40,7 +38,6 @@ func mapConversionsToResponseSlice(conversions []db.Conversion) []dao.Conversion
 
 func registerConvertController(
 	engine *gin.Engine,
-	seriesService *service.SeriesService,
 	torrentService *service.TorrentService,
 	convertService *service.ConversionService,
 	analyzer *analyze.ProbeAnalyzer,
@@ -102,8 +99,8 @@ func registerConvertController(
 					return
 				}
 				if file.ReadyPath == nil {
-					c.Error(util.ErrFileStateIsCorrupted)
-					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrFileStateIsCorrupted.Error()})
+					c.Error(util.ErrReadyFileNotFound)
+					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
 					return
 				}
 				analysis, err := analyzer.Analyze(*file.ReadyPath, true)
@@ -116,7 +113,7 @@ func registerConvertController(
 				analysisArr = append(analysisArr, analysis)
 			}
 		}
-		err = convertService.StartConversion(torrent.SeriesId, torrent.Torrent.Name, torrentFiles, analysisArr)
+		err = convertService.StartConversion(torrent.SeriesId, torrent.Name, torrentFiles, analysisArr)
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -131,7 +128,16 @@ func registerConvertController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := convertService.StopConversion(req.ConversionId)
+		conversion, err := convertService.GetConversionById(req.ConversionId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if conversion.Status == db.CONVERSION_ERROR || conversion.Status == db.CONVERSION_CANCELLED || conversion.Status == db.CONVERSION_READY {
+			c.JSON(http.StatusBadRequest, gin.H{"error": util.ErrAlreadyStopped.Error()})
+			return
+		}
+		err = convertService.StopConversion(req.ConversionId)
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
