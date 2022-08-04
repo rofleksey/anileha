@@ -2,12 +2,14 @@ package db
 
 import (
 	"anileha/util"
-	"gorm.io/gorm"
+	"time"
 )
 
 // Series Represents one season of something
 type Series struct {
-	gorm.Model
+	ID          uint `gorm:"primarykey"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Name        string
 	Description string
 	Query       *string // Query to automatically add torrents to this series
@@ -26,7 +28,9 @@ func NewSeries(name string, description string, query *string, thumbnailId *uint
 
 // Thumbnail Represents unique thumbnail image
 type Thumbnail struct {
-	gorm.Model
+	ID          uint `gorm:"primarykey"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Name        string
 	Path        string
 	DownloadUrl string
@@ -59,7 +63,9 @@ const (
 
 // Torrent Represents info about torrent (e.g. name, files)
 type Torrent struct {
-	gorm.Model
+	ID                  uint `gorm:"primarykey"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 	util.Progress       `gorm:"embedded"`
 	SeriesId            uint
 	FilePath            string // FilePath path to .torrent file
@@ -91,7 +97,9 @@ const (
 
 // TorrentFile Represents info about a single torrent file
 type TorrentFile struct {
-	gorm.Model
+	ID           uint `gorm:"primarykey"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	TorrentId    uint
 	TorrentIndex uint    // TorrentIndex file index according to .torrent file system
 	TorrentPath  string  // TorrentPath file path according to .torrent file system
@@ -133,7 +141,9 @@ const (
 
 // Conversion Represents info about a single attempt to convert TorrentFile to Episode
 type Conversion struct {
-	gorm.Model
+	ID               uint `gorm:"primarykey"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	util.Progress    `gorm:"embedded"`
 	SeriesId         uint
 	TorrentFileId    uint
@@ -163,7 +173,9 @@ func NewConversion(seriesId uint, torrentFileId uint, name string, episodeName s
 
 // Episode Represents info about a single ready-to-watch episode
 type Episode struct {
-	gorm.Model
+	ID           uint `gorm:"primarykey"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 	SeriesId     uint
 	ConversionId uint
 	Name         string

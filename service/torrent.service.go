@@ -314,8 +314,6 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 	s.log.Info("torrent finished", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 }
 
-// TODO: torrent eta + speed
-
 // torrentCompletionWatcher Polls for torrent's completion, calls onTorrentCompletion
 func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []db.TorrentFile, totalDownloadLength uint, cTorrent *torrentLib.Torrent) {
 	ticker := time.NewTicker(3 * time.Second)
@@ -354,8 +352,6 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 		}
 	}
 }
-
-// TODO: restore cTorrent on startup
 
 func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
