@@ -3,13 +3,18 @@ package tests
 import (
 	"anileha/db"
 	"anileha/ffmpeg"
+	"go.uber.org/zap"
 	"testing"
 )
 
 func TestFfmpegSimple(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	command := ffmpeg.NewCommand("input.mkv", 0, "output.mp4")
 	t.Log(command.String())
-	outputChan, _, err := command.Execute()
+	outputChan, _, err := command.Execute(logger)
 	if err != nil {
 		t.Fatal("Failed to start command", err)
 	}
@@ -26,9 +31,13 @@ func TestFfmpegSimple(t *testing.T) {
 }
 
 func TestFfmpegInterrupt(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	command := ffmpeg.NewCommand("input.mkv", 0, "output.mp4")
 	t.Log(command.String())
-	outputChan, cancelFunc, err := command.Execute()
+	outputChan, cancelFunc, err := command.Execute(logger)
 	if err != nil {
 		t.Fatal("Failed to start command", err)
 	}
@@ -53,9 +62,13 @@ func TestFfmpegInterrupt(t *testing.T) {
 }
 
 func TestFfmpegInvalidFile(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	command := ffmpeg.NewCommand("input.mkv", 0, "output.mp4")
 	t.Log(command.String())
-	outputChan, _, err := command.Execute()
+	outputChan, _, err := command.Execute(logger)
 	if err != nil {
 		t.Fatal("Failed to start command", err)
 	}

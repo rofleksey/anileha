@@ -250,18 +250,20 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		}, nil
 	}
 
+	p.log.Info("has multiple audio or sub streams", zap.Int("audio", len(audioStreams)), zap.Int("sub", len(subStreams)), zap.String("inputFile", inputFile))
+
 	japaneseAudio := make([]*StreamWithScore, 0, len(audioStreams))
 	for _, stream := range audioStreams {
-		lang, err := stream.Stream.TagList.GetString("language")
-		if err != nil && lang == "jpn" {
+		lang, _ := stream.Stream.TagList.GetString("language")
+		if lang == "jpn" {
 			japaneseAudio = append(japaneseAudio, stream)
 		}
 	}
 
 	englishSubs := make([]*StreamWithScore, 0, len(subStreams))
 	for _, stream := range subStreams {
-		lang, err := stream.Stream.TagList.GetString("language")
-		if err != nil && lang == "eng" {
+		lang, _ := stream.Stream.TagList.GetString("language")
+		if lang == "eng" {
 			englishSubs = append(englishSubs, stream)
 		}
 	}
@@ -274,6 +276,8 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 			SubCandidates:   englishSubs,
 		}, nil
 	}
+
+	p.log.Info("does NOT have 1 jpn audio and 1 eng sub", zap.Int("audio", len(japaneseAudio)), zap.Int("sub", len(englishSubs)), zap.String("inputFile", inputFile))
 
 	var remainingAudio []*StreamWithScore
 	var remainingSubs []*StreamWithScore
@@ -325,7 +329,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		return remainingSubs[i].Score > remainingSubs[j].Score
 	})
 
-	p.log.Warn("has ambiguous selection of subs/audio", zap.String("inputFile", inputFile))
+	p.log.Warn("has ambiguous selection of subs/audio", zap.Int("audio", len(japaneseAudio)), zap.Int("sub", len(englishSubs)), zap.String("inputFile", inputFile))
 	return &ScoreResult{
 		Ambiguous:       true,
 		Video:           videoStream,

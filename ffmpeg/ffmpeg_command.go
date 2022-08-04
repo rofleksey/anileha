@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"go.uber.org/zap"
 	"io"
 	"os"
 	"os/exec"
@@ -108,15 +109,21 @@ func (c *Command) parseTime(line string) uint64 {
 	return 0
 }
 
-func (c *Command) logsWriter(logsChan chan string, logsPath *string) {
-	if logsPath == nil {
+func (c *Command) logsWriter(logsChan chan string, externalLog *zap.Logger) {
+	if c.logsPath == nil {
+		externalLog.Warn("file logs are turned off for command")
 		for range logsChan {
 		}
 		return
 	}
 	var writer *bufio.Writer
 	file, err := os.Create(*c.logsPath)
+	defer func() {
+		file.Sync()
+		file.Close()
+	}()
 	if err != nil {
+		externalLog.Warn("failed to open file", zap.String("file", *c.logsPath), zap.Error(err))
 		for range logsChan {
 		}
 		return
@@ -126,10 +133,10 @@ func (c *Command) logsWriter(logsChan chan string, logsPath *string) {
 		writer.WriteString(line + "\n")
 		writer.Flush()
 	}
-	file.Sync()
+	externalLog.Warn("closing logs file", zap.String("file", *c.logsPath))
 }
 
-func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel) {
+func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel, externalLog *zap.Logger) {
 	scanner := bufio.NewScanner(reader)
 	// to properly handle carriage return
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -154,7 +161,7 @@ func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan
 		etaCalculator = util.NewUndefinedEtaCalculator()
 	}
 	logsChan := make(chan string, 32)
-	go c.logsWriter(logsChan, c.logsPath)
+	go c.logsWriter(logsChan, externalLog)
 	etaCalculator.Start()
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -196,7 +203,7 @@ func (c *Command) prepareArgs(withExecutable bool) []string {
 	return args
 }
 
-func (c *Command) Execute() (db.AnyChannel, context.CancelFunc, error) {
+func (c *Command) Execute(externalLog *zap.Logger) (db.AnyChannel, context.CancelFunc, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	args := c.prepareArgs(false)
@@ -215,7 +222,7 @@ func (c *Command) Execute() (db.AnyChannel, context.CancelFunc, error) {
 		return nil, nil, err
 	}
 	outputChan := make(db.AnyChannel, 32)
-	go c.processWatcher(cmd, stdoutReader, outputChan)
+	go c.processWatcher(cmd, stdoutReader, outputChan, externalLog)
 	return outputChan, cancelFunc, nil
 }
 

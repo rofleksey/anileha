@@ -5,6 +5,7 @@ import (
 	"anileha/ffmpeg"
 	"anileha/util"
 	"context"
+	"go.uber.org/zap"
 	"reflect"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 type testItem struct{}
 
-func (t *testItem) Execute() (db.AnyChannel, context.CancelFunc, error) {
+func (t *testItem) Execute(log *zap.Logger) (db.AnyChannel, context.CancelFunc, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	channel := make(db.AnyChannel)
 	go func() {
@@ -30,8 +31,12 @@ func (t *testItem) Execute() (db.AnyChannel, context.CancelFunc, error) {
 }
 
 func TestQueueSimple(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	outputChan := make(chan ffmpeg.OutputMessage)
-	queue, err := ffmpeg.NewQueue(1, outputChan)
+	queue, err := ffmpeg.NewQueue(1, outputChan, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,8 +82,12 @@ func TestQueueSimple(t *testing.T) {
 }
 
 func TestQueueInterruptFuture(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	outputChan := make(chan ffmpeg.OutputMessage)
-	queue, err := ffmpeg.NewQueue(1, outputChan)
+	queue, err := ffmpeg.NewQueue(1, outputChan, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,8 +126,12 @@ func TestQueueInterruptFuture(t *testing.T) {
 }
 
 func TestQueueInterruptCurrent(t *testing.T) {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	outputChan := make(chan ffmpeg.OutputMessage)
-	queue, err := ffmpeg.NewQueue(1, outputChan)
+	queue, err := ffmpeg.NewQueue(1, outputChan, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

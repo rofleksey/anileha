@@ -24,12 +24,13 @@ type TorrentResponseDao struct {
 }
 
 type TorrentFileResponseDao struct {
-	Path     string               `json:"path"`
-	Status   db.TorrentFileStatus `json:"status"`
-	Selected bool                 `json:"selected"`
-	Length   uint                 `json:"length"`
-	Episode  string               `json:"episode"`
-	Season   string               `json:"season"`
+	Path         string               `json:"path"`
+	Status       db.TorrentFileStatus `json:"status"`
+	Selected     bool                 `json:"selected"`
+	Length       uint                 `json:"length"`
+	Episode      string               `json:"episode"`
+	EpisodeIndex uint                 `json:"episodeIndex"`
+	Season       string               `json:"season"`
 }
 
 type ConversionResponseDao struct {

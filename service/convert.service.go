@@ -50,7 +50,7 @@ func NewConversionService(
 		return nil, err
 	}
 	queueChan := make(chan ffmpeg.OutputMessage, 128)
-	queue, err := ffmpeg.NewQueue(config.Conversion.Parallelism, queueChan)
+	queue, err := ffmpeg.NewQueue(config.Conversion.Parallelism, queueChan, log)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,13 @@ func (s *ConversionService) queueWorker() {
 					continue
 				}
 			} else {
-				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_ERROR}).Error; err != nil {
+				var newStatus db.ConversionStatus
+				if msg.Err == util.ErrCancelled {
+					newStatus = db.CONVERSION_CANCELLED
+				} else {
+					newStatus = db.CONVERSION_ERROR
+				}
+				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: newStatus}).Error; err != nil {
 					s.log.Error("failed to update db on conversion error", zap.Uint("conversionId", update.ID), zap.Error(err))
 					continue
 				}
@@ -194,7 +200,6 @@ func (s *ConversionService) prepareConversion(seriesId uint, torrentName string,
 }
 
 func (s *ConversionService) StartConversion(seriesID uint, torrentName string, torrentFiles []db.TorrentFile, analysisArr []*analyze.Result) error {
-	// TODO: parse name
 	for i := range torrentFiles {
 		folder, err := s.fileService.GenFolderPath(s.conversionFolder)
 		if err != nil {

@@ -15,12 +15,13 @@ func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileR
 	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
 		res = append(res, dao.TorrentFileResponseDao{
-			Path:     f.TorrentPath,
-			Status:   f.Status,
-			Selected: f.Selected,
-			Length:   f.Length,
-			Episode:  f.Episode,
-			Season:   f.Season,
+			Path:         f.TorrentPath,
+			Status:       f.Status,
+			Selected:     f.Selected,
+			Length:       f.Length,
+			Episode:      f.Episode,
+			EpisodeIndex: f.EpisodeIndex,
+			Season:       f.Season,
 		})
 	}
 	return res

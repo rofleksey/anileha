@@ -123,8 +123,6 @@ func NewTorrentFile(
 
 type ConversionStatus string
 
-// TODO: make sure cancelling a running conversion produces CANCELLED status
-
 const (
 	CONVERSION_CREATED    ConversionStatus = "created"
 	CONVERSION_PROCESSING ConversionStatus = "processing"

@@ -47,6 +47,7 @@ func main() {
 		controller.ThumbnailControllerExport,
 		controller.TorrentControllerExport,
 		controller.ConvertControllerExport,
+		controller.ProbeControllerExport,
 
 		// misc
 		analyze.TextAnalyzerExport,

@@ -4,10 +4,11 @@ import (
 	"anileha/db"
 	"anileha/util"
 	"context"
+	"go.uber.org/zap"
 )
 
 type Queuable interface {
-	Execute() (db.AnyChannel, context.CancelFunc, error)
+	Execute(externalLog *zap.Logger) (db.AnyChannel, context.CancelFunc, error)
 }
 
 type QueueSignalStarted struct{}
@@ -37,9 +38,10 @@ type Queue struct {
 	workerChan         chan queueItem
 	workerFeedBackChan chan uint
 	outputChan         chan OutputMessage
+	log                *zap.Logger
 }
 
-func NewQueue(parallelCount int, outputChan chan OutputMessage) (*Queue, error) {
+func NewQueue(parallelCount int, outputChan chan OutputMessage, log *zap.Logger) (*Queue, error) {
 	if parallelCount <= 0 {
 		return nil, util.ErrQueueParallelismInvalid
 	}
@@ -49,6 +51,7 @@ func NewQueue(parallelCount int, outputChan chan OutputMessage) (*Queue, error) 
 		workerChan:         make(chan queueItem, 1024),
 		workerFeedBackChan: make(chan uint),
 		outputChan:         outputChan,
+		log:                log,
 	}, nil
 }
 
@@ -98,7 +101,7 @@ func (q *Queue) processItem(cur *queueItem) {
 		ID:  cur.ID,
 		Msg: QueueSignalStarted{},
 	}
-	cmdChan, cancelFunc, err := cur.Command.Execute()
+	cmdChan, cancelFunc, err := cur.Command.Execute(q.log)
 	if err != nil {
 		cancelFunc()
 		q.outputChan <- OutputMessage{
@@ -120,9 +123,19 @@ func (q *Queue) processItem(cur *queueItem) {
 		case <-cur.CloseChan:
 			cancelFunc()
 			for cmdMsg := range cmdChan {
-				q.outputChan <- OutputMessage{
-					ID:  cur.ID,
-					Msg: cmdMsg,
+				switch cmdMsg.(type) {
+				case CommandSignalEnd:
+					q.outputChan <- OutputMessage{
+						ID: cur.ID,
+						Msg: CommandSignalEnd{
+							Err: util.ErrCancelled,
+						},
+					}
+				default:
+					q.outputChan <- OutputMessage{
+						ID:  cur.ID,
+						Msg: cmdMsg,
+					}
 				}
 			}
 			return
