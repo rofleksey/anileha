@@ -35,18 +35,6 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 		Source:              torrent.Source,
 		TotalLength:         torrent.TotalLength,
 		TotalDownloadLength: torrent.TotalDownloadLength,
-		Files:               mapTorrentFilesToResponse(torrent.Files),
-	}
-}
-
-func mapTorrentWithProgressToResponse(torrent db.Torrent) dao.TorrentResponseDao {
-	return dao.TorrentResponseDao{
-		ID:                  torrent.ID,
-		Name:                torrent.Name,
-		Status:              torrent.Status,
-		Source:              torrent.Source,
-		TotalLength:         torrent.TotalLength,
-		TotalDownloadLength: torrent.TotalDownloadLength,
 		Progress:            torrent.Progress,
 		BytesRead:           torrent.BytesRead,
 		Files:               mapTorrentFilesToResponse(torrent.Files),
@@ -85,7 +73,7 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, mapTorrentWithProgressToResponse(*torrent))
+		c.JSON(http.StatusOK, mapTorrentToResponse(*torrent))
 	})
 	engine.POST("/torrent/start", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndicesRequestDao
@@ -145,14 +133,15 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.DELETE("/torrent", func(c *gin.Context) {
-		var req dao.TorrentIdRequestDao
-		if err := c.ShouldBindJSON(&req); err != nil {
-			_ = c.Error(err)
+	engine.DELETE("/torrent/:id", func(c *gin.Context) {
+		idString := c.Param("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := torrentService.DeleteTorrentById(req.TorrentId)
+		err = torrentService.DeleteTorrentById(uint(id))
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})

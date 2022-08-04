@@ -1,7 +1,6 @@
 package util
 
 import (
-	"math"
 	"sync"
 	"time"
 )
@@ -10,10 +9,10 @@ const MinTimeDiffMs float64 = 1
 const SmoothingFactor float64 = 0.2
 
 type Progress struct {
-	Progress float32
-	Elapsed  uint
-	Eta      uint
-	Speed    float64
+	Progress int `json:"progress"`
+	Elapsed  int `json:"elapsed"`
+	Eta      int `json:"eta"`
+	Speed    int `json:"speed"`
 }
 
 type EtaCalculator struct {
@@ -42,7 +41,6 @@ func NewUndefinedEtaCalculator() *EtaCalculator {
 		lastValue:   0,
 		endValue:    0,
 		isUndefined: true,
-		approxSpeed: math.NaN(),
 	}
 }
 
@@ -67,7 +65,6 @@ func (c *EtaCalculator) Update(newValue float64) {
 	if newValue == c.endValue {
 		c.isFinished = true
 		c.lastTime = now
-		c.approxSpeed = 0
 		return
 	}
 	timeDiff := now.Sub(c.lastTime)
@@ -82,17 +79,20 @@ func (c *EtaCalculator) Update(newValue float64) {
 
 func (c *EtaCalculator) getEta() float64 {
 	if c.isUndefined {
-		return math.NaN()
+		return -1
 	}
 	if !c.isStarted {
-		return math.Inf(1)
+		return -1
+	}
+	if c.approxSpeed == 0 {
+		return -1
 	}
 	return (c.endValue - c.lastValue) / c.approxSpeed
 }
 
 func (c *EtaCalculator) getElapsedTime() float64 {
 	if !c.isStarted {
-		return math.NaN()
+		return -1
 	}
 	if c.isFinished {
 		return c.lastTime.Sub(c.startTime).Seconds()
@@ -102,7 +102,7 @@ func (c *EtaCalculator) getElapsedTime() float64 {
 
 func (c *EtaCalculator) getProgressImpl() float64 {
 	if !c.isStarted || c.isUndefined {
-		return math.NaN()
+		return 0
 	}
 	if c.isFinished {
 		return 1
@@ -114,9 +114,9 @@ func (c *EtaCalculator) GetProgress() Progress {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return Progress{
-		Progress: float32(c.getProgressImpl()),
-		Eta:      uint(c.getEta()),
-		Elapsed:  uint(c.getElapsedTime()),
-		Speed:    c.approxSpeed,
+		Progress: int(100 * c.getProgressImpl()),
+		Eta:      int(c.getEta()),
+		Elapsed:  int(c.getElapsedTime()),
+		Speed:    int(c.approxSpeed),
 	}
 }

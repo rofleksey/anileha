@@ -161,9 +161,7 @@ func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
 
 func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
-	queryResult := s.db.Find(&torrentArr, func(db *gorm.DB) *gorm.DB {
-		return db.Order("torrents.created_at ASC")
-	})
+	queryResult := s.db.Order(s.db.Order("torrents.created_at ASC")).Find(&torrentArr)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -186,6 +184,9 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 		if err != nil {
 			return err
 		}
+	}
+	if err := s.db.Delete(&db.TorrentFile{}, "torrent_id = ?", id).Error; err != nil {
+		return err
 	}
 	queryResult = s.db.Delete(&db.Torrent{}, id)
 	if queryResult.Error != nil {
@@ -255,7 +256,13 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 			continue
 		}
 
-		oldPath := path.Join(s.downloadsFolder, torrent.Name, torrent.Files[i].TorrentPath)
+		var oldPath string
+
+		if len(torrent.Files) > 1 {
+			oldPath = path.Join(s.downloadsFolder, torrent.Name, torrent.Files[i].TorrentPath)
+		} else {
+			oldPath = path.Join(s.downloadsFolder, torrent.Files[i].TorrentPath)
+		}
 
 		// if file is not selected - delete it and continue
 		if !torrent.Files[i].Selected {
@@ -319,6 +326,7 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 	ticker := time.NewTicker(3 * time.Second)
 	cFiles := cTorrent.Files()
 	etaCalc := util.NewEtaCalculator(0, float64(totalDownloadLength))
+	etaCalc.Start()
 	for {
 		select {
 		case <-cTorrent.Closed():
@@ -333,8 +341,9 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 				}
 			}
 			etaCalc.Update(float64(bytesRead))
+			progress := etaCalc.GetProgress()
 			go func() {
-				if err := s.db.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Progress: etaCalc.GetProgress(), BytesRead: bytesRead}).Error; err != nil {
+				if err := s.db.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Progress: progress, BytesRead: bytesRead}).Error; err != nil {
 					s.log.Error("failed to update db on torrent progress", zap.Uint("torrentId", id), zap.String("torrentName", name), zap.Error(err))
 				}
 			}()
@@ -366,12 +375,12 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 
 	torrent.Name = info.BestName()
 	torrent.Status = db.TORRENT_IDLE
-	s.log.Info("torrent received info", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
+	s.log.Info("torrent received info", zap.Int("fileCount", len(cTorrent.Files())), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	filenames := make([]string, 0, len(info.Files))
-	for i, metaFile := range info.Files {
-		file := db.NewTorrentFile(torrent.ID, uint(i), metaFile.DisplayPath(info), false, uint(metaFile.Length))
+	for i, torrentFile := range cTorrent.Files() {
+		file := db.NewTorrentFile(torrent.ID, uint(i), torrentFile.DisplayPath(), false, uint(torrentFile.Length()))
 		files = append(files, file)
 		filenames = append(filenames, file.TorrentPath)
 	}

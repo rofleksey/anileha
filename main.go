@@ -20,6 +20,7 @@ import (
 
 // TODO: properly delete series, torrents, episodes, gc conversions
 // TODO: MAKE ERRORS MORE INFORMATIVE :/
+// TODO: don't print season name in episodes if this is a single season torrent
 
 func main() {
 	fx.New(

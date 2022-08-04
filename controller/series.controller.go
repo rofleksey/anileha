@@ -103,7 +103,7 @@ func registerSeriesController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "series name is blank"})
 			return
 		}
-		files := form.File["file"]
+		files := form.File["thumb"]
 		if files == nil || len(files) != 1 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of files sent"})
 			return
