@@ -117,15 +117,15 @@ func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
 			} else {
 				cFilePath = path.Join(s.downloadsFolder, cFile.DisplayPath())
 			}
-			err := os.RemoveAll(cFilePath)
+			_ = os.RemoveAll(cFilePath)
+		}
+	}
+
+	for _, file := range torrent.Files {
+		if file.ReadyPath != nil {
+			err := os.RemoveAll(*file.ReadyPath)
 			if err != nil {
-				s.log.Warn("failed to cleanup torrent file", zap.String("path", cFilePath), zap.Error(err))
-			}
-			if file.ReadyPath != nil {
-				err := os.RemoveAll(*file.ReadyPath)
-				if err != nil {
-					s.log.Warn("failed to cleanup torrent file", zap.String("path", *file.ReadyPath), zap.Error(err))
-				}
+				s.log.Error("failed to cleanup torrent file", zap.String("path", *file.ReadyPath), zap.Error(err))
 			}
 		}
 	}
@@ -549,6 +549,7 @@ func (s *TorrentService) StopTorrent(torrent db.Torrent) error {
 	}
 	cTorrent.Drop()
 	<-cTorrent.Closed()
+	// TODO: separate db transactions from services
 	err := s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TORRENT_IDLE, "total_download_length": downloadLength}).Error
 	if err != nil {
 		return err

@@ -69,14 +69,11 @@ func NewConversionService(
 
 func (s *ConversionService) cleanUpConversion(conversion db.Conversion) {
 	s.queue.Cancel(conversion.ID)
-	if err := os.Remove(conversion.VideoPath); err != nil {
-		s.log.Warn("failed to remove conversion video", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.VideoPath), zap.Error(err))
-	}
-	if err := os.Remove(conversion.LogPath); err != nil {
-		s.log.Warn("failed to remove conversion log", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.LogPath), zap.Error(err))
-	}
+	// TODO: repeat deletion for several seconds until successful
+	_ = os.Remove(conversion.VideoPath)
+	_ = os.Remove(conversion.LogPath)
 	if err := os.RemoveAll(conversion.OutputDir); err != nil {
-		s.log.Warn("failed to remove conversion output dir", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.OutputDir), zap.Error(err))
+		s.log.Error("failed to remove conversion output dir", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.OutputDir), zap.Error(err))
 	}
 }
 
@@ -115,9 +112,6 @@ func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conver
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
-	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
-	}
 	return conversions, nil
 }
 
@@ -126,9 +120,6 @@ func (s *ConversionService) GetConversionsByTorrentId(torrentId uint) ([]db.Conv
 	queryResult := s.db.Where("torrent_id = ?", torrentId).Order("updated_at DESC").Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
 	}
 	return conversions, nil
 }
@@ -225,6 +216,8 @@ func (s *ConversionService) prepareCommand(inputFile string, outputPath string, 
 		default:
 			return nil, util.ErrUnsupportedSubs
 		}
+	} else {
+		command.AddKeyValue("-map", "0:v", ffmpeg.OptionPostOutput)
 	}
 	if analysis.Audio != nil {
 		command.AddKeyValue("-map", fmt.Sprintf("0:a:%d", analysis.Audio.RelativeIndex), ffmpeg.OptionOutput)
