@@ -94,6 +94,21 @@ func (s *PipelineService) pipelineDeleteSeries(msg PipelineMessageDeleteSeries) 
 			}()
 		}
 	}
+	episodes, err := s.episodeService.GetEpisodesBySeriesId(msg.SeriesId)
+	if err != nil {
+		s.log.Warn("failed to delete episodes for series", zap.Uint("seriesId", msg.SeriesId))
+		msg.Result <- err
+		return
+	} else {
+		for _, c := range episodes {
+			cId := c.ID
+			go func() {
+				if err := s.episodeService.DeleteEpisodeById(cId); err != nil {
+					s.log.Warn("failed to delete episode for series", zap.Uint("episodeId", cId), zap.Uint("seriesId", msg.SeriesId), zap.Error(err))
+				}
+			}()
+		}
+	}
 	torrents, err := s.torrentService.GetTorrentsBySeriesId(msg.SeriesId)
 	if err != nil {
 		s.log.Warn("failed to delete torrents for series", zap.Uint("seriesId", msg.SeriesId))

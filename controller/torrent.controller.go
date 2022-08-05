@@ -165,7 +165,6 @@ func registerTorrentController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
 		seriesIdStrArr := form.Value["seriesId"]
 		if seriesIdStrArr == nil || len(seriesIdStrArr) != 1 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting seriesId"})
@@ -176,32 +175,34 @@ func registerTorrentController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse seriesId"})
 			return
 		}
-		files := form.File["file"]
-		if files == nil || len(files) != 1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid number of files sent"})
+		files := form.File["files"]
+		if files == nil || len(files) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no files sent"})
 			return
 		}
-		file := files[0]
-		tempDst, err := fileService.GenTempFilePath(file.Filename)
-		if err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		for _, file := range files {
+			tempDst, err := fileService.GenTempFilePath(file.Filename)
+			if err != nil {
+				c.Error(err)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			// it's okay :>
+			defer fileService.DeleteTempFileAsync(file.Filename)
+			err = c.SaveUploadedFile(file, tempDst)
+			if err != nil {
+				c.Error(err)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			_, err = torrentService.AddTorrentFromFile(uint(seriesId), tempDst)
+			if err != nil {
+				c.Error(err)
+				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
 		}
-		defer fileService.DeleteTempFileAsync(file.Filename)
-		err = c.SaveUploadedFile(file, tempDst)
-		if err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		id, err := torrentService.AddTorrentFromFile(uint(seriesId), tempDst)
-		if err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.String(http.StatusOK, strconv.FormatUint(uint64(id), 10))
+		c.String(http.StatusOK, "OK")
 	})
 }
 

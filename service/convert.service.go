@@ -16,8 +16,6 @@ import (
 	"path/filepath"
 )
 
-// TODO: delete conversion video on failure or on startup error check
-
 type ConversionService struct {
 	db               *gorm.DB
 	log              *zap.Logger

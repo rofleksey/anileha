@@ -49,8 +49,6 @@ func (s *SeriesService) SearchSeries(query string) ([]db.Series, error) {
 	return seriesArr, nil
 }
 
-// TODO: delete torrents, torrentFiles, conversions, episodes
-
 func (s *SeriesService) DeleteSeriesById(id uint) error {
 	queryResult := s.db.Delete(&db.Series{}, id)
 	if queryResult.Error != nil {

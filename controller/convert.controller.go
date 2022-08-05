@@ -12,8 +12,6 @@ import (
 	"strconv"
 )
 
-// TODO: stop conversions on torrent/story deletion
-
 func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 	return dao.ConversionResponseDao{
 		ID:            c.ID,

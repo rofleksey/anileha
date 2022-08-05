@@ -374,15 +374,28 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 		filenames = append(filenames, file.TorrentPath)
 	}
 
-	// sort by season/episode
+	// extract metadata
 	episodeMetadata, multipleSuccess := roflmeta.ParseMultipleEpisodeMetadata(filenames)
 	if !multipleSuccess {
 		s.log.Warn("failed to apply multiple episode metadata extraction", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 	}
+
+	// don't assign season if torrent contains only single one
+	seasonCounter := make(map[string]struct{}, 10)
+	for _, metadata := range episodeMetadata {
+		if metadata.Episode != "" {
+			seasonCounter[metadata.Season] = struct{}{}
+		}
+	}
+	assignSeasons := len(seasonCounter) > 1
 	for i := range files {
 		files[i].Episode = episodeMetadata[i].Episode
-		files[i].Season = episodeMetadata[i].Season
+		if assignSeasons {
+			files[i].Season = episodeMetadata[i].Season
+		}
 	}
+
+	// sort by episode / season
 	sort.Slice(files, func(i, j int) bool {
 		if files[i].Season == files[j].Season {
 			return files[i].Episode < files[j].Episode
