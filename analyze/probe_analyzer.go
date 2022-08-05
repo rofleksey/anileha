@@ -329,7 +329,7 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 			p.log.Info("got sub stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("size", size))
 			subStream.Score = size
 		} else {
-			numberOfEngWords := p.textAnalyzer.CountEnglishWords(text)
+			numberOfEngWords := p.textAnalyzer.CountWords(text)
 			subStream.Score = numberOfEngWords
 			p.log.Info("got number of eng words in sub stream", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("wordCount", numberOfEngWords))
 		}

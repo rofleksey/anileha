@@ -11,11 +11,15 @@ import (
 )
 
 func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
+	var thumb *string
+	if episode.Thumb != nil {
+		thumb = &episode.Thumb.Path
+	}
 	return dao.EpisodeResponseDao{
 		ID:           episode.ID,
 		ConversionId: episode.ConversionId,
 		Name:         episode.Name,
-		ThumbnailId:  episode.ThumbnailID,
+		Thumb:        thumb,
 		Length:       episode.Length,
 		DurationSec:  episode.DurationSec,
 		Url:          episode.Url,

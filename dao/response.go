@@ -48,11 +48,11 @@ type ConversionResponseDao struct {
 }
 
 type EpisodeResponseDao struct {
-	ID           uint   `json:"id"`
-	ConversionId uint   `json:"conversionId"`
-	Name         string `json:"name"`
-	ThumbnailId  *uint  `json:"thumbnailId"`
-	Length       uint64 `json:"length"`
-	DurationSec  uint64 `json:"durationSec"`
-	Url          string `json:"link"`
+	ID           uint    `json:"id"`
+	ConversionId uint    `json:"conversionId"`
+	Name         string  `json:"name"`
+	Thumb        *string `json:"thumb"`
+	Length       uint64  `json:"length"`
+	DurationSec  uint64  `json:"durationSec"`
+	Url          string  `json:"link"`
 }

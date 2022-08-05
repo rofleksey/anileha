@@ -13,21 +13,21 @@ type Series struct {
 	Name        string
 	Description string
 	Query       *string // Query to automatically add torrents to this series
-	ThumbnailID *uint
-	Thumbnail   *Thumbnail `gorm:"references:ID"`
+	ThumbID     *uint
+	Thumb       *Thumb `gorm:"references:ID"`
 }
 
-func NewSeries(name string, description string, query *string, thumbnailId *uint) Series {
+func NewSeries(name string, description string, query *string, thumbId *uint) Series {
 	return Series{
 		Name:        name,
 		Description: description,
 		Query:       query,
-		ThumbnailID: thumbnailId,
+		ThumbID:     thumbId,
 	}
 }
 
-// Thumbnail Represents unique thumbnail image
-type Thumbnail struct {
+// Thumb Represents unique thumbnail image
+type Thumb struct {
 	ID          uint `gorm:"primarykey"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -36,8 +36,8 @@ type Thumbnail struct {
 	DownloadUrl string
 }
 
-func NewThumbnail(name string, path string, downloadUrl string) Thumbnail {
-	return Thumbnail{
+func NewThumb(name string, path string, downloadUrl string) Thumb {
+	return Thumb{
 		Name:        name,
 		Path:        path,
 		DownloadUrl: downloadUrl,
@@ -146,25 +146,40 @@ type Conversion struct {
 	UpdatedAt        time.Time
 	util.Progress    `gorm:"embedded"`
 	SeriesId         uint
+	TorrentId        uint
 	TorrentFileId    uint
 	EpisodeId        *uint
 	Name             string
 	EpisodeName      string
-	OutputPath       string
-	LogsPath         string
+	OutputDir        string
+	VideoPath        string
+	LogPath          string
 	Command          string
 	VideoDurationSec uint64
 	Status           ConversionStatus
 }
 
-func NewConversion(seriesId uint, torrentFileId uint, name string, episodeName string, outputPath string, logsPath string, command string, videoDurationSec uint64) Conversion {
+func NewConversion(
+	seriesId uint,
+	torrentid uint,
+	torrentFileId uint,
+	name string,
+	episodeName string,
+	outputDir string,
+	videoPath string,
+	logPath string,
+	command string,
+	videoDurationSec uint64,
+) Conversion {
 	return Conversion{
 		SeriesId:         seriesId,
+		TorrentId:        torrentid,
 		TorrentFileId:    torrentFileId,
 		Name:             name,
 		EpisodeName:      episodeName,
-		OutputPath:       outputPath,
-		LogsPath:         logsPath,
+		OutputDir:        outputDir,
+		VideoPath:        videoPath,
+		LogPath:          logPath,
 		Command:          command,
 		VideoDurationSec: videoDurationSec,
 		Status:           CONVERSION_CREATED,
@@ -179,20 +194,20 @@ type Episode struct {
 	SeriesId     uint
 	ConversionId uint
 	Name         string
-	ThumbnailID  *uint
-	Thumbnail    *Thumbnail `gorm:"references:ID"`
-	Length       uint64     // Length in bytes
-	DurationSec  uint64     // Duration in seconds
+	ThumbID      *uint
+	Thumb        *Thumb `gorm:"references:ID"`
+	Length       uint64 // Length in bytes
+	DurationSec  uint64 // Duration in seconds
 	Path         string
 	Url          string
 }
 
-func NewEpisode(seriesId uint, conversionId uint, name string, thumbnailId *uint, length uint64, durationSec uint64, path string, url string) Episode {
+func NewEpisode(seriesId uint, conversionId uint, name string, thumbId *uint, length uint64, durationSec uint64, path string, url string) Episode {
 	return Episode{
 		SeriesId:     seriesId,
 		ConversionId: conversionId,
 		Name:         name,
-		ThumbnailID:  thumbnailId,
+		ThumbID:      thumbId,
 		Length:       length,
 		DurationSec:  durationSec,
 		Path:         path,

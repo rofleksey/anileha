@@ -17,7 +17,7 @@ func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 		Name:        series.Name,
 		Description: series.Description,
 		Query:       series.Query,
-		Thumb:       series.Thumbnail.DownloadUrl,
+		Thumb:       series.Thumb.DownloadUrl,
 	}
 }
 
@@ -32,8 +32,9 @@ func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
 func registerSeriesController(
 	engine *gin.Engine,
 	fileService *service.FileService,
-	thumbService *service.ThumbnailService,
+	thumbService *service.ThumbService,
 	seriesService *service.SeriesService,
+	pipelineFacade *service.PipelineFacade,
 ) {
 	engine.GET("/series", func(c *gin.Context) {
 		seriesSlice, err := seriesService.GetAllSeries()
@@ -77,7 +78,12 @@ func registerSeriesController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
 			return
 		}
-		err = seriesService.DeleteSeriesById(uint(id))
+		resultChan := make(chan error, 1)
+		pipelineFacade.Channel <- service.PipelineMessageDeleteSeries{
+			SeriesId: uint(id),
+			Result:   resultChan,
+		}
+		err = <-resultChan
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -120,12 +126,12 @@ func registerSeriesController(
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		thumbnailId, err := thumbService.AddThumbnail(file.Filename, tempDst)
+		thumbId, err := thumbService.AddThumb(file.Filename, tempDst)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		seriesId, err := seriesService.AddSeries(name, thumbnailId)
+		seriesId, err := seriesService.AddSeries(name, thumbId)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

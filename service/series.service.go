@@ -21,7 +21,7 @@ func NewSeriesService(db *gorm.DB, log *zap.Logger) *SeriesService {
 
 func (s *SeriesService) GetSeriesById(id uint) (*db.Series, error) {
 	var series db.Series
-	queryResult := s.db.Preload("Thumbnail").First(&series, "id = ?", id)
+	queryResult := s.db.Preload("Thumb").First(&series, "id = ?", id)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -33,7 +33,7 @@ func (s *SeriesService) GetSeriesById(id uint) (*db.Series, error) {
 
 func (s *SeriesService) GetAllSeries() ([]db.Series, error) {
 	var seriesArr []db.Series
-	queryResult := s.db.Order(s.db.Order("series.created_at DESC")).Preload("Thumbnail").Find(&seriesArr)
+	queryResult := s.db.Order(s.db.Order("series.created_at DESC")).Preload("Thumb").Find(&seriesArr)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -42,7 +42,7 @@ func (s *SeriesService) GetAllSeries() ([]db.Series, error) {
 
 func (s *SeriesService) SearchSeries(query string) ([]db.Series, error) {
 	var seriesArr []db.Series
-	queryResult := s.db.Where("name ILIKE '%' || ? || '%'", query).Order("series.created_at DESC").Preload("Thumbnail").Find(&seriesArr)
+	queryResult := s.db.Where("name ILIKE '%' || ? || '%'", query).Order("series.created_at DESC").Preload("Thumb").Find(&seriesArr)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}

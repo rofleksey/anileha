@@ -56,6 +56,20 @@ func registerConvertController(
 		}
 		c.JSON(http.StatusOK, mapConversionToResponse(*conversion))
 	})
+	engine.GET("/convert/:id/logs", func(c *gin.Context) {
+		idString := c.Param("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			return
+		}
+		logs, err := convertService.GetLogsById(uint(id))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.String(http.StatusOK, *logs)
+	})
 	engine.GET("/convert/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
@@ -113,7 +127,7 @@ func registerConvertController(
 				analysisArr = append(analysisArr, analysis)
 			}
 		}
-		err = convertService.StartConversion(torrent.SeriesId, torrent.Name, torrentFiles, analysisArr)
+		err = convertService.StartConversion(*torrent, torrentFiles, analysisArr)
 		if err != nil {
 			c.Error(err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

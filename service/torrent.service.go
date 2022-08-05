@@ -101,6 +101,41 @@ func NewTorrentService(
 	}, nil
 }
 
+// cleanUpTorrent Drops cTorrent, removes all torrent files
+func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
+	mapValue, exists := s.cTorrentMap.LoadAndDelete(torrent.ID)
+
+	if exists {
+		cTorrent := mapValue.(*torrentLib.Torrent)
+		cTorrent.Drop()
+		<-cTorrent.Closed()
+		for _, file := range torrent.Files {
+			cFile := cTorrent.Files()[file.TorrentIndex]
+			var cFilePath string
+			if len(torrent.Files) > 1 {
+				cFilePath = path.Join(s.downloadsFolder, torrent.Name, cFile.DisplayPath())
+			} else {
+				cFilePath = path.Join(s.downloadsFolder, cFile.DisplayPath())
+			}
+			err := os.RemoveAll(cFilePath)
+			if err != nil {
+				s.log.Warn("failed to cleanup torrent file", zap.String("path", cFilePath), zap.Error(err))
+			}
+			if file.ReadyPath != nil {
+				err := os.RemoveAll(*file.ReadyPath)
+				if err != nil {
+					s.log.Warn("failed to cleanup torrent file", zap.String("path", *file.ReadyPath), zap.Error(err))
+				}
+			}
+		}
+	}
+
+	deleteErr := os.Remove(torrent.FilePath)
+	if deleteErr != nil {
+		s.log.Warn("failed to cleanup torrent info", zap.String("path", torrent.FilePath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
+	}
+}
+
 func (s *TorrentService) GetTorrentById(id uint) (*db.Torrent, error) {
 	var torrent db.Torrent
 	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
@@ -113,38 +148,6 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.Torrent, error) {
 		return nil, util.ErrNotFound
 	}
 	return &torrent, nil
-	//mapValue, exists := s.cTorrentMap.Load(torrent.ID)
-	//if !exists {
-	//	return &db.TorrentWithProgress{
-	//		Torrent:      torrent,
-	//		Progress:     0,
-	//		BytesRead:    0,
-	//		BytesMissing: 0,
-	//	}, nil
-	//}
-	//cTorrent := mapValue.(*torrentLib.Torrent)
-	//bytesTotal := torrent.TotalDownloadLength
-	//cFiles := cTorrent.Files()
-	//bytesRead := int64(0)
-	//for i := range torrent.Files {
-	//	if torrent.Files[i].Selected {
-	//		cFile := cFiles[torrent.Files[i].TorrentIndex]
-	//		bytesRead += cFile.BytesCompleted()
-	//	}
-	//}
-	//bytesMissing := bytesTotal - bytesRead
-	//var progress float64
-	//if bytesTotal > 0 {
-	//	progress = float64(bytesRead) / float64(bytesTotal)
-	//} else {
-	//	progress = 0
-	//}
-	//return &db.TorrentWithProgress{
-	//	Torrent:      torrent,
-	//	Progress:     progress,
-	//	BytesRead:    bytesRead,
-	//	BytesMissing: bytesMissing,
-	//}, nil
 }
 
 func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
@@ -161,7 +164,16 @@ func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
 
 func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
-	queryResult := s.db.Order(s.db.Order("torrents.created_at ASC")).Find(&torrentArr)
+	queryResult := s.db.Order("torrents.created_at DESC").Find(&torrentArr)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	return torrentArr, nil
+}
+
+func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, error) {
+	var torrentArr []db.Torrent
+	queryResult := s.db.Where("series_id = ?", seriesId).Order("torrents.created_at DESC").Find(&torrentArr)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -197,29 +209,6 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 	}
 	go s.cleanUpTorrent(torrent)
 	return nil
-}
-
-// cleanUpTorrent Drops cTorrent, removes all torrent files
-func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
-	mapValue, exists := s.cTorrentMap.LoadAndDelete(torrent.ID)
-
-	if exists {
-		cTorrent := mapValue.(*torrentLib.Torrent)
-		cTorrent.Drop()
-		<-cTorrent.Closed()
-		for _, cFile := range cTorrent.Files() {
-			cFilePath := path.Join(s.downloadsFolder, cFile.DisplayPath())
-			err := os.RemoveAll(cFilePath)
-			if err != nil {
-				s.log.Warn("failed to cleanup torrent file", zap.String("path", cFilePath), zap.Error(err))
-			}
-		}
-	}
-
-	deleteErr := os.Remove(torrent.FilePath)
-	if deleteErr != nil {
-		s.log.Warn("failed to cleanup torrent info", zap.String("path", torrent.FilePath), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(deleteErr))
-	}
 }
 
 // onFailedImport Logs error, deletes torrent from DB, cleans up torrent files

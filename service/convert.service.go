@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -65,8 +66,20 @@ func NewConversionService(
 		queueChan:        queueChan,
 		conversionFolder: conversionFolder,
 	}
-	go service.queueWorker()
 	return service, nil
+}
+
+func (s *ConversionService) cleanUpConversion(conversion db.Conversion) {
+	s.queue.Cancel(conversion.ID)
+	if err := os.Remove(conversion.VideoPath); err != nil {
+		s.log.Warn("failed to remove conversion video", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.VideoPath), zap.Error(err))
+	}
+	if err := os.Remove(conversion.LogPath); err != nil {
+		s.log.Warn("failed to remove conversion log", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.LogPath), zap.Error(err))
+	}
+	if err := os.RemoveAll(conversion.OutputDir); err != nil {
+		s.log.Warn("failed to remove conversion output dir", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.OutputDir), zap.Error(err))
+	}
 }
 
 func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
@@ -81,6 +94,23 @@ func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
 	return &conversion, nil
 }
 
+func (s *ConversionService) GetLogsById(id uint) (*string, error) {
+	var conversion db.Conversion
+	queryResult := s.db.First(&conversion, "id = ?", id)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrNotFound
+	}
+	logBytes, err := ioutil.ReadFile(conversion.LogPath)
+	if err != nil {
+		return nil, err
+	}
+	logString := string(logBytes)
+	return &logString, nil
+}
+
 func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
 	queryResult := s.db.Where("series_id = ?", seriesId).Order("updated_at DESC").Find(&conversions)
@@ -91,6 +121,38 @@ func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conver
 		return nil, util.ErrNotFound
 	}
 	return conversions, nil
+}
+
+func (s *ConversionService) GetConversionsByTorrentId(torrentId uint) ([]db.Conversion, error) {
+	var conversions []db.Conversion
+	queryResult := s.db.Where("torrent_id = ?", torrentId).Order("updated_at DESC").Find(&conversions)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrNotFound
+	}
+	return conversions, nil
+}
+
+func (s *ConversionService) DeleteConversionById(id uint) error {
+	var conversion db.Conversion
+	queryResult := s.db.First(&conversion, "id = ?", id)
+	if queryResult.Error != nil {
+		return queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return util.ErrNotFound
+	}
+	queryResult = s.db.Delete(&db.Conversion{}, id)
+	if queryResult.Error != nil {
+		return queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return util.ErrNotFound
+	}
+	go s.cleanUpConversion(conversion)
+	return nil
 }
 
 func (s *ConversionService) queueWorker() {
@@ -173,12 +235,20 @@ func (s *ConversionService) prepareCommand(inputFile string, outputPath string, 
 	return command, nil
 }
 
-func (s *ConversionService) prepareConversion(seriesId uint, torrentName string, torrentFile db.TorrentFile, videoPath string, logsPath string, command *ffmpeg.Command, durationSec uint64) (*db.Conversion, error) {
+func (s *ConversionService) prepareConversion(
+	torrent db.Torrent,
+	torrentFile db.TorrentFile,
+	outputDir string,
+	videoPath string,
+	logsPath string,
+	command *ffmpeg.Command,
+	durationSec uint64,
+) (*db.Conversion, error) {
 	var conversionName string
 	if torrentFile.Season != "" {
-		conversionName = fmt.Sprintf("%s - %s - %s", torrentName, torrentFile.Season, torrentFile.Episode)
+		conversionName = fmt.Sprintf("%s - %s - %s", torrent.Name, torrentFile.Season, torrentFile.Episode)
 	} else {
-		conversionName = fmt.Sprintf("%s - %s", torrentName, torrentFile.Episode)
+		conversionName = fmt.Sprintf("%s - %s", torrent.Name, torrentFile.Episode)
 	}
 
 	var episodeName string
@@ -188,7 +258,7 @@ func (s *ConversionService) prepareConversion(seriesId uint, torrentName string,
 		episodeName = torrentFile.Episode
 	}
 
-	conversion := db.NewConversion(seriesId, torrentFile.ID, conversionName, episodeName, videoPath, logsPath, command.String(), durationSec)
+	conversion := db.NewConversion(torrent.SeriesId, torrent.ID, torrentFile.ID, conversionName, episodeName, outputDir, videoPath, logsPath, command.String(), durationSec)
 	queryResult := s.db.Create(&conversion)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -199,7 +269,7 @@ func (s *ConversionService) prepareConversion(seriesId uint, torrentName string,
 	return &conversion, nil
 }
 
-func (s *ConversionService) StartConversion(seriesID uint, torrentName string, torrentFiles []db.TorrentFile, analysisArr []*analyze.Result) error {
+func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []db.TorrentFile, analysisArr []*analyze.Result) error {
 	for i := range torrentFiles {
 		folder, err := s.fileService.GenFolderPath(s.conversionFolder)
 		if err != nil {
@@ -211,7 +281,7 @@ func (s *ConversionService) StartConversion(seriesID uint, torrentName string, t
 		if err != nil {
 			return err
 		}
-		conversion, err := s.prepareConversion(seriesID, torrentName, torrentFiles[i], videoPath, logsPath, command, analysisArr[i].Video.DurationSec)
+		conversion, err := s.prepareConversion(torrent, torrentFiles[i], folder, videoPath, logsPath, command, analysisArr[i].Video.DurationSec)
 		if err != nil {
 			return err
 		}
@@ -233,4 +303,8 @@ func (s *ConversionService) StopConversion(conversionId uint) error {
 	return nil
 }
 
-var ConversionServiceExport = fx.Options(fx.Provide(NewConversionService))
+func startQueueWorker(service *ConversionService) {
+	go service.queueWorker()
+}
+
+var ConversionServiceExport = fx.Options(fx.Provide(NewConversionService), fx.Invoke(startQueueWorker))

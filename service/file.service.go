@@ -24,13 +24,13 @@ func NewFileService(db *gorm.DB, log *zap.Logger, config *config.Config) (*FileS
 	if err != nil {
 		return nil, err
 	}
-	thumbnailDir := path.Join(workingDir, config.Data.Dir, util.TempSubDir)
-	err = os.MkdirAll(thumbnailDir, os.ModePerm)
+	thumbDir := path.Join(workingDir, config.Data.Dir, util.TempSubDir)
+	err = os.MkdirAll(thumbDir, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
 	return &FileService{
-		db, log, thumbnailDir,
+		db, log, thumbDir,
 	}, nil
 }
 

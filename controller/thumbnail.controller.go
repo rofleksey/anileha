@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func registerThumbnailController(engine *gin.Engine, fileService *service.FileService, thumbnailService *service.ThumbnailService) {
+func registerThumbController(engine *gin.Engine, fileService *service.FileService, thumbService *service.ThumbService) {
 	engine.POST("/thumb", func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
@@ -26,7 +26,7 @@ func registerThumbnailController(engine *gin.Engine, fileService *service.FileSe
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		id, err := thumbnailService.AddThumbnail(file.Filename, tempDst)
+		id, err := thumbService.AddThumb(file.Filename, tempDst)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -35,4 +35,4 @@ func registerThumbnailController(engine *gin.Engine, fileService *service.FileSe
 	})
 }
 
-var ThumbnailControllerExport = fx.Options(fx.Invoke(registerThumbnailController))
+var ThumbControllerExport = fx.Options(fx.Invoke(registerThumbController))

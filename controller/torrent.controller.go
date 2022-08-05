@@ -49,7 +49,12 @@ func mapTorrentsToResponseSlice(torrents []db.Torrent) []dao.TorrentResponseDao 
 	return res
 }
 
-func registerTorrentController(engine *gin.Engine, fileService *service.FileService, torrentService *service.TorrentService) {
+func registerTorrentController(
+	engine *gin.Engine,
+	fileService *service.FileService,
+	torrentService *service.TorrentService,
+	pipelineFacade *service.PipelineFacade,
+) {
 	engine.GET("/torrent", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
 		if err != nil {
@@ -141,10 +146,14 @@ func registerTorrentController(engine *gin.Engine, fileService *service.FileServ
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err = torrentService.DeleteTorrentById(uint(id))
+		resultChan := make(chan error, 1)
+		pipelineFacade.Channel <- service.PipelineMessageDeleteTorrent{
+			TorrentId: uint(id),
+			Result:    resultChan,
+		}
+		err = <-resultChan
 		if err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.String(http.StatusOK, "OK")
