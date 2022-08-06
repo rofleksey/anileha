@@ -37,6 +37,7 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 		TotalDownloadLength: torrent.TotalDownloadLength,
 		Progress:            torrent.Progress,
 		BytesRead:           torrent.BytesRead,
+		Auto:                torrent.Auto,
 		Files:               mapTorrentFilesToResponse(torrent.Files),
 	}
 }
@@ -173,6 +174,11 @@ func registerTorrentController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting seriesId"})
 			return
 		}
+		auto := false
+		autoStr := form.Value["auto"]
+		if autoStr != nil && len(autoStr) != 1 {
+			auto, _ = strconv.ParseBool(autoStr[0])
+		}
 		seriesId, err := strconv.ParseUint(seriesIdStrArr[0], 10, 64)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse seriesId"})
@@ -198,11 +204,26 @@ func registerTorrentController(
 				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			_, err = torrentService.AddTorrentFromFile(uint(seriesId), tempDst)
+			id, err := torrentService.AddTorrentFromFile(uint(seriesId), tempDst, auto)
 			if err != nil {
 				c.Error(err)
 				c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
+			}
+			if auto {
+				torrent, err := torrentService.GetTorrentById(id)
+				if err != nil {
+					c.Error(err)
+					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+				allIndices, _ := util.ParseFileIndices("0-9999")
+				err = torrentService.StartTorrent(*torrent, allIndices)
+				if err != nil {
+					c.Error(err)
+					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
 			}
 		}
 		c.String(http.StatusOK, "OK")

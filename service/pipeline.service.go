@@ -1,7 +1,9 @@
 package service
 
 import (
+	"anileha/analyze"
 	"anileha/config"
+	"anileha/db"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -21,6 +23,10 @@ type PipelineMessageDeleteTorrent struct {
 	Result    chan error
 }
 
+type PipelineMessageTorrentFinished struct {
+	TorrentId uint
+}
+
 type PipelineService struct {
 	db                *gorm.DB
 	log               *zap.Logger
@@ -30,6 +36,7 @@ type PipelineService struct {
 	conversionService *ConversionService
 	episodeService    *EpisodeService
 	thumbService      *ThumbService
+	analyzer          *analyze.ProbeAnalyzer
 }
 
 func NewPipelineService(
@@ -43,6 +50,7 @@ func NewPipelineService(
 	conversionService *ConversionService,
 	episodeService *EpisodeService,
 	thumbService *ThumbService,
+	analyzer *analyze.ProbeAnalyzer,
 ) *PipelineService {
 	service := PipelineService{
 		db:                database,
@@ -53,6 +61,7 @@ func NewPipelineService(
 		conversionService: conversionService,
 		episodeService:    episodeService,
 		thumbService:      thumbService,
+		analyzer:          analyzer,
 	}
 	return &service
 }
@@ -71,6 +80,8 @@ func (s *PipelineService) messagesWorker(facade *PipelineFacade) {
 			go s.pipelineDeleteSeries(casted)
 		case PipelineMessageDeleteTorrent:
 			go s.pipelineDeleteTorrent(casted)
+		case PipelineMessageTorrentFinished:
+			go s.pipelineTorrentFinished(casted)
 		default:
 			s.log.Error("invalid message type received")
 		}
@@ -111,7 +122,7 @@ func (s *PipelineService) pipelineDeleteSeries(msg PipelineMessageDeleteSeries) 
 	}
 	torrents, err := s.torrentService.GetTorrentsBySeriesId(msg.SeriesId)
 	if err != nil {
-		s.log.Warn("failed to delete torrents for series", zap.Uint("seriesId", msg.SeriesId))
+		s.log.Warn("failed to delete torrents for series", zap.Uint("seriesId", msg.SeriesId), zap.Error(err))
 		msg.Result <- err
 		return
 	} else {
@@ -157,6 +168,42 @@ func (s *PipelineService) pipelineDeleteTorrent(msg PipelineMessageDeleteTorrent
 	}
 	msg.Result <- nil
 	s.log.Info("delete torrent pipeline success", zap.Uint("torrentId", msg.TorrentId))
+}
+
+func (s *PipelineService) pipelineTorrentFinished(msg PipelineMessageTorrentFinished) {
+	s.log.Info("torrent finished pipeline started", zap.Uint("torrentId", msg.TorrentId))
+	torrent, err := s.torrentService.GetTorrentById(msg.TorrentId)
+	if err != nil {
+		s.log.Warn("torrent finished pipeline failed", zap.Uint("torrentId", msg.TorrentId), zap.Error(err))
+		return
+	}
+	torrentFiles := make([]db.TorrentFile, 0, len(torrent.Files))
+	analysisArr := make([]*analyze.Result, 0, len(torrent.Files))
+	for _, file := range torrent.Files {
+		if file.Selected {
+			if file.Status != db.TORRENT_FILE_READY {
+				continue
+			}
+			if file.ReadyPath == nil {
+				continue
+			}
+			analysis, err := s.analyzer.Analyze(*file.ReadyPath, true)
+			if err != nil {
+				s.log.Warn("analysis error", zap.Uint("torrentId", msg.TorrentId), zap.Uint("fileId", file.ID), zap.Error(err))
+				continue
+			}
+			torrentFiles = append(torrentFiles, file)
+			analysisArr = append(analysisArr, analysis)
+		}
+	}
+	if len(torrentFiles) > 0 {
+		err = s.conversionService.StartConversion(*torrent, torrentFiles, analysisArr)
+		if err != nil {
+			s.log.Warn("torrent finished pipeline failed", zap.Uint("torrentId", msg.TorrentId), zap.Error(err))
+			return
+		}
+	}
+	s.log.Info("torrent finished pipeline success", zap.Uint("torrentId", msg.TorrentId))
 }
 
 func startMessagesWorker(service *PipelineService, facade *PipelineFacade) {

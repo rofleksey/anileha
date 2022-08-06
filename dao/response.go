@@ -22,6 +22,7 @@ type TorrentResponseDao struct {
 	TotalDownloadLength uint                     `json:"totalDownloadLength"`
 	Progress            util.Progress            `json:"progress"`
 	BytesRead           uint                     `json:"bytesRead"`
+	Auto                bool                     `json:"auto"`
 	Files               []TorrentFileResponseDao `json:"files"`
 }
 

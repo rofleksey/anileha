@@ -54,13 +54,6 @@ const (
 	TORRENT_READY       TorrentStatus = "ready"
 )
 
-type TorrentInfoType string
-
-const (
-	TORRENT_INFO_FILE   TorrentInfoType = "file"
-	TORRENT_INFO_MAGNET TorrentInfoType = "magnet"
-)
-
 // Torrent Represents info about torrent (e.g. name, files)
 type Torrent struct {
 	ID                  uint `gorm:"primarykey"`
@@ -74,15 +67,17 @@ type Torrent struct {
 	TotalDownloadLength uint // TotalDownloadLength total size of SELECTED torrent files in bytes
 	BytesRead           uint
 	Status              TorrentStatus
+	Auto                bool
 	Source              *string       // Source link to torrent url in case it was added automatically via query
 	Files               []TorrentFile `gorm:"foreignKey:TorrentId"`
 }
 
-func NewTorrent(seriesId uint, filePath string) Torrent {
+func NewTorrent(seriesId uint, filePath string, autoConvert bool) Torrent {
 	return Torrent{
 		SeriesId: seriesId,
 		Status:   TORRENT_CREATING,
 		FilePath: filePath,
+		Auto:     autoConvert,
 	}
 }
 

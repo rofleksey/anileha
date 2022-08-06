@@ -26,6 +26,7 @@ type TorrentService struct {
 	cTorrentMap     sync.Map // cTorrentMap Stores torrentLib.Client torrent entries [uint -> *torrentLib.Torrent]
 	fileService     *FileService
 	log             *zap.Logger
+	pipelineFacade  *PipelineFacade
 	infoFolder      string
 	downloadsFolder string
 	readyFolder     string
@@ -63,6 +64,7 @@ func NewTorrentService(
 	log *zap.Logger,
 	config *config.Config,
 	fileService *FileService,
+	pipelineFacade *PipelineFacade,
 ) (*TorrentService, error) {
 	if err := database.Model(&db.Torrent{}).Where("status = ? or status = ?", db.TORRENT_DOWNLOADING, db.TORRENT_CREATING).Updates(db.Torrent{Status: db.TORRENT_ERROR}).Error; err != nil {
 		return nil, err
@@ -95,6 +97,7 @@ func NewTorrentService(
 		client:          client,
 		fileService:     fileService,
 		log:             log,
+		pipelineFacade:  pipelineFacade,
 		infoFolder:      infoFolder,
 		downloadsFolder: downloadsFolder,
 		readyFolder:     readyFolder,
@@ -306,7 +309,11 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 		s.log.Error("transaction on torrent completion failed", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
 		return
 	}
-
+	if torrent.Auto {
+		s.pipelineFacade.Channel <- PipelineMessageTorrentFinished{
+			TorrentId: id,
+		}
+	}
 	s.log.Info("torrent finished", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 }
 
@@ -438,7 +445,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	return nil
 }
 
-func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) (uint, error) {
+func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, auto bool) (uint, error) {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
 		return 0, err
@@ -447,7 +454,7 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) (uin
 	if err != nil {
 		return 0, err
 	}
-	torrent := db.NewTorrent(seriesId, newPath)
+	torrent := db.NewTorrent(seriesId, newPath, auto)
 	queryResult := s.db.Create(&torrent)
 	if queryResult.Error != nil {
 		deleteErr := os.Remove(newPath)

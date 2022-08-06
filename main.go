@@ -21,6 +21,7 @@ import (
 // TODO: MAKE ERRORS MORE INFORMATIVE :/
 // TODO: rate limit
 // TODO: improve logging
+// TODO: delete ready torrent directory
 
 func main() {
 	fx.New(

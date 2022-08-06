@@ -55,7 +55,7 @@ func Substr(input string, start int, end int) string {
 func ParseFileIndices(str string) (map[uint]struct{}, error) {
 	// This is the closest thing to Set in golang, struct{} is a Unit type
 	// map[uint]bool uses unnecessary memory :)
-	result := make(map[uint]struct{})
+	result := make(map[uint]struct{}, 32)
 	strNoWhitespace := RemoveWhitespace(str)
 	items := strings.Split(strNoWhitespace, ",")
 	for _, item := range items {

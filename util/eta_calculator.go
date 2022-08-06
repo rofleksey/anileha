@@ -8,6 +8,7 @@ import (
 const MinTimeDiffMs float64 = 1
 const SmoothingFactor float64 = 0.2
 
+// Progress decided not to use floats here cause their serialization is error-prone in Golang
 type Progress struct {
 	Progress int `json:"progress"`
 	Elapsed  int `json:"elapsed"`
@@ -105,7 +106,7 @@ func (c *EtaCalculator) getProgressImpl() float64 {
 		return 0
 	}
 	if c.isFinished {
-		return 1
+		return 100
 	}
 	return (c.lastValue - c.startValue) / (c.endValue - c.startValue)
 }
