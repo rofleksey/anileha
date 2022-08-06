@@ -114,7 +114,7 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	return size, nil
 }
 
-func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (uint64, error) {
+func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (int, error) {
 	p.log.Info("getting video duration in seconds", zap.String("inputFile", inputFile))
 	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", inputFile)
 	outputBytes, err := cmd.CombinedOutput()
@@ -128,7 +128,7 @@ func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (uint64, error) {
 		p.log.Error("failed to get video duration", zap.String("inputFile", inputFile), zap.Error(err))
 		return 0, err
 	}
-	return uint64(number), nil
+	return int(number), nil
 }
 
 // ExtractSubText gets sub stream text

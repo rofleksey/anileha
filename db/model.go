@@ -96,20 +96,20 @@ type TorrentFile struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	TorrentId    uint
-	TorrentIndex uint    // TorrentIndex file index according to .torrent file system
+	TorrentIndex int     // TorrentIndex file index according to .torrent file system
 	TorrentPath  string  // TorrentPath file path according to .torrent file system
 	ReadyPath    *string // ReadyPath file location after successful download
 	Length       uint    // Length in bytes
 	Season       string
 	Episode      string
-	EpisodeIndex uint // EpisodeIndex file index according season/episode ordering
+	EpisodeIndex int // EpisodeIndex file index according season/episode ordering
 	Selected     bool
 	Status       TorrentFileStatus
 }
 
 func NewTorrentFile(
 	torrentId uint,
-	torrentIndex uint,
+	torrentIndex int,
 	torrentPath string,
 	selected bool,
 	len uint,
@@ -150,7 +150,7 @@ type Conversion struct {
 	VideoPath        string
 	LogPath          string
 	Command          string
-	VideoDurationSec uint64
+	VideoDurationSec int
 	Status           ConversionStatus
 }
 
@@ -164,7 +164,7 @@ func NewConversion(
 	videoPath string,
 	logPath string,
 	command string,
-	videoDurationSec uint64,
+	videoDurationSec int,
 ) Conversion {
 	return Conversion{
 		SeriesId:         seriesId,
@@ -192,12 +192,12 @@ type Episode struct {
 	ThumbID      *uint
 	Thumb        *Thumb `gorm:"references:ID"`
 	Length       uint64 // Length in bytes
-	DurationSec  uint64 // Duration in seconds
+	DurationSec  int    // Duration in seconds
 	Path         string
 	Url          string
 }
 
-func NewEpisode(seriesId uint, conversionId uint, name string, thumbId *uint, length uint64, durationSec uint64, path string, url string) Episode {
+func NewEpisode(seriesId uint, conversionId uint, name string, thumbId *uint, length uint64, durationSec int, path string, url string) Episode {
 	return Episode{
 		SeriesId:     seriesId,
 		ConversionId: conversionId,

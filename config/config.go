@@ -62,7 +62,7 @@ type Config struct {
 	Conversion ConversionConfig `validate:"dive,required" yaml:"conversion"`
 }
 
-func loadConfig() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	config := Config{}
 
 	configBytes, err := ioutil.ReadFile("config.yaml")
@@ -84,4 +84,4 @@ func loadConfig() (*Config, error) {
 	return &config, nil
 }
 
-var Export = fx.Options(fx.Provide(loadConfig))
+var Export = fx.Options(fx.Provide(LoadConfig))

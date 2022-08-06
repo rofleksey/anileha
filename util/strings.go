@@ -51,11 +51,36 @@ func Substr(input string, start int, end int) string {
 	return string(asRunes[start:end])
 }
 
+type FileIndices struct {
+	Values   map[int]struct{}
+	Infinite bool
+}
+
+func (f *FileIndices) Contains(pos int) bool {
+	if f.Infinite {
+		return true
+	}
+	_, exists := f.Values[pos]
+	return exists
+}
+
+func (f *FileIndices) Length() int {
+	if f.Infinite {
+		return 0
+	}
+	return len(f.Values)
+}
+
 // ParseFileIndices parses strings like '1,2-4,5' into a set of uints
-func ParseFileIndices(str string) (map[uint]struct{}, error) {
+func ParseFileIndices(str string) (FileIndices, error) {
+	if str == "*" {
+		return FileIndices{
+			Infinite: true,
+		}, nil
+	}
 	// This is the closest thing to Set in golang, struct{} is a Unit type
 	// map[uint]bool uses unnecessary memory :)
-	result := make(map[uint]struct{}, 32)
+	result := make(map[int]struct{}, 32)
 	strNoWhitespace := RemoveWhitespace(str)
 	items := strings.Split(strNoWhitespace, ",")
 	for _, item := range items {
@@ -63,34 +88,36 @@ func ParseFileIndices(str string) (map[uint]struct{}, error) {
 		switch len(dashSplit) {
 		case 1:
 			if len(dashSplit[0]) == 0 {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
 			num, err := strconv.ParseUint(dashSplit[0], 10, 64)
 			if err != nil {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
-			result[uint(num)] = struct{}{}
+			result[int(num)] = struct{}{}
 		case 2:
 			if len(dashSplit[0]) == 0 || len(dashSplit[1]) == 0 {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
 			start, err := strconv.ParseUint(dashSplit[0], 10, 64)
 			if err != nil {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
 			end, err := strconv.ParseUint(dashSplit[1], 10, 64)
 			if err != nil {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
 			if end < start {
-				return nil, ErrInvalidIndicesString
+				return FileIndices{}, ErrInvalidIndicesString
 			}
 			for pointer := start; pointer <= end; pointer++ {
-				result[uint(pointer)] = struct{}{}
+				result[int(pointer)] = struct{}{}
 			}
 		default:
-			return nil, ErrInvalidIndicesString
+			return FileIndices{}, ErrInvalidIndicesString
 		}
 	}
-	return result, nil
+	return FileIndices{
+		Values: result,
+	}, nil
 }

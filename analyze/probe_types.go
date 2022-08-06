@@ -52,7 +52,7 @@ type VideoStream struct {
 	ResultStream
 	Width       int
 	Height      int
-	DurationSec uint64
+	DurationSec int
 }
 
 type SubStream struct {

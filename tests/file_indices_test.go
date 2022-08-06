@@ -11,16 +11,34 @@ func TestFileIndicesCorrect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := make(map[uint]struct{}, 10)
-	expected[0] = struct{}{}
-	expected[1] = struct{}{}
-	expected[2] = struct{}{}
-	expected[3] = struct{}{}
-	expected[4] = struct{}{}
-	expected[6] = struct{}{}
-	expected[8] = struct{}{}
-	expected[9] = struct{}{}
+	expectedValues := make(map[int]struct{}, 10)
+	expectedValues[0] = struct{}{}
+	expectedValues[1] = struct{}{}
+	expectedValues[2] = struct{}{}
+	expectedValues[3] = struct{}{}
+	expectedValues[4] = struct{}{}
+	expectedValues[6] = struct{}{}
+	expectedValues[8] = struct{}{}
+	expectedValues[9] = struct{}{}
+	expected := util.FileIndices{
+		Values: expectedValues,
+	}
 	assert.Equal(t, result, expected)
+}
+
+func TestFileIndicesInfinite(t *testing.T) {
+	result, err := util.ParseFileIndices("*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := util.FileIndices{
+		Infinite: true,
+	}
+	assert.Equal(t, result, expected)
+	assert.Equal(t, result.Contains(0), true)
+	assert.Equal(t, result.Contains(10), true)
+	assert.Equal(t, result.Contains(100), true)
+	assert.Equal(t, result.Contains(1000), true)
 }
 
 func TestFileIndicesIncorrect(t *testing.T) {

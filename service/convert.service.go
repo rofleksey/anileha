@@ -233,7 +233,7 @@ func (s *ConversionService) prepareConversion(
 	videoPath string,
 	logsPath string,
 	command *ffmpeg.Command,
-	durationSec uint64,
+	durationSec int,
 ) (*db.Conversion, error) {
 	var conversionName string
 	if torrentFile.Season != "" {

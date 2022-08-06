@@ -376,7 +376,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	filenames := make([]string, 0, len(info.Files))
 	for i, torrentFile := range cTorrent.Files() {
-		file := db.NewTorrentFile(torrent.ID, uint(i), torrentFile.DisplayPath(), false, uint(torrentFile.Length()))
+		file := db.NewTorrentFile(torrent.ID, i, torrentFile.DisplayPath(), false, uint(torrentFile.Length()))
 		files = append(files, file)
 		filenames = append(filenames, file.TorrentPath)
 	}
@@ -410,7 +410,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 		return files[i].Season < files[j].Season
 	})
 	for i := range files {
-		files[i].EpisodeIndex = uint(i)
+		files[i].EpisodeIndex = i
 	}
 
 	totalLength := uint(0)
@@ -478,7 +478,7 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, auto
 	return torrent.ID, nil
 }
 
-func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices map[uint]struct{}) error {
+func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileIndices) error {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if exists {
 		cTorrent, castOk := mapEntry.(*torrentLib.Torrent)
@@ -503,7 +503,7 @@ func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices map[uint]s
 	unselectedFiles := make([]uint, 0, len(torrent.Files))
 	selectedFiles := make([]uint, 0, len(torrent.Files))
 	for i := range torrent.Files {
-		if _, isSelected := fileIndices[torrent.Files[i].EpisodeIndex]; isSelected {
+		if fileIndices.Contains(torrent.Files[i].EpisodeIndex) {
 			cFile := cTorrent.Files()[torrent.Files[i].TorrentIndex]
 			cFile.SetPriority(torrentLib.PiecePriorityNormal)
 			downloadLength += uint(cFile.Length())

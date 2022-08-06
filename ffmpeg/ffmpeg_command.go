@@ -23,8 +23,8 @@ type Command struct {
 	logsPath *string
 
 	// immutable
-	timeRegex       *regexp.Regexp
-	videoDuratioSec uint64
+	timeRegex        *regexp.Regexp
+	videoDurationSec int
 }
 
 type CommandSignalEnd struct {
@@ -79,14 +79,14 @@ func (o *option) getStrings() []string {
 	return []string{o.key}
 }
 
-func NewCommand(inputFile string, videoDurationSec uint64, outputFile string) *Command {
+func NewCommand(inputFile string, videoDurationSec int, outputFile string) *Command {
 	// frame=  524 fps= 79 q=-1.0 Lsize=    8014kB time=00:00:22.66 bitrate=2896.6kbits/s speed=3.43x
 	// need to parse time here
 	timeRegex := regexp.MustCompile("time=(\\d+):(\\d+):(\\d+).(\\d+)")
 	command := Command{
-		opts:            make([]option, 0, 32),
-		timeRegex:       timeRegex,
-		videoDuratioSec: videoDurationSec,
+		opts:             make([]option, 0, 32),
+		timeRegex:        timeRegex,
+		videoDurationSec: videoDurationSec,
 	}
 	command.AddSingle("-hide_banner", OptionBase)
 	command.AddSingle("-y", OptionBase)
@@ -155,8 +155,8 @@ func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan
 		return 0, nil, nil
 	})
 	var etaCalculator *util.EtaCalculator
-	if c.videoDuratioSec != 0 {
-		etaCalculator = util.NewEtaCalculator(0, float64(c.videoDuratioSec))
+	if c.videoDurationSec != 0 {
+		etaCalculator = util.NewEtaCalculator(0, float64(c.videoDurationSec))
 	} else {
 		etaCalculator = util.NewUndefinedEtaCalculator()
 	}

@@ -2,6 +2,7 @@ package tests
 
 import (
 	"anileha/analyze"
+	"anileha/config"
 	"github.com/go-playground/assert/v2"
 	"go.uber.org/zap"
 	"testing"
@@ -12,8 +13,15 @@ func TestAnalyzeFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	textAnalyzer := analyze.NewTextAnalyzer(logger)
-	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, logger)
+	c, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	textAnalyzer, err := analyze.NewTextAnalyzer(c, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, c, logger)
 	analysis, err := probeAnalyzer.Analyze("input.mkv", true)
 	if err != nil {
 		t.Fatal(err)
@@ -27,8 +35,15 @@ func TestAnalyzeSubs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	textAnalyzer := analyze.NewTextAnalyzer(logger)
-	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, logger)
+	c, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	textAnalyzer, err := analyze.NewTextAnalyzer(c, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, c, logger)
 	text, err := probeAnalyzer.ExtractSubText("input.mkv", 1)
 	if err != nil {
 		t.Fatal(err)
@@ -41,8 +56,15 @@ func TestVideoDuration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	textAnalyzer := analyze.NewTextAnalyzer(logger)
-	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, logger)
+	c, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	textAnalyzer, err := analyze.NewTextAnalyzer(c, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, c, logger)
 	duration, err := probeAnalyzer.GetVideoDurationSec("input.mkv")
 	if err != nil {
 		t.Fatal(err)
@@ -56,8 +78,15 @@ func TestAnalyzeStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	textAnalyzer := analyze.NewTextAnalyzer(logger)
-	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, logger)
+	c, err := config.LoadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	textAnalyzer, err := analyze.NewTextAnalyzer(c, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeAnalyzer := analyze.NewProbeAnalyzer(textAnalyzer, c, logger)
 	size, err := probeAnalyzer.GetStreamSize("input.mkv", analyze.StreamAudio, 0)
 	if err != nil {
 		t.Fatal(err)

@@ -32,7 +32,7 @@ type TorrentFileResponseDao struct {
 	Selected     bool                 `json:"selected"`
 	Length       uint                 `json:"length"`
 	Episode      string               `json:"episode"`
-	EpisodeIndex uint                 `json:"episodeIndex"`
+	EpisodeIndex int                  `json:"episodeIndex"`
 	Season       string               `json:"season"`
 }
 
@@ -54,6 +54,6 @@ type EpisodeResponseDao struct {
 	Name         string  `json:"name"`
 	Thumb        *string `json:"thumb"`
 	Length       uint64  `json:"length"`
-	DurationSec  uint64  `json:"durationSec"`
+	DurationSec  int     `json:"durationSec"`
 	Url          string  `json:"link"`
 }

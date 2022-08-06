@@ -103,10 +103,10 @@ func registerConvertController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		torrentFiles := make([]db.TorrentFile, 0, len(fileIndices))
-		analysisArr := make([]*analyze.Result, 0, len(fileIndices))
+		torrentFiles := make([]db.TorrentFile, 0, fileIndices.Length())
+		analysisArr := make([]*analyze.Result, 0, fileIndices.Length())
 		for _, file := range torrent.Files {
-			if _, isSelected := fileIndices[file.EpisodeIndex]; isSelected {
+			if fileIndices.Contains(file.EpisodeIndex) {
 				if file.Status != db.TORRENT_FILE_READY {
 					c.Error(util.ErrFileIsNotReadyToBeConverted)
 					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})

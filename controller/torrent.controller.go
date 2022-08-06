@@ -59,6 +59,7 @@ func registerTorrentController(
 	torrentGroup := engine.Group("/admin/torrent")
 	torrentGroup.Use(AdminRights)
 
+	// TODO: don't show files field here, as it's not preloaded
 	torrentGroup.GET("/", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
 		if err != nil {
@@ -176,7 +177,7 @@ func registerTorrentController(
 		}
 		auto := false
 		autoStr := form.Value["auto"]
-		if autoStr != nil && len(autoStr) != 1 {
+		if autoStr != nil && len(autoStr) == 1 {
 			auto, _ = strconv.ParseBool(autoStr[0])
 		}
 		seriesId, err := strconv.ParseUint(seriesIdStrArr[0], 10, 64)
@@ -217,7 +218,7 @@ func registerTorrentController(
 					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 					return
 				}
-				allIndices, _ := util.ParseFileIndices("0-9999")
+				allIndices, _ := util.ParseFileIndices("*")
 				err = torrentService.StartTorrent(*torrent, allIndices)
 				if err != nil {
 					c.Error(err)

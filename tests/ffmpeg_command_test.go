@@ -1,8 +1,8 @@
 package tests
 
 import (
-	"anileha/db"
 	"anileha/ffmpeg"
+	"anileha/util"
 	"go.uber.org/zap"
 	"testing"
 )
@@ -22,7 +22,7 @@ func TestFfmpegSimple(t *testing.T) {
 		switch casted := msg.(type) {
 		case string:
 			t.Log(casted)
-		case db.Progress:
+		case util.Progress:
 			t.Log(casted)
 		case error:
 			t.Fatal("Conversion failed", casted)
@@ -47,7 +47,7 @@ func TestFfmpegInterrupt(t *testing.T) {
 		switch casted := msg.(type) {
 		case string:
 			t.Log(casted)
-		case db.Progress:
+		case util.Progress:
 			t.Log(casted)
 		case error:
 			if casted.Error() == "signal: killed" {
@@ -80,7 +80,7 @@ func TestFfmpegInvalidFile(t *testing.T) {
 			if casted == "lmao.mkv: No such file or directory" {
 				okay = true
 			}
-		case db.Progress:
+		case util.Progress:
 			t.Log(casted)
 		case error:
 			t.Log("Conversion failed", casted)
