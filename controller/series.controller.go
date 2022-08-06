@@ -36,14 +36,7 @@ func registerSeriesController(
 	seriesService *service.SeriesService,
 	pipelineFacade *service.PipelineFacade,
 ) {
-	engine.GET("/series", func(c *gin.Context) {
-		seriesSlice, err := seriesService.GetAllSeries()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
-	})
+	// TODO: make this GET method
 	engine.POST("/series/search", func(c *gin.Context) {
 		var req dao.QueryRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -71,7 +64,19 @@ func registerSeriesController(
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponse(*series))
 	})
-	engine.DELETE("/series/:id", func(c *gin.Context) {
+
+	adminSeriesGroup := engine.Group("/admin/series")
+	adminSeriesGroup.Use(AdminRights)
+
+	adminSeriesGroup.GET("/", func(c *gin.Context) {
+		seriesSlice, err := seriesService.GetAllSeries()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
+	})
+	adminSeriesGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -90,7 +95,7 @@ func registerSeriesController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.POST("/series", func(c *gin.Context) {
+	adminSeriesGroup.POST("/", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.Error(err)

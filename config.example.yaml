@@ -6,8 +6,24 @@ db:
   password: postgres
 rest:
   port: 3000
+  baseUrl: http://127.0.0.1:3000
 data:
   dir: data
+user:
+  salt: salt
+  cookieHashKey: hash_key
+  cookieEncryptKey: encrypt_key
+admin:
+  username: admin
+  password: admin
+mail:
+  server: your.smtp.server
+  port: 1337
+  from: your@email.com
+  username: user
+  password: pass
+  subject: AniLeha registration
+  registerTemplatePath: register.tmpl
 conversion:
   parallelism: 1
   prefAudioLang: jpn

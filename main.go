@@ -19,7 +19,8 @@ import (
 // FEATURE: support mp4 torrents (?)
 
 // TODO: MAKE ERRORS MORE INFORMATIVE :/
-// TODO: don't print season name in episodes if this is a single season torrent
+// TODO: rate limit
+// TODO: improve logging
 
 func main() {
 	fx.New(
@@ -38,6 +39,7 @@ func main() {
 		service.ConversionServiceExport,
 		service.EpisodeServiceExport,
 		service.PipelineServiceExport,
+		service.UserServiceExport,
 
 		// rest controllers
 		controller.HealthControllerExport,
@@ -47,6 +49,7 @@ func main() {
 		controller.ConvertControllerExport,
 		controller.ProbeControllerExport,
 		controller.EpisodeControllerExport,
+		controller.UserControllerExport,
 
 		// misc
 		analyze.TextAnalyzerExport,

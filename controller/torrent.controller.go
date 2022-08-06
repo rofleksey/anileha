@@ -55,7 +55,10 @@ func registerTorrentController(
 	torrentService *service.TorrentService,
 	pipelineFacade *service.PipelineFacade,
 ) {
-	engine.GET("/torrent", func(c *gin.Context) {
+	torrentGroup := engine.Group("/admin/torrent")
+	torrentGroup.Use(AdminRights)
+
+	torrentGroup.GET("/", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
 		if err != nil {
 			c.Error(err)
@@ -64,7 +67,7 @@ func registerTorrentController(
 		}
 		c.JSON(http.StatusOK, mapTorrentsToResponseSlice(torrentsSlice))
 	})
-	engine.GET("/torrent/:id", func(c *gin.Context) {
+	torrentGroup.GET("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -80,7 +83,7 @@ func registerTorrentController(
 		}
 		c.JSON(http.StatusOK, mapTorrentToResponse(*torrent))
 	})
-	engine.POST("/torrent/start", func(c *gin.Context) {
+	torrentGroup.POST("/start", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndicesRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
@@ -112,7 +115,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.POST("/torrent/stop", func(c *gin.Context) {
+	torrentGroup.POST("/stop", func(c *gin.Context) {
 		var req dao.TorrentIdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			_ = c.Error(err)
@@ -138,7 +141,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.DELETE("/torrent/:id", func(c *gin.Context) {
+	torrentGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -158,7 +161,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.POST("/torrent", func(c *gin.Context) {
+	torrentGroup.POST("/", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.Error(err)

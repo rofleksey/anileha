@@ -40,7 +40,9 @@ func registerConvertController(
 	convertService *service.ConversionService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
-	engine.GET("/convert/:id", func(c *gin.Context) {
+	convertGroup := engine.Group("/admin/convert")
+	convertGroup.Use(AdminRights)
+	convertGroup.GET("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -54,7 +56,7 @@ func registerConvertController(
 		}
 		c.JSON(http.StatusOK, mapConversionToResponse(*conversion))
 	})
-	engine.GET("/convert/:id/logs", func(c *gin.Context) {
+	convertGroup.GET("/:id/logs", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -68,7 +70,7 @@ func registerConvertController(
 		}
 		c.String(http.StatusOK, *logs)
 	})
-	engine.GET("/convert/series/:id", func(c *gin.Context) {
+	convertGroup.GET("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -82,7 +84,7 @@ func registerConvertController(
 		}
 		c.JSON(http.StatusOK, mapConversionsToResponseSlice(conversions))
 	})
-	engine.POST("/convert/start", func(c *gin.Context) {
+	convertGroup.POST("/start", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndicesRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
@@ -133,7 +135,7 @@ func registerConvertController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	engine.POST("/convert/stop", func(c *gin.Context) {
+	convertGroup.POST("/stop", func(c *gin.Context) {
 		var req dao.ConvertIdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)

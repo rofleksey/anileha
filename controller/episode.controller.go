@@ -52,7 +52,10 @@ func registerEpisodeController(
 		}
 		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
 	})
-	engine.DELETE("/episodes/:id", func(c *gin.Context) {
+
+	episodeGroup := engine.Group("/admin/episodes")
+	episodeGroup.Use(AdminRights)
+	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)
 		if err != nil {

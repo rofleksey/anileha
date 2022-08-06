@@ -550,19 +550,12 @@ func (s *TorrentService) StopTorrent(torrent db.Torrent) error {
 	cTorrent.Drop()
 	<-cTorrent.Closed()
 	// TODO: separate db transactions from services
+	// TODO: do more transactions
 	err := s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TORRENT_IDLE, "total_download_length": downloadLength}).Error
 	if err != nil {
 		return err
 	}
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		for _, file := range torrent.Files {
-			err = s.db.Model(&db.TorrentFile{}).Where("id = ?", file.ID).Updates(map[string]interface{}{"status": db.TORRENT_FILE_IDLE, "selected": false}).Error
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	err = s.db.Model(&db.TorrentFile{}).Where("torrent_id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TORRENT_FILE_IDLE, "selected": false}).Error
 	if err != nil {
 		return err
 	}

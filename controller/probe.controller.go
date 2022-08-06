@@ -19,7 +19,9 @@ func registerProbeController(
 	torrentService *service.TorrentService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
-	engine.POST("/probe", func(c *gin.Context) {
+	probeGroup := engine.Group("/admin/probe")
+	probeGroup.Use(AdminRights)
+	probeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
@@ -53,7 +55,10 @@ func registerProbeController(
 		}
 		c.JSON(http.StatusOK, probe)
 	})
-	engine.POST("/analyze", func(c *gin.Context) {
+
+	analyzeGroup := engine.Group("/admin/analyze")
+	analyzeGroup.Use(AdminRights)
+	analyzeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)

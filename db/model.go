@@ -214,3 +214,21 @@ func NewEpisode(seriesId uint, conversionId uint, name string, thumbId *uint, le
 		Url:          url,
 	}
 }
+
+type User struct {
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Login     string `gorm:"uniqueIndex"`
+	Hash      string
+	Email     string `gorm:"uniqueIndex"`
+	Admin     bool
+}
+
+func NewUser(login string, hash string, email string) User {
+	return User{
+		Login: login,
+		Hash:  hash,
+		Email: email,
+	}
+}

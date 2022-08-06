@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// TODO: ordering, indices, cascading
+// TODO: ordering, indices
 
 func initDB(config *config.Config) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=disable",
@@ -16,7 +16,7 @@ func initDB(config *config.Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.AutoMigrate(&Series{}, &Thumb{}, &Torrent{}, &TorrentFile{}, &Conversion{}, &Episode{})
+	err = db.AutoMigrate(&Series{}, &Thumb{}, &Torrent{}, &TorrentFile{}, &Conversion{}, &Episode{}, &User{})
 	if err != nil {
 		return nil, err
 	}

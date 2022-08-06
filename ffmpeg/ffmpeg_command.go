@@ -181,14 +181,6 @@ func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan
 	close(outputChan)
 }
 
-//func (c *Command) completionWatcher(cancelFunc context.CancelFunc, cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel) {
-//	err := cmd.Wait()
-//	_ = reader.Close()
-//	cancelFunc()
-//	finishChan <- err
-//	close(finishChan)
-//}
-
 func (c *Command) prepareArgs(withExecutable bool) []string {
 	sort.SliceStable(c.opts, func(i, j int) bool {
 		return c.opts[i].priority < c.opts[j].priority
