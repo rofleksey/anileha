@@ -33,21 +33,12 @@ type UserService struct {
 	salt             string
 }
 
-func createAdminUser(database *gorm.DB, config *config.Config) {
-	username := config.Admin.Username
-	hash, _ := util.HashPassword(config.Admin.Password, config.User.Salt)
-	user := db.NewUser(username, hash, "")
-	user.Admin = true
-	database.Create(&user)
-}
-
 func NewUserService(
 	lifecycle fx.Lifecycle,
 	database *gorm.DB,
 	log *zap.Logger,
 	config *config.Config,
 ) (*UserService, error) {
-	createAdminUser(database, config)
 	registerTemplateBytes, err := ioutil.ReadFile(config.Mail.RegisterTemplatePath)
 	if err != nil {
 		return nil, err
@@ -95,10 +86,10 @@ func (s *UserService) SendConfirmEmail(user, email, link string) error {
 }
 
 func (s *UserService) confirmWorker(confirmId string, user db.User, channel chan struct{}) {
+	defer s.registerMap.Delete(confirmId)
 	timer := time.NewTimer(1 * time.Hour)
 	select {
 	case <-timer.C:
-		s.registerMap.Delete(confirmId)
 		return
 	case <-channel:
 		if err := s.db.Create(&user).Error; err != nil {
@@ -167,4 +158,40 @@ func (s *UserService) GetUserByLogin(login string) (*db.User, error) {
 	return &user, nil
 }
 
-var UserServiceExport = fx.Options(fx.Provide(NewUserService))
+func (s *UserService) GetUserByEmail(email string) (*db.User, error) {
+	var user db.User
+	queryResult := s.db.First(&user, "email = ?", email)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	if queryResult.RowsAffected == 0 {
+		return nil, util.ErrNotFound
+	}
+	return &user, nil
+}
+
+func (s *UserService) CheckUserExists(login string, email string) error {
+	_, err := s.GetUserByLogin(login)
+	if err != nil {
+		return util.ErrUserWithThisLoginAlreadyExists
+	}
+	_, err = s.GetUserByEmail(email)
+	if err != nil {
+		return util.ErrUserWithThisEmailAlreadyExists
+	}
+	return nil
+}
+
+func createAdminUser(database *gorm.DB, config *config.Config, service *UserService) {
+	_, err := service.GetUserByLogin(config.Admin.Username)
+	if err == nil {
+		return
+	}
+	username := config.Admin.Username
+	hash, _ := util.HashPassword(config.Admin.Password, config.User.Salt)
+	user := db.NewUser(username, hash, "")
+	user.Admin = true
+	database.Create(&user)
+}
+
+var UserServiceExport = fx.Options(fx.Provide(NewUserService), fx.Invoke(createAdminUser))

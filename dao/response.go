@@ -26,6 +26,18 @@ type TorrentResponseDao struct {
 	Files               []TorrentFileResponseDao `json:"files"`
 }
 
+type TorrentResponseWithoutFilesDao struct {
+	ID                  uint             `json:"id"`
+	Name                string           `json:"name"`
+	Status              db.TorrentStatus `json:"status"`
+	Source              *string          `json:"source"`
+	TotalLength         uint             `json:"totalLength"`
+	TotalDownloadLength uint             `json:"totalDownloadLength"`
+	Progress            util.Progress    `json:"progress"`
+	BytesRead           uint             `json:"bytesRead"`
+	Auto                bool             `json:"auto"`
+}
+
 type TorrentFileResponseDao struct {
 	Path         string               `json:"path"`
 	Status       db.TorrentFileStatus `json:"status"`
@@ -39,6 +51,7 @@ type TorrentFileResponseDao struct {
 type ConversionResponseDao struct {
 	ID            uint                `json:"id"`
 	SeriesId      uint                `json:"seriesId"`
+	TorrentId     uint                `json:"torrentId"`
 	TorrentFileId uint                `json:"torrentFileId"`
 	EpisodeId     *uint               `json:"episodeId"`
 	EpisodeName   string              `json:"episodeName"`

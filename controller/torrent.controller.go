@@ -42,10 +42,24 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 	}
 }
 
-func mapTorrentsToResponseSlice(torrents []db.Torrent) []dao.TorrentResponseDao {
-	res := make([]dao.TorrentResponseDao, 0, len(torrents))
+func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao.TorrentResponseWithoutFilesDao {
+	return dao.TorrentResponseWithoutFilesDao{
+		ID:                  torrent.ID,
+		Name:                torrent.Name,
+		Status:              torrent.Status,
+		Source:              torrent.Source,
+		TotalLength:         torrent.TotalLength,
+		TotalDownloadLength: torrent.TotalDownloadLength,
+		Progress:            torrent.Progress,
+		BytesRead:           torrent.BytesRead,
+		Auto:                torrent.Auto,
+	}
+}
+
+func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.TorrentResponseWithoutFilesDao {
+	res := make([]dao.TorrentResponseWithoutFilesDao, 0, len(torrents))
 	for _, t := range torrents {
-		res = append(res, mapTorrentToResponse(t))
+		res = append(res, mapTorrentWithoutFilesToResponse(t))
 	}
 	return res
 }
@@ -59,7 +73,6 @@ func registerTorrentController(
 	torrentGroup := engine.Group("/admin/torrent")
 	torrentGroup.Use(AdminRights)
 
-	// TODO: don't show files field here, as it's not preloaded
 	torrentGroup.GET("/", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
 		if err != nil {
@@ -67,7 +80,7 @@ func registerTorrentController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, mapTorrentsToResponseSlice(torrentsSlice))
+		c.JSON(http.StatusOK, mapTorrentsWithoutFilesToResponseSlice(torrentsSlice))
 	})
 	torrentGroup.GET("/:id", func(c *gin.Context) {
 		idString := c.Param("id")

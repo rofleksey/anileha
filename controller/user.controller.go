@@ -25,6 +25,12 @@ func registerUserController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		err := service.CheckUserExists(req.User, req.Email)
+		if err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		confirmId, err := service.RequestRegistration(req.User, req.Pass, req.Email)
 		if err != nil {
 			_ = c.Error(err)

@@ -108,8 +108,8 @@ func registerSeriesController(
 			return
 		}
 		name := names[0]
-		// TODO: improve trim everywhere (e.g. use regexp)
-		trimmedName := strings.Trim(name, " \n")
+		// TODO: improve trim everywhere (e.g. use TrimSpace)
+		trimmedName := strings.TrimSpace(name)
 		if len(trimmedName) == 0 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "series name is blank"})
 			return

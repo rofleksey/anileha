@@ -158,7 +158,13 @@ func (p *ProbeAnalyzer) getSubsType(stream *ffprobe.Stream) SubsType {
 	switch stream.CodecName {
 	case "hdmv_pgs_subtitle":
 		return SubsPicture
+	case "dvd_subtitle":
+		return SubsPicture
 	case "ass":
+		return SubsText
+	case "subrip":
+		return SubsText
+	case "srt":
 		return SubsText
 	default:
 		return SubsUnknown

@@ -16,6 +16,7 @@ func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 	return dao.ConversionResponseDao{
 		ID:            c.ID,
 		SeriesId:      c.SeriesId,
+		TorrentId:     c.TorrentId,
 		TorrentFileId: c.TorrentFileId,
 		EpisodeId:     c.EpisodeId,
 		EpisodeName:   c.EpisodeName,
