@@ -481,11 +481,9 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, auto
 func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileIndices) error {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if exists {
-		cTorrent, castOk := mapEntry.(*torrentLib.Torrent)
-		if castOk {
-			cTorrent.Drop()
-			<-cTorrent.Closed()
-		}
+		cTorrent := mapEntry.(*torrentLib.Torrent)
+		cTorrent.Drop()
+		<-cTorrent.Closed()
 	}
 	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
 	if err != nil {
@@ -545,10 +543,7 @@ func (s *TorrentService) StopTorrent(torrent db.Torrent) error {
 	if !exists {
 		return util.ErrCTorrentNotFound
 	}
-	cTorrent, castOk := mapEntry.(*torrentLib.Torrent)
-	if !castOk {
-		return util.ErrCTorrentCorrupted
-	}
+	cTorrent := mapEntry.(*torrentLib.Torrent)
 	downloadLength := int64(0)
 	for i := range torrent.Files {
 		torrent.Files[i].Selected = false

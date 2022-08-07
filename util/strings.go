@@ -18,9 +18,9 @@ func RemoveWhitespace(str string) string {
 	}, str)
 }
 
-func RemoveNonAlpha(str string) string {
+func RemoveNonAlphaNonSpace(str string) string {
 	return strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
 			return r
 		}
 		return -1

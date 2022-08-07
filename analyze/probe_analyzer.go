@@ -319,8 +319,10 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 		text, err := p.ExtractSubText(inputFile, subStream.RelativeIndex)
 		if err != nil {
 			p.log.Warn("failed to get subtitle text", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
+		} else {
+			p.log.Info("extracted text from subtitle", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Int("textLength", len(text)), zap.Error(err))
 		}
-		if len(text) <= 32 {
+		if err != nil || len(text) <= 32 {
 			p.log.Info("subtitle doesn't have text, using scoring based on stream size", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
 			size, err := p.GetStreamSize(inputFile, StreamSub, subStream.RelativeIndex)
 			if err != nil {

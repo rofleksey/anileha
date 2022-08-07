@@ -162,20 +162,22 @@ func (s *ConversionService) queueWorker() {
 			//s.log.Info("conversion progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.Elapsed))
 		case ffmpeg.CommandSignalEnd:
 			if msg.Err == nil {
-				conversion, err := s.GetConversionById(update.ID)
-				if err != nil {
-					s.log.Error("failed to get conversion by id", zap.Uint("conversionId", update.ID), zap.Error(err))
-					continue
-				}
-				episode, err := s.episodeService.CreateEpisodeFromConversion(conversion)
-				if err != nil {
-					s.log.Error("failed to create episode", zap.Uint("conversionId", update.ID), zap.Error(err))
-					continue
-				}
-				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_READY, EpisodeId: &episode.ID, Progress: util.Progress{Progress: 1}}).Error; err != nil {
-					s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", update.ID), zap.Error(err))
-					continue
-				}
+				go func() {
+					conversion, err := s.GetConversionById(update.ID)
+					if err != nil {
+						s.log.Error("failed to get conversion by id", zap.Uint("conversionId", update.ID), zap.Error(err))
+						return
+					}
+					episode, err := s.episodeService.CreateEpisodeFromConversion(conversion)
+					if err != nil {
+						s.log.Error("failed to create episode", zap.Uint("conversionId", update.ID), zap.Error(err))
+						return
+					}
+					if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.CONVERSION_READY, EpisodeId: &episode.ID, Progress: util.Progress{Progress: 100}}).Error; err != nil {
+						s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", update.ID), zap.Error(err))
+						return
+					}
+				}()
 			} else {
 				var newStatus db.ConversionStatus
 				if msg.Err == util.ErrCancelled {

@@ -106,7 +106,7 @@ func (c *EtaCalculator) getProgressImpl() float64 {
 		return 0
 	}
 	if c.isFinished {
-		return 100
+		return 1
 	}
 	return (c.lastValue - c.startValue) / (c.endValue - c.startValue)
 }

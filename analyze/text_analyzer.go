@@ -36,7 +36,7 @@ func NewTextAnalyzer(config *config.Config, log *zap.Logger) (*TextAnalyzer, err
 }
 
 func (a *TextAnalyzer) CountWords(text string) uint64 {
-	stripped := util.RemoveNonAlpha(text)
+	stripped := util.RemoveNonAlphaNonSpace(text)
 	lower := strings.ToLower(stripped)
 	splitArr := util.SpacesRegex.Split(lower, -1)
 	count := uint64(0)
