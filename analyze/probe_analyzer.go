@@ -19,6 +19,10 @@ import (
 	"time"
 )
 
+var videoRegex = regexp.MustCompile("video:(\\d+)([a-z]+)")
+var audioRegex = regexp.MustCompile("audio:(\\d+)([a-z]+)")
+var subRegex = regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
+
 // ProbeAnalyzer Selects streams and generates FFmpeg command for encoding
 // For video: Use the last video stream
 // For audio: select the only stream, else selects the only japanese stream, else selects the most heavy one (among japanese or all if not present)
@@ -36,9 +40,6 @@ func NewProbeAnalyzer(
 	config *config.Config,
 	log *zap.Logger,
 ) *ProbeAnalyzer {
-	videoRegex := regexp.MustCompile("video:(\\d+)([a-z]+)")
-	audioRegex := regexp.MustCompile("audio:(\\d+)([a-z]+)")
-	subRegex := regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
 	regexMap := make(map[StreamType]*regexp.Regexp)
 	regexMap[StreamVideo] = videoRegex
 	regexMap[StreamAudio] = audioRegex

@@ -185,7 +185,7 @@ func registerTorrentController(
 		}
 		seriesIdStrArr := form.Value["seriesId"]
 		if seriesIdStrArr == nil || len(seriesIdStrArr) != 1 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting seriesId"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "error getting seriesId"})
 			return
 		}
 		auto := false
@@ -195,12 +195,13 @@ func registerTorrentController(
 		}
 		seriesId, err := strconv.ParseUint(seriesIdStrArr[0], 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse seriesId"})
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "failed to parse seriesId"})
 			return
 		}
 		files := form.File["files"]
 		if files == nil || len(files) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "no files sent"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "no files sent"})
 			return
 		}
 		for _, file := range files {
