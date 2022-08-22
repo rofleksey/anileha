@@ -7,22 +7,20 @@ import (
 
 // Series Represents one season of something
 type Series struct {
-	ID          uint `gorm:"primarykey"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Name        string
-	Description string
-	Query       *string // Query to automatically add torrents to this series
-	ThumbID     *uint
-	Thumb       *Thumb `gorm:"references:ID"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string
+	Query     *string // Query to automatically add torrents to this series
+	ThumbID   *uint
+	Thumb     *Thumb `gorm:"references:ID"`
 }
 
-func NewSeries(name string, description string, query *string, thumbId *uint) Series {
+func NewSeries(name string, query *string, thumbId *uint) Series {
 	return Series{
-		Name:        name,
-		Description: description,
-		Query:       query,
-		ThumbID:     thumbId,
+		Name:    name,
+		Query:   query,
+		ThumbID: thumbId,
 	}
 }
 

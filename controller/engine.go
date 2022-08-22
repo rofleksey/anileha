@@ -31,6 +31,7 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	// logging
 	engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	engine.Use(ginzap.RecoveryWithZap(logger, true))
+	engine.Use(CorsMiddleware)
 
 	// user login
 	hashKey := []byte(config.User.CookieHashKey)
@@ -49,7 +50,19 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 
 var UserKey = "user"
 
-func AdminRights(c *gin.Context) {
+func CorsMiddleware(c *gin.Context) {
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+	c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+	if c.Request.Method == "OPTIONS" {
+		c.AbortWithStatus(204)
+		return
+	}
+}
+
+func AdminMiddleware(c *gin.Context) {
 	session := sessions.Default(c)
 	entry := session.Get(UserKey)
 	if entry == nil {

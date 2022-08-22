@@ -13,11 +13,11 @@ import (
 
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 	return dao.SeriesResponseDao{
-		ID:          series.ID,
-		Name:        series.Name,
-		Description: series.Description,
-		Query:       series.Query,
-		Thumb:       series.Thumb.DownloadUrl,
+		ID:        series.ID,
+		Name:      series.Name,
+		Query:     series.Query,
+		UpdatedAt: series.UpdatedAt,
+		Thumb:     series.Thumb.DownloadUrl,
 	}
 }
 
@@ -37,6 +37,14 @@ func registerSeriesController(
 	pipelineFacade *service.PipelineFacade,
 ) {
 	// TODO: make this GET method
+	engine.GET("/series", func(c *gin.Context) {
+		seriesSlice, err := seriesService.GetAllSeries()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
+	})
 	engine.POST("/series/search", func(c *gin.Context) {
 		var req dao.QueryRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -66,16 +74,8 @@ func registerSeriesController(
 	})
 
 	adminSeriesGroup := engine.Group("/admin/series")
-	adminSeriesGroup.Use(AdminRights)
+	adminSeriesGroup.Use(AdminMiddleware)
 
-	adminSeriesGroup.GET("/", func(c *gin.Context) {
-		seriesSlice, err := seriesService.GetAllSeries()
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
-	})
 	adminSeriesGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)

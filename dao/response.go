@@ -3,14 +3,15 @@ package dao
 import (
 	"anileha/db"
 	"anileha/util"
+	"time"
 )
 
 type SeriesResponseDao struct {
-	ID          uint    `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Query       *string `json:"query"`
-	Thumb       string  `json:"thumb"`
+	ID        uint      `json:"id"`
+	Name      string    `json:"name"`
+	Query     *string   `json:"query"`
+	Thumb     string    `json:"thumb"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type TorrentResponseDao struct {
@@ -62,11 +63,12 @@ type ConversionResponseDao struct {
 }
 
 type EpisodeResponseDao struct {
-	ID           uint    `json:"id"`
-	ConversionId uint    `json:"conversionId"`
-	Name         string  `json:"name"`
-	Thumb        *string `json:"thumb"`
-	Length       uint64  `json:"length"`
-	DurationSec  int     `json:"durationSec"`
-	Url          string  `json:"link"`
+	ID           uint      `json:"id"`
+	ConversionId uint      `json:"conversionId"`
+	Name         string    `json:"name"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Thumb        *string   `json:"thumb"`
+	Length       uint64    `json:"length"`
+	DurationSec  int       `json:"durationSec"`
+	Url          string    `json:"link"`
 }

@@ -42,7 +42,7 @@ func registerConvertController(
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(AdminRights)
+	convertGroup.Use(AdminMiddleware)
 	convertGroup.GET("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)

@@ -61,7 +61,7 @@ func (s *SeriesService) DeleteSeriesById(id uint) error {
 }
 
 func (s *SeriesService) AddSeries(name string, thumbId uint) (uint, error) {
-	series := db.NewSeries(name, "", nil, &thumbId)
+	series := db.NewSeries(name, nil, &thumbId)
 	queryResult := s.db.Create(&series)
 	if queryResult.Error != nil {
 		return 0, queryResult.Error

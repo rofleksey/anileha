@@ -71,7 +71,7 @@ func registerTorrentController(
 	pipelineFacade *service.PipelineFacade,
 ) {
 	torrentGroup := engine.Group("/admin/torrent")
-	torrentGroup.Use(AdminRights)
+	torrentGroup.Use(AdminMiddleware)
 
 	torrentGroup.GET("/", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()

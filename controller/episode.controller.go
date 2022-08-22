@@ -19,6 +19,7 @@ func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
 		ID:           episode.ID,
 		ConversionId: episode.ConversionId,
 		Name:         episode.Name,
+		CreatedAt:    episode.CreatedAt,
 		Thumb:        thumb,
 		Length:       episode.Length,
 		DurationSec:  episode.DurationSec,
@@ -54,7 +55,7 @@ func registerEpisodeController(
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
-	episodeGroup.Use(AdminRights)
+	episodeGroup.Use(AdminMiddleware)
 	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)
