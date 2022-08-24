@@ -4,30 +4,34 @@ import { RouterLink } from "vue-router";
 defineProps({
   entry: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 });
 </script>
 
 <template>
-  <RouterLink :to="entry.link">
-    <div class="entry">
+  <div class="entry">
+    <RouterLink :to="entry.link">
       <div class="title">
         <span>{{ entry.title }}</span>
       </div>
-      <div class="subtext">
-        <template v-for="(detail, index) in entry.details" :key="detail.id">
-          <span class="subtitle">
+    </RouterLink>
+    <div class="subtext">
+      <template v-for="(detail, index) in entry.details" :key="detail.id">
+        <RouterLink v-if="detail.link" :to="detail.link">
+          <span class="subtitle interactive">
             {{ detail.text }}
           </span>
-
-          <span v-if="index !== entry.details.length - 1" class="delimiter">
-            •
-          </span>
-        </template>
-      </div>
+        </RouterLink>
+        <span v-else class="subtitle">
+          {{ detail.text }}
+        </span>
+        <span v-if="index !== entry.details.length - 1" class="delimiter">
+          •
+        </span>
+      </template>
     </div>
-  </RouterLink>
+  </div>
 </template>
 
 <style scoped>
@@ -35,10 +39,6 @@ defineProps({
   overflow: hidden;
   margin: 0;
   border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
-}
-
-.entry:hover {
-  cursor: pointer;
 }
 
 .entry {
@@ -58,13 +58,24 @@ defineProps({
   color: hsla(0, 0%, 100%, 0.5);
 }
 
+.subtitle.interactive {
+  font-size: 15px;
+  color: #64bcffaa;
+}
+
 .title,
-.subtext {
+.subtext,
+.subtitle {
   transition: color 0.15s;
 }
 
-.entry:hover .title,
-.entry:hover .subtext {
+.title:hover {
   color: white;
+  cursor: pointer;
+}
+
+.subtitle.interactive:hover {
+  color: #64bcff;
+  cursor: pointer;
 }
 </style>

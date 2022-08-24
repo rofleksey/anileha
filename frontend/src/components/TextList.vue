@@ -4,8 +4,8 @@ import TextEntry from "@/components/TextEntry.vue";
 defineProps({
   entries: {
     type: Array,
-    required: true
-  }
+    required: true,
+  },
 });
 </script>
 

@@ -12,20 +12,20 @@ import LoginModal from "@/components/LoginModal.vue";
 import { useUserStore } from "../stores/user";
 import axios from "axios";
 
-const modalOpen = ref(false);
+let modalOpen = ref(false);
 
 const route = useRoute();
 const userStore = useUserStore();
 
-onMounted(() => {
-  axios("http://localhost:5000/user/me")
-    .then(({ data }) => {
-      userStore.setUser(data);
-    })
-    .catch(() => {
-      userStore.setUser(null);
-    });
-});
+// onMounted(() => {
+//   axios("http://localhost:5000/user/me")
+//     .then(({ data }) => {
+//       userStore.setUser(data);
+//     })
+//     .catch(() => {
+//       userStore.setUser(null);
+//     });
+// });
 </script>
 
 <template>
@@ -34,16 +34,20 @@ onMounted(() => {
     <RouterLink to="/">
       <SeriesIcon :selected="route.path === '/'" />
     </RouterLink>
-    <RouterLink to="/t">
-      <TorrentsIcon v-if="userStore.user === 'admin'" :selected="false" />
-    </RouterLink>
-    <RouterLink to="/c">
-      <ConversionsIcon v-if="userStore.user === 'admin'" :selected="false" />
-    </RouterLink>
-    <RouterLink to="/e">
-      <EpisodesIcon
-        :selected="route.path.startsWith('/s/') || route.path.startsWith('/e')"
+    <RouterLink to="/torrents">
+      <TorrentsIcon
+        v-if="userStore.user === 'admin'"
+        :selected="route.path.startsWith('/torrents')"
       />
+    </RouterLink>
+    <RouterLink to="/convert">
+      <ConversionsIcon
+        v-if="userStore.user === 'admin'"
+        :selected="route.path.startsWith('/convert')"
+      />
+    </RouterLink>
+    <RouterLink to="/episodes">
+      <EpisodesIcon :selected="route.path.startsWith('/episodes')" />
     </RouterLink>
     <LoginIcon
       @click="modalOpen = true"

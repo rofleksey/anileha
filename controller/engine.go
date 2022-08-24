@@ -3,18 +3,18 @@ package controller
 import (
 	"anileha/config"
 	"anileha/db"
-	"anileha/util"
 	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/static"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"net/http"
+	"path"
 	"time"
 )
 
@@ -22,6 +22,9 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	gob.Register(&db.AuthUser{})
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
+	engine.RedirectTrailingSlash = false
+	engine.RedirectFixedPath = false
+	engine.RemoveExtraSlash = false
 	engine.MaxMultipartMemory = 1024 * 1024 * 5
 	err := engine.SetTrustedProxies(nil)
 	if err != nil {
@@ -31,7 +34,7 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	// logging
 	engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	engine.Use(ginzap.RecoveryWithZap(logger, true))
-	engine.Use(CorsMiddleware)
+	engine.Use(static.Serve("/", static.LocalFile(path.Join("frontend", "dist"), false)))
 
 	// user login
 	hashKey := []byte(config.User.CookieHashKey)
@@ -50,30 +53,18 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 
 var UserKey = "user"
 
-func CorsMiddleware(c *gin.Context) {
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-	c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
-
-	if c.Request.Method == "OPTIONS" {
-		c.AbortWithStatus(204)
-		return
-	}
-}
-
 func AdminMiddleware(c *gin.Context) {
-	session := sessions.Default(c)
-	entry := session.Get(UserKey)
-	if entry == nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-		return
-	}
-	user := entry.(*db.AuthUser)
-	if !user.Admin {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-		return
-	}
+	//session := sessions.Default(c)
+	//entry := session.Get(UserKey)
+	//if entry == nil {
+	//	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
+	//	return
+	//}
+	//user := entry.(*db.AuthUser)
+	//if !user.Admin {
+	//	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
+	//	return
+	//}
 	c.Next()
 }
 

@@ -72,8 +72,9 @@ func registerTorrentController(
 ) {
 	torrentGroup := engine.Group("/admin/torrent")
 	torrentGroup.Use(AdminMiddleware)
+	//torrentGroup.Use(CorsMiddleware)
 
-	torrentGroup.GET("/", func(c *gin.Context) {
+	torrentGroup.GET("", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
 		if err != nil {
 			c.Error(err)
@@ -82,7 +83,7 @@ func registerTorrentController(
 		}
 		c.JSON(http.StatusOK, mapTorrentsWithoutFilesToResponseSlice(torrentsSlice))
 	})
-	torrentGroup.GET("/:id", func(c *gin.Context) {
+	torrentGroup.GET(":id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -98,7 +99,23 @@ func registerTorrentController(
 		}
 		c.JSON(http.StatusOK, mapTorrentToResponse(*torrent))
 	})
-	torrentGroup.POST("/start", func(c *gin.Context) {
+	torrentGroup.GET("series/:id", func(c *gin.Context) {
+		seriesIdString := c.Param("id")
+		id, err := strconv.ParseUint(seriesIdString, 10, 64)
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		torrents, err := torrentService.GetTorrentsBySeriesId(uint(id))
+		if err != nil {
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapTorrentsWithoutFilesToResponseSlice(torrents))
+	})
+	torrentGroup.POST("start", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndicesRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
@@ -130,7 +147,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	torrentGroup.POST("/stop", func(c *gin.Context) {
+	torrentGroup.POST("stop", func(c *gin.Context) {
 		var req dao.TorrentIdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			_ = c.Error(err)
@@ -156,7 +173,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	torrentGroup.DELETE("/:id", func(c *gin.Context) {
+	torrentGroup.DELETE(":id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -176,7 +193,7 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	torrentGroup.POST("/", func(c *gin.Context) {
+	torrentGroup.POST("", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.Error(err)

@@ -7,46 +7,50 @@ import { notify } from "@kyvg/vue3-notification";
 defineProps({
   modelValue: {
     type: Boolean,
-    required: true
-  }
+    required: true,
+  },
 });
+
+const emit = defineEmits(["update:modelValue"]);
 
 const userRef = ref("");
 const passRef = ref("");
 
 const userStore = useUserStore();
 
-const remoteLogin = (vue) => {
+const remoteLogin = () => {
   const user = userRef.value;
   const pass = passRef.value;
   if (user.trim().length === 0 || pass.trim().length === 0) {
     notify({
       title: "Failed to login",
       text: "Either username or password is blank",
-      type: "error"
+      type: "error",
     });
     return;
   }
   axios
     .post("http://localhost:5000/user/login", {
       user,
-      pass
+      pass,
     })
     .then(() => {
       userStore.setUser(user);
       notify({
         title: "Login OK",
-        type: "success"
+        type: "success",
       });
-      vue.$emit("update:modelValue", false);
+      emit("update:modelValue", false);
     })
     .catch((err) => {
+      console.error(err);
       notify({
         title: "Failed to login",
-        text: err?.response?.data?.error ?? ""
+        text: err?.response?.data?.error ?? "",
+        type: "error",
       });
     });
-};
+}
 </script>
 
 <template>
@@ -81,7 +85,7 @@ const remoteLogin = (vue) => {
               placeholder="Password"
             />
             <div class="actions">
-              <button @click="() => remoteLogin(this)">sign in</button>
+              <button @click="remoteLogin">sign in</button>
             </div>
           </div>
         </div>

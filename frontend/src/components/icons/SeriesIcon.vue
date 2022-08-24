@@ -2,8 +2,8 @@
 const props = defineProps({
   selected: {
     type: Boolean,
-    required: true
-  }
+    required: true,
+  },
 });
 </script>
 

@@ -43,6 +43,14 @@ func registerConvertController(
 ) {
 	convertGroup := engine.Group("/admin/convert")
 	convertGroup.Use(AdminMiddleware)
+	convertGroup.GET("", func(c *gin.Context) {
+		conversions, err := convertService.GetAllConversions()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapConversionsToResponseSlice(conversions))
+	})
 	convertGroup.GET("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)

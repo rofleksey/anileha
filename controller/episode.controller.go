@@ -39,6 +39,21 @@ func registerEpisodeController(
 	engine *gin.Engine,
 	episodeService *service.EpisodeService,
 ) {
+	engine.GET("/episodes/:id", func(c *gin.Context) {
+		idString := c.Param("id")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			return
+		}
+		episode, err := episodeService.GetEpisodeById(uint(id))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapEpisodeToResponse(*episode))
+	})
+
 	engine.GET("/series/:id/episodes", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)

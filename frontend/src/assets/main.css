@@ -84,14 +84,18 @@ video::-webkit-media-controls-start-playback-button {
 }
 
 .notification {
-  margin: 25px 25px;
-  padding: 10px;
-  font-size: 15px;
-  color: #ffffff;
-  text-align: center;
-  background: #194f85;
+    margin: 25px 25px;
+    padding: 10px;
+    font-size: 15px;
+    color: #ffffff;
+    text-align: center;
+    background: #194f85;
+}
+
+.notification.success {
+    background: #194f85;
 }
 
 .notification.error {
-  background: #e53232;
+    background: #e53232;
 }

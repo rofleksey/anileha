@@ -89,6 +89,15 @@ func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
 	return &conversion, nil
 }
 
+func (s *ConversionService) GetAllConversions() ([]db.Conversion, error) {
+	var conversions []db.Conversion
+	queryResult := s.db.Find(&conversions)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	return conversions, nil
+}
+
 func (s *ConversionService) GetLogsById(id uint) (*string, error) {
 	var conversion db.Conversion
 	queryResult := s.db.First(&conversion, "id = ?", id)

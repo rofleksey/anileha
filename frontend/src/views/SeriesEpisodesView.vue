@@ -1,46 +1,28 @@
 <script setup>
-import { useEpisodesStore } from "../stores/episodes";
+import { useListStore } from "../stores/list";
 import SearchBar from "@/components/SearchBar.vue";
 import TextList from "@/components/TextList.vue";
-import axios from "axios";
 import { onMounted } from "vue";
-import { format as timeAgoFormat } from "timeago.js";
 import { notify } from "@kyvg/vue3-notification";
-import prettyBytes from "pretty-bytes";
-import durationFormat from "format-duration";
 import { useRoute } from "vue-router";
+import { getEpisodesBySeriesId } from "../api/api";
 
-const episodes = useEpisodesStore();
+const listStore = useListStore();
 const route = useRoute();
 
 onMounted(() => {
-  axios(`http://localhost:5000/series/${route.params.id}/episodes`)
-    .then(({ data }) => {
-      const episodesData = data.map((ep) => ({
-        id: ep.id,
-        title: ep.name,
-        link: "/",
-        details: [
-          {
-            id: "created_at",
-            text: timeAgoFormat(new Date(ep.createdAt))
-          },
-          {
-            id: "duration",
-            text: durationFormat(ep.durationSec * 1000)
-          },
-          {
-            id: "length",
-            text: prettyBytes(ep.length)
-          }
-        ]
-      }));
-      episodes.setData(episodesData);
+  listStore.setData([]);
+  getEpisodesBySeriesId(route.params.id)
+    .then((data) => {
+      console.log(data);
+      listStore.setData(data);
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error(err);
       notify({
-        text: "Failed to get episodes",
-        type: "error"
+        title: "Failed to get episodes",
+        text: err?.response?.data?.error ?? "",
+        type: "error",
       });
     });
 });
@@ -49,7 +31,7 @@ onMounted(() => {
 <template>
   <div class="search">
     <SearchBar />
-    <TextList :entries="episodes.entries" />
+    <TextList :entries="listStore.entries" />
   </div>
 </template>
 

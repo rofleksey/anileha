@@ -1,25 +1,24 @@
 <script setup>
 import { useListStore } from "../stores/list";
-import { useUserStore } from "../stores/user";
 import SearchBar from "@/components/SearchBar.vue";
 import TextList from "@/components/TextList.vue";
 import { onMounted } from "vue";
 import { notify } from "@kyvg/vue3-notification";
-import { getAllSeries } from "../api/api";
+import { useRoute } from "vue-router/dist/vue-router";
+import { getTorrentsBySeriesId } from "../api/api";
 
 const listStore = useListStore();
-const userStore = useUserStore();
+const route = useRoute();
 
 onMounted(() => {
   listStore.setData([]);
-  getAllSeries(userStore.isAdmin)
+  getTorrentsBySeriesId(route.params.id)
     .then((data) => {
       listStore.setData(data);
     })
     .catch((err) => {
-      console.error(err);
       notify({
-        title: "Failed to get series",
+        title: "Failed to get torrents",
         text: err?.response?.data?.error ?? "",
         type: "error",
       });
