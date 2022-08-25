@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
 	"anileha/service"
@@ -65,14 +66,14 @@ func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.Torrent
 }
 
 func registerTorrentController(
+	config *config.Config,
 	engine *gin.Engine,
 	fileService *service.FileService,
 	torrentService *service.TorrentService,
 	pipelineFacade *service.PipelineFacade,
 ) {
 	torrentGroup := engine.Group("/admin/torrent")
-	torrentGroup.Use(AdminMiddleware)
-	//torrentGroup.Use(CorsMiddleware)
+	torrentGroup.Use(AdminMiddleware(config))
 
 	torrentGroup.GET("", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()

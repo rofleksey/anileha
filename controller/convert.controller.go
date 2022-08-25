@@ -2,6 +2,7 @@ package controller
 
 import (
 	"anileha/analyze"
+	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
 	"anileha/service"
@@ -36,13 +37,14 @@ func mapConversionsToResponseSlice(conversions []db.Conversion) []dao.Conversion
 }
 
 func registerConvertController(
+	config *config.Config,
 	engine *gin.Engine,
 	torrentService *service.TorrentService,
 	convertService *service.ConversionService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(AdminMiddleware)
+	convertGroup.Use(AdminMiddleware(config))
 	convertGroup.GET("", func(c *gin.Context) {
 		conversions, err := convertService.GetAllConversions()
 		if err != nil {

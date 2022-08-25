@@ -11,21 +11,44 @@ import { onMounted, ref } from "vue";
 import LoginModal from "@/components/LoginModal.vue";
 import { useUserStore } from "../stores/user";
 import axios from "axios";
+import { notify } from "@kyvg/vue3-notification";
 
 let modalOpen = ref(false);
 
 const route = useRoute();
 const userStore = useUserStore();
 
-// onMounted(() => {
-//   axios("http://localhost:5000/user/me")
-//     .then(({ data }) => {
-//       userStore.setUser(data);
-//     })
-//     .catch(() => {
-//       userStore.setUser(null);
-//     });
-// });
+onMounted(() => {
+  axios("/user/me")
+    .then(({ data }) => {
+      console.log(data);
+      userStore.setUser(data.user, data.isAdmin);
+    })
+    .catch(() => {
+      userStore.logout();
+    });
+});
+
+function logout() {
+  if (window.confirm("Do you really want to logout?")) {
+    axios
+      .post("/user/logout")
+      .then(() => {
+        userStore.logout();
+        notify({
+          title: "Logged out",
+          type: "success"
+        });
+      })
+      .catch((err) => {
+        notify({
+          title: "Failed to logout",
+          text: err?.response?.data?.error ?? "",
+          type: "error"
+        });
+      });
+  }
+}
 </script>
 
 <template>
@@ -36,13 +59,13 @@ const userStore = useUserStore();
     </RouterLink>
     <RouterLink to="/torrents">
       <TorrentsIcon
-        v-if="userStore.user === 'admin'"
+        v-if="userStore.isAdmin"
         :selected="route.path.startsWith('/torrents')"
       />
     </RouterLink>
     <RouterLink to="/convert">
       <ConversionsIcon
-        v-if="userStore.user === 'admin'"
+        v-if="userStore.isAdmin"
         :selected="route.path.startsWith('/convert')"
       />
     </RouterLink>
@@ -54,7 +77,7 @@ const userStore = useUserStore();
       v-if="userStore.user === null"
       :selected="false"
     />
-    <LogoutIcon v-if="userStore.user !== null" :selected="false" />
+    <LogoutIcon @click="logout" v-if="userStore.user !== null" :selected="false" />
     <LoginModal v-model="modalOpen" />
   </div>
 </template>

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
 	"anileha/service"
@@ -30,6 +31,7 @@ func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
 }
 
 func registerSeriesController(
+	config *config.Config,
 	engine *gin.Engine,
 	fileService *service.FileService,
 	thumbService *service.ThumbService,
@@ -74,7 +76,7 @@ func registerSeriesController(
 	})
 
 	adminSeriesGroup := engine.Group("/admin/series")
-	adminSeriesGroup.Use(AdminMiddleware)
+	adminSeriesGroup.Use(AdminMiddleware(config))
 
 	adminSeriesGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")

@@ -14,11 +14,9 @@ onMounted(() => {
   listStore.setData([]);
   getEpisodesBySeriesId(route.params.id)
     .then((data) => {
-      console.log(data);
       listStore.setData(data);
     })
     .catch((err) => {
-      console.error(err);
       notify({
         title: "Failed to get episodes",
         text: err?.response?.data?.error ?? "",

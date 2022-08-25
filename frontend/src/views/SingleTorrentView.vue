@@ -11,7 +11,7 @@ const route = useRoute();
 
 onMounted(() => {
   jsonStore.setData({});
-  axios(`http://localhost:5000/admin/torrent/${route.params.id}`)
+  axios(`/admin/torrent/${route.params.id}`)
     .then(({ data }) => {
       jsonStore.setData(data);
     })

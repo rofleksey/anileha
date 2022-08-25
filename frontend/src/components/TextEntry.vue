@@ -1,11 +1,19 @@
 <script setup>
+import { computed } from "vue";
 import { RouterLink } from "vue-router";
+import { useUserStore } from "../stores/user";
 
-defineProps({
+const props = defineProps({
   entry: {
     type: Object,
-    required: true,
-  },
+    required: true
+  }
+});
+
+const userStore = useUserStore();
+
+const accessDetails = computed(() => {
+  return props.entry.details.filter((it) => !it.admin || userStore.isAdmin);
 });
 </script>
 
@@ -17,16 +25,23 @@ defineProps({
       </div>
     </RouterLink>
     <div class="subtext">
-      <template v-for="(detail, index) in entry.details" :key="detail.id">
+      <template v-for="(detail, index) in accessDetails" :key="detail.id">
         <RouterLink v-if="detail.link" :to="detail.link">
           <span class="subtitle interactive">
             {{ detail.text }}
           </span>
         </RouterLink>
+        <span
+          v-else-if="detail.onclick"
+          @click="detail.onclick"
+          class="subtitle interactive"
+        >
+          {{ detail.text }}
+        </span>
         <span v-else class="subtitle">
           {{ detail.text }}
         </span>
-        <span v-if="index !== entry.details.length - 1" class="delimiter">
+        <span v-if="index !== accessDetails.length - 1" class="delimiter">
           •
         </span>
       </template>

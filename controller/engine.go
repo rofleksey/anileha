@@ -3,6 +3,7 @@ package controller
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/util"
 	"context"
 	"encoding/gob"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"net/http"
 	"path"
 	"time"
 )
@@ -53,19 +55,46 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 
 var UserKey = "user"
 
-func AdminMiddleware(c *gin.Context) {
-	//session := sessions.Default(c)
-	//entry := session.Get(UserKey)
-	//if entry == nil {
-	//	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-	//	return
-	//}
-	//user := entry.(*db.AuthUser)
-	//if !user.Admin {
-	//	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-	//	return
-	//}
-	c.Next()
+func forceLoginAsAdmin(config *config.Config, session sessions.Session) error {
+	user := db.NewUser(config.Admin.Username, "", "")
+	user.Admin = true
+	session.Set(UserKey, db.NewAuthUser(user))
+	err := session.Save()
+	return err
+}
+
+func CheckLocalhostAdmin(config *config.Config, session sessions.Session, entry interface{}, c *gin.Context) bool {
+	if c.ClientIP() == "::1" {
+		if entry == nil || !entry.(*db.AuthUser).Admin {
+			if err := forceLoginAsAdmin(config, session); err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return true
+			}
+		}
+		c.Next()
+		return true
+	}
+	return false
+}
+
+func AdminMiddleware(config *config.Config) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		session := sessions.Default(c)
+		entry := session.Get(UserKey)
+		if CheckLocalhostAdmin(config, session, entry, c) {
+			return
+		}
+		if entry == nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
+			return
+		}
+		user := entry.(*db.AuthUser)
+		if !user.Admin {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
+			return
+		}
+		c.Next()
+	}
 }
 
 func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config, gin *gin.Engine, shutdowner fx.Shutdowner) {

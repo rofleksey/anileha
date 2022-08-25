@@ -30,20 +30,20 @@ const remoteLogin = () => {
     return;
   }
   axios
-    .post("http://localhost:5000/user/login", {
+    .post("/user/login", {
       user,
-      pass,
+      pass
     })
-    .then(() => {
-      userStore.setUser(user);
+    .then(({ data }) => {
+      console.log(data);
+      userStore.setUser(data.user, data.isAdmin);
       notify({
         title: "Login OK",
-        type: "success",
+        type: "success"
       });
       emit("update:modelValue", false);
     })
     .catch((err) => {
-      console.error(err);
       notify({
         title: "Failed to login",
         text: err?.response?.data?.error ?? "",

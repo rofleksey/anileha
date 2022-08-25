@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
 	"anileha/service"
@@ -36,6 +37,7 @@ func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao 
 }
 
 func registerEpisodeController(
+	config *config.Config,
 	engine *gin.Engine,
 	episodeService *service.EpisodeService,
 ) {
@@ -70,7 +72,7 @@ func registerEpisodeController(
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
-	episodeGroup.Use(AdminMiddleware)
+	episodeGroup.Use(AdminMiddleware(config))
 	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)

@@ -11,7 +11,7 @@ const route = useRoute();
 
 onMounted(() => {
   jsonStore.setData({});
-  axios(`http://localhost:5000/admin/convert/${route.params.id}`)
+  axios(`/admin/convert/${route.params.id}`)
     .then(({ data }) => {
       jsonStore.setData(data);
     })

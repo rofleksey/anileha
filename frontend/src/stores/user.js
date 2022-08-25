@@ -1,18 +1,20 @@
-import {defineStore} from "pinia";
+import { defineStore } from "pinia";
 
 export const useUserStore = defineStore({
   id: "user",
   state: () => ({
-    user: "admin",
+    user: null,
+    isAdmin: false
   }),
-  getters: {
-    isAdmin() {
-      return this.user === "admin";
-    },
-  },
+  getters: {},
   actions: {
-    setUser(username) {
+    setUser(username, isAdmin) {
       this.user = username;
+      this.isAdmin = isAdmin;
     },
-  },
+    logout() {
+      this.user = null;
+      this.isAdmin = null;
+    }
+  }
 });

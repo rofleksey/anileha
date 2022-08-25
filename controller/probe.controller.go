@@ -2,6 +2,7 @@ package controller
 
 import (
 	"anileha/analyze"
+	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
 	"anileha/service"
@@ -15,12 +16,13 @@ import (
 )
 
 func registerProbeController(
+	config *config.Config,
 	engine *gin.Engine,
 	torrentService *service.TorrentService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	probeGroup := engine.Group("/admin/probe")
-	probeGroup.Use(AdminMiddleware)
+	probeGroup.Use(AdminMiddleware(config))
 	probeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,7 +59,7 @@ func registerProbeController(
 	})
 
 	analyzeGroup := engine.Group("/admin/analyze")
-	analyzeGroup.Use(AdminMiddleware)
+	analyzeGroup.Use(AdminMiddleware(config))
 	analyzeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {

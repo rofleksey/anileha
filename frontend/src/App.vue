@@ -1,13 +1,16 @@
 <script setup>
 import { RouterView } from "vue-router";
-import Header from "./components/Header.vue";
-</script>
+import Header from "./components/Header.vue";</script>
 
 <template>
   <section class="main-column">
     <Header />
     <main>
-      <RouterView />
+      <RouterView v-slot="{ Component, route }">
+        <Transition name="fade" mode="out-in">
+          <component :is="Component" :key="route.path" />
+        </Transition>
+      </RouterView>
     </main>
     <footer class="main-footer"></footer>
   </section>
@@ -28,5 +31,17 @@ import Header from "./components/Header.vue";
 main {
   width: 100%;
   margin: 2rem 0;
+  overflow-y: scroll;
+}
+
+/* do not remove, used for transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

@@ -1,4 +1,4 @@
-import {createRouter, createWebHashHistory} from "vue-router";
+import { createRouter, createWebHashHistory } from "vue-router";
 import AllSeriesView from "../views/AllSeriesView.vue";
 
 const router = createRouter({
@@ -22,22 +22,27 @@ const router = createRouter({
     {
       path: "/torrents/:id",
       name: "single torrent",
-      component: () => import("../views/SingleTorrentView.vue"),
+      component: () => import("../views/SingleTorrentView.vue")
     },
     {
       path: "/convert/:id",
       name: "single conversion",
-      component: () => import("../views/SingleConversionView.vue"),
+      component: () => import("../views/SingleConversionView.vue")
+    },
+    {
+      path: "/convert/:id/logs",
+      name: "conversion logs",
+      component: () => import("../views/ConversionLogsView.vue")
     },
     {
       path: "/episodes/:id",
       name: "single episode",
-      component: () => import("../views/SingleEpisodeView.vue"),
+      component: () => import("../views/SingleEpisodeView.vue")
     },
     {
       path: "/convert/series/:id",
       name: "series conversions",
-      component: () => import("../views/SeriesConversionsView.vue"),
+      component: () => import("../views/SeriesConversionsView.vue")
     },
     {
       path: "/torrents/series/:id",
