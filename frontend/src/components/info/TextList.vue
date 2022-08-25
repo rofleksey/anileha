@@ -1,5 +1,5 @@
 <script setup>
-import TextEntry from "@/components/TextEntry.vue";
+import TextEntry from "./TextEntry.vue";
 
 defineProps({
   entries: {

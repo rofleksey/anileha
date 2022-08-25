@@ -18,5 +18,5 @@ defineProps({
 </template>
 
 <style scoped>
-@import "../../assets/icon.css";
+@import "../../../assets/icon.css";
 </style>

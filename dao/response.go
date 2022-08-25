@@ -25,6 +25,7 @@ type TorrentResponseDao struct {
 	BytesRead           uint                     `json:"bytesRead"`
 	Auto                bool                     `json:"auto"`
 	Files               []TorrentFileResponseDao `json:"files"`
+	UpdatedAt           time.Time                `json:"updatedAt"`
 }
 
 type TorrentResponseWithoutFilesDao struct {
@@ -37,6 +38,7 @@ type TorrentResponseWithoutFilesDao struct {
 	Progress            util.Progress    `json:"progress"`
 	BytesRead           uint             `json:"bytesRead"`
 	Auto                bool             `json:"auto"`
+	UpdatedAt           time.Time        `json:"updatedAt"`
 }
 
 type TorrentFileResponseDao struct {
@@ -60,6 +62,7 @@ type ConversionResponseDao struct {
 	FFmpegCommand string              `json:"ffmpegCommand"`
 	Status        db.ConversionStatus `json:"status"`
 	Progress      util.Progress       `json:"progress"`
+	UpdatedAt     time.Time           `json:"updatedAt"`
 }
 
 type EpisodeResponseDao struct {

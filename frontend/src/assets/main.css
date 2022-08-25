@@ -4,14 +4,14 @@ body {
 }
 
 html {
-  -webkit-tap-highlight-color: transparent;
-  background: #1c1f22;
-  font-family: Hack monospace;
-  color: hsla(0, 0%, 100%, .8);
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    background: #1c1f22;
+    font-family: monospace;
+    color: hsla(0, 0%, 100%, .8);
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 a {

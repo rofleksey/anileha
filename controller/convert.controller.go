@@ -25,6 +25,7 @@ func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 		FFmpegCommand: c.Command,
 		Status:        c.Status,
 		Progress:      c.Progress,
+		UpdatedAt:     c.UpdatedAt,
 	}
 }
 

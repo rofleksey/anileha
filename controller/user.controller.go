@@ -12,6 +12,11 @@ import (
 	"net/http"
 )
 
+type LoginResponse struct {
+	User    string `json:"user"`
+	IsAdmin bool   `json:"isAdmin"`
+}
+
 func registerUserController(
 	engine *gin.Engine,
 	config *config.Config,
@@ -61,9 +66,14 @@ func registerUserController(
 		session := sessions.Default(c)
 		user := session.Get(UserKey)
 		if user == nil {
+			if CheckLocalhostAdmin(config, session, user, c) {
+				c.JSON(http.StatusOK, LoginResponse{config.Admin.Username, true})
+				return
+			}
 			c.String(http.StatusInternalServerError, "Unauthorized")
 		} else {
-			c.String(http.StatusOK, user.(*db.AuthUser).Login)
+			authUser := user.(*db.AuthUser)
+			c.JSON(http.StatusOK, LoginResponse{authUser.Login, authUser.Admin})
 		}
 	})
 	userGroup.POST("/login", func(c *gin.Context) {
@@ -91,7 +101,7 @@ func registerUserController(
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrSessionSavingFailed.Error()})
 			return
 		}
-		c.String(http.StatusOK, "OK")
+		c.JSON(http.StatusOK, LoginResponse{user.Login, user.Admin})
 	})
 	userGroup.POST("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)

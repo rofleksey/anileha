@@ -1,28 +1,28 @@
 import axios from "axios";
 import prettyBytes from "pretty-bytes";
-import { format } from "timeago.js";
+import {format} from "timeago.js";
 import durationFormat from "format-duration";
-import { notify } from "@kyvg/vue3-notification";
+import {notify} from "@kyvg/vue3-notification";
 
 function formatSeries(data) {
   return data.map((series) => {
     const details = [
       {
         id: "updated_at",
-        text: format(new Date(series.updatedAt))
-      }
+        text: format(new Date(series.updatedAt)),
+      },
     ];
     details.push({
       id: "torrents",
       text: "torrents",
       link: `/torrents/series/${series.id}`,
-      admin: true
+      admin: true,
     });
     details.push({
       id: "conversions",
       text: "conversions",
       link: `/convert/series/${series.id}`,
-      admin: true
+      admin: true,
     });
     details.push({
       id: "delete",
@@ -34,25 +34,26 @@ function formatSeries(data) {
             .then(() => {
               notify({
                 title: "Deleted",
-                type: "success"
+                type: "success",
               });
             })
-            .catch((err) => {
-              notify({
-                title: "Failed to delete series",
-                text: err?.response?.data?.error ?? "",
-                type: "error"
+              .catch((err) => {
+                notify({
+                  title: "Failed to delete series",
+                  text: err?.response?.data?.error ?? "",
+                  type: "error",
+                });
               });
-            });
         }
       },
-      admin: true
+      admin: true,
     });
     return {
       id: series.id,
       title: series.name,
+      bg: series.thumb,
       link: `/episodes/series/${series.id}`,
-      details: details
+      details: details,
     };
   });
 }
@@ -62,18 +63,18 @@ function formatTorrents(data) {
     const details = [
       {
         id: "status",
-        text: t.status
+        text: t.status,
       },
       {
         id: "updated_at",
-        text: format(new Date(t.updatedAt))
+        text: format(new Date(t.updatedAt)),
       },
       {
         id: "length",
         text: `${prettyBytes(t.totalDowloadLength ?? 0)} / ${prettyBytes(
-          t.totalLength ?? 0
-        )}`
-      }
+            t.totalLength ?? 0
+        )}`,
+      },
     ];
     if (t.status === "processing") {
       if (t.progress.progress) {
@@ -97,14 +98,14 @@ function formatTorrents(data) {
       if (t.progress.speed) {
         details.push({
           id: "speed",
-          text: t.progress.speed + " fps"
+          text: t.progress.speed + " fps",
         });
       }
     }
     if (t.auto) {
       details.push({
         id: "auto",
-        text: "auto"
+        text: "auto",
       });
     }
     if (t.status === "processing") {
@@ -115,24 +116,24 @@ function formatTorrents(data) {
           if (window.confirm(`Stop torrent ${t.name}?`)) {
             axios
               .post(`/admin/torrent/stop`, {
-                torrentId: t.id
+                torrentId: t.id,
               })
               .then(() => {
                 notify({
                   title: "Stopped",
-                  type: "success"
+                  type: "success",
                 });
               })
-              .catch((err) => {
-                notify({
-                  title: "Failed to stop torrent",
-                  text: err?.response?.data?.error ?? "",
-                  type: "error"
+                .catch((err) => {
+                  notify({
+                    title: "Failed to stop torrent",
+                    text: err?.response?.data?.error ?? "",
+                    type: "error",
+                  });
                 });
-              });
           }
         },
-        admin: true
+        admin: true,
       });
     }
     details.push({
@@ -145,25 +146,25 @@ function formatTorrents(data) {
             .then(() => {
               notify({
                 title: "Deleted",
-                type: "success"
+                type: "success",
               });
             })
-            .catch((err) => {
-              notify({
-                title: "Failed to delete torrent",
-                text: err?.response?.data?.error ?? "",
-                type: "error"
+              .catch((err) => {
+                notify({
+                  title: "Failed to delete torrent",
+                  text: err?.response?.data?.error ?? "",
+                  type: "error",
+                });
               });
-            });
         }
       },
-      admin: true
+      admin: true,
     });
     return {
       id: t.id,
       title: t.name,
       link: `/torrents/${t.id}`,
-      details
+      details,
     };
   });
 }
@@ -174,6 +175,10 @@ function formatConversions(data) {
       {
         id: "status",
         text: convert.status,
+      },
+      {
+        id: "updated_at",
+        text: format(new Date(convert.updatedAt)),
       },
     ];
     if (convert.status === "processing") {
@@ -192,26 +197,26 @@ function formatConversions(data) {
       if (convert.progress.eta) {
         details.push({
           id: "eta",
-          text: convert.progress.eta + "s remaining"
+          text: convert.progress.eta + "s remaining",
         });
       }
       if (convert.progress.speed) {
         details.push({
           id: "speed",
-          text: convert.progress.speed + " fps"
+          text: convert.progress.speed + " fps",
         });
       }
     }
     details.push({
       id: "logs",
       text: "logs",
-      link: `/convert/${convert.id}/logs`
+      link: `/convert/${convert.id}/logs`,
     });
     return {
       id: convert.id,
       title: convert.name,
       link: `/convert/${convert.id}`,
-      details
+      details,
     };
   });
 }
@@ -221,16 +226,16 @@ function formatEpisodes(data) {
     const details = [
       {
         id: "created_at",
-        text: format(new Date(ep.createdAt))
+        text: format(new Date(ep.createdAt)),
       },
       {
         id: "duration",
-        text: durationFormat(ep.durationSec * 1000)
+        text: durationFormat(ep.durationSec * 1000),
       },
       {
         id: "length",
-        text: prettyBytes(ep.length)
-      }
+        text: prettyBytes(ep.length),
+      },
     ];
     details.push({
       id: "delete",
@@ -242,25 +247,25 @@ function formatEpisodes(data) {
             .then(() => {
               notify({
                 title: "Deleted",
-                type: "success"
+                type: "success",
               });
             })
-            .catch((err) => {
-              notify({
-                title: "Failed to delete episode",
-                text: err?.response?.data?.error ?? "",
-                type: "error"
+              .catch((err) => {
+                notify({
+                  title: "Failed to delete episode",
+                  text: err?.response?.data?.error ?? "",
+                  type: "error",
+                });
               });
-            });
         }
       },
-      admin: true
+      admin: true,
     });
     return {
       id: ep.id,
       title: ep.name,
       link: `/episodes/${ep.id}`,
-      details
+      details,
     };
   });
 }
@@ -281,22 +286,16 @@ export async function getAllConversions() {
 }
 
 export async function getTorrentsBySeriesId(seriesId) {
-  const { data } = await axios(
-    `/admin/torrent/series/${seriesId}`
-  );
+  const {data} = await axios(`/admin/torrent/series/${seriesId}`);
   return formatTorrents(data);
 }
 
 export async function getConversionsBySeriesId(seriesId) {
-  const { data } = await axios(
-    `/admin/convert/series/${seriesId}`
-  );
+  const {data} = await axios(`/admin/convert/series/${seriesId}`);
   return formatConversions(data);
 }
 
 export async function getEpisodesBySeriesId(seriesId) {
-  const { data } = await axios(
-    `/series/${seriesId}/episodes`
-  );
+  const {data} = await axios(`/series/${seriesId}/episodes`);
   return formatEpisodes(data);
 }

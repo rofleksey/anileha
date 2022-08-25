@@ -1,12 +1,17 @@
 <script setup>
 import { useListStore } from "../stores/list";
-import SearchBar from "@/components/SearchBar.vue";
-import TextList from "@/components/TextList.vue";
-import { onMounted } from "vue";
+import { useUserStore } from "../stores/user";
+import SearchBar from "../components/input/SearchBar.vue";
+import TextList from "../components/info/TextList.vue";
+import { onMounted, ref } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { getAllSeries } from "../api/api";
+import AddIcon from "../components/AddIcon.vue";
+import SeriesModal from "../components/modal/SeriesModal.vue";
 
 const listStore = useListStore();
+const userStore = useUserStore();
+const seriesModal = ref(null);
 
 onMounted(() => {
   listStore.setData([]);
@@ -26,8 +31,12 @@ onMounted(() => {
 
 <template>
   <div class="search">
-    <SearchBar />
+    <div class="search-row">
+      <SearchBar />
+      <AddIcon v-if="userStore.isAdmin" @click="() => seriesModal.show()" />
+    </div>
     <TextList :entries="listStore.entries" />
+    <SeriesModal ref="seriesModal" />
   </div>
 </template>
 
@@ -37,5 +46,9 @@ onMounted(() => {
   max-width: 600px;
   margin: 0 auto;
   flex: none;
+}
+.search-row {
+  display: flex;
+  align-items: center;
 }
 </style>

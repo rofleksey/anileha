@@ -1,13 +1,13 @@
 <script setup>
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
-import { useUserStore } from "../stores/user";
+import { useUserStore } from "../../stores/user";
 
 const props = defineProps({
   entry: {
     type: Object,
-    required: true
-  }
+    required: true,
+  },
 });
 
 const userStore = useUserStore();
@@ -18,7 +18,10 @@ const accessDetails = computed(() => {
 </script>
 
 <template>
-  <div class="entry">
+  <div
+    :class="{ entry: true, withBg: entry.bg }"
+    :style="entry.bg ? { backgroundImage: `url(${entry.bg})` } : {}"
+  >
     <RouterLink :to="entry.link">
       <div class="title">
         <span>{{ entry.title }}</span>
@@ -52,12 +55,18 @@ const accessDetails = computed(() => {
 <style scoped>
 .entry {
   overflow: hidden;
-  margin: 0;
+  margin-top: 8px;
+  margin-bottom: 8px;
   border-bottom: 1px solid hsla(0, 0%, 100%, 0.05);
+  padding: 1em;
 }
 
-.entry {
-  padding: 1em;
+.entry.withBg {
+  background-blend-mode: darken;
+  background-color: rgba(0, 0, 0, 0.75);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .entry > * {
@@ -65,16 +74,16 @@ const accessDetails = computed(() => {
 }
 
 .title {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .subtext {
-  font-size: 14px;
+  font-size: 13px;
   color: hsla(0, 0%, 100%, 0.5);
 }
 
 .subtitle.interactive {
-  font-size: 15px;
+  font-size: 13px;
   color: #64bcffaa;
 }
 

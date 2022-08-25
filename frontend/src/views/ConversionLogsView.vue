@@ -4,7 +4,7 @@ import axios from "axios";
 import { onMounted } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { useRoute } from "vue-router/dist/vue-router";
-import TextBlock from "@/components/TextBlock.vue";
+import TextBlock from "../components/info/TextBlock.vue";
 
 const textStore = useTextStore();
 const route = useRoute();

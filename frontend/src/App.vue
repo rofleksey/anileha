@@ -1,6 +1,7 @@
 <script setup>
 import { RouterView } from "vue-router";
-import Header from "./components/Header.vue";</script>
+import Header from "./components/header/Header.vue";
+</script>
 
 <template>
   <section class="main-column">
@@ -37,7 +38,7 @@ main {
 /* do not remove, used for transitions */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.15s ease;
+  transition: opacity 0.2s ease;
 }
 
 .fade-enter-from,

@@ -1,20 +1,19 @@
 <script setup>
-import Logo from "@/components/icons/Logo.vue";
-import SeriesIcon from "@/components/icons/SeriesIcon.vue";
-import TorrentsIcon from "@/components/icons/TorrentsIcon.vue";
-import ConversionsIcon from "@/components/icons/ConversionsIcon.vue";
-import EpisodesIcon from "@/components/icons/EpisodesIcon.vue";
-import LoginIcon from "@/components/icons/LoginIcon.vue";
-import LogoutIcon from "@/components/icons/LogoutIcon.vue";
+import Logo from "./Logo.vue";
+import SeriesIcon from "./icons/SeriesIcon.vue";
+import TorrentsIcon from "./icons/TorrentsIcon.vue";
+import ConversionsIcon from "./icons/ConversionsIcon.vue";
+import EpisodesIcon from "./icons/EpisodesIcon.vue";
+import LoginIcon from "./icons/LoginIcon.vue";
+import LogoutIcon from "./icons/LogoutIcon.vue";
 import { useRoute } from "vue-router/dist/vue-router";
 import { onMounted, ref } from "vue";
-import LoginModal from "@/components/LoginModal.vue";
-import { useUserStore } from "../stores/user";
+import LoginModal from "../modal/LoginModal.vue";
+import { useUserStore } from "../../stores/user";
 import axios from "axios";
 import { notify } from "@kyvg/vue3-notification";
 
-let modalOpen = ref(false);
-
+const modal = ref(null);
 const route = useRoute();
 const userStore = useUserStore();
 
@@ -37,14 +36,14 @@ function logout() {
         userStore.logout();
         notify({
           title: "Logged out",
-          type: "success"
+          type: "success",
         });
       })
       .catch((err) => {
         notify({
           title: "Failed to logout",
           text: err?.response?.data?.error ?? "",
-          type: "error"
+          type: "error",
         });
       });
   }
@@ -73,12 +72,16 @@ function logout() {
       <EpisodesIcon :selected="route.path.startsWith('/episodes')" />
     </RouterLink>
     <LoginIcon
-      @click="modalOpen = true"
+      @click="() => modal.show()"
       v-if="userStore.user === null"
       :selected="false"
     />
-    <LogoutIcon @click="logout" v-if="userStore.user !== null" :selected="false" />
-    <LoginModal v-model="modalOpen" />
+    <LogoutIcon
+      @click="logout"
+      v-if="userStore.user !== null"
+      :selected="false"
+    />
+    <LoginModal ref="modal" />
   </div>
 </template>
 

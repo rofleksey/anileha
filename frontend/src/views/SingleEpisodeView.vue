@@ -4,7 +4,7 @@ import axios from "axios";
 import { onMounted } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { useRoute } from "vue-router/dist/vue-router";
-import JsonTree from "@/components/JsonTree.vue";
+import JsonTree from "../components/info/JsonTree.vue";
 
 const jsonStore = useJsonStore();
 const route = useRoute();

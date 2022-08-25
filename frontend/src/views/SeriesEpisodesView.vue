@@ -1,7 +1,7 @@
 <script setup>
 import { useListStore } from "../stores/list";
-import SearchBar from "@/components/SearchBar.vue";
-import TextList from "@/components/TextList.vue";
+import SearchBar from "../components/input/SearchBar.vue";
+import TextList from "../components/info/TextList.vue";
 import { onMounted } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { useRoute } from "vue-router";

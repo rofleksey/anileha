@@ -11,12 +11,12 @@ defineProps({
   <div :class="{ icon: true, selected: selected }">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
       <path
-        d="M2 12H4V17H20V12H22V17C22 18.11 21.11 19 20 19H4C2.9 19 2 18.11 2 17V12M12 15L17.55 9.54L16.13 8.13L13 11.25V2H11V11.25L7.88 8.13L6.46 9.55L12 15Z"
+        d="M21.1,12.5L22.5,13.91L15.97,20.5L12.5,17L13.9,15.59L15.97,17.67L21.1,12.5M10,17L13,20H3V18C3,15.79 6.58,14 11,14L12.89,14.11L10,17M11,4A4,4 0 0,1 15,8A4,4 0 0,1 11,12A4,4 0 0,1 7,8A4,4 0 0,1 11,4Z"
       />
     </svg>
   </div>
 </template>
 
 <style scoped>
-@import "../../assets/icon.css";
+@import "../../../assets/icon.css";
 </style>

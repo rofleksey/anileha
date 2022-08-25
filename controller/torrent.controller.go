@@ -40,6 +40,7 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 		BytesRead:           torrent.BytesRead,
 		Auto:                torrent.Auto,
 		Files:               mapTorrentFilesToResponse(torrent.Files),
+		UpdatedAt:           torrent.UpdatedAt,
 	}
 }
 
@@ -54,6 +55,7 @@ func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao.TorrentResponseWit
 		Progress:            torrent.Progress,
 		BytesRead:           torrent.BytesRead,
 		Auto:                torrent.Auto,
+		UpdatedAt:           torrent.UpdatedAt,
 	}
 }
 
