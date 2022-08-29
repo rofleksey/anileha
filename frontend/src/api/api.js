@@ -207,7 +207,7 @@ function formatTorrentFiles(data) {
     }
     return {
       id: f.id,
-      title: f.path,
+      title: `${f.episodeIndex}. ${f.path}`,
       link: "",
       details,
     };
