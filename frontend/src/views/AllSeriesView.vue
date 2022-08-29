@@ -6,12 +6,12 @@ import TextList from "../components/info/TextList.vue";
 import { onMounted, ref } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { getAllSeries } from "../api/api";
-import AddIcon from "../components/AddIcon.vue";
-import SeriesModal from "../components/modal/SeriesModal.vue";
+import AddIcon from "../components/modal/icons/AddIcon.vue";
+import NewSeriesModal from "../components/modal/NewSeriesModal.vue";
 
 const listStore = useListStore();
 const userStore = useUserStore();
-const seriesModal = ref(null);
+const newSeriesModal = ref(null);
 
 onMounted(() => {
   listStore.setData([]);
@@ -33,10 +33,10 @@ onMounted(() => {
   <div class="search">
     <div class="search-row">
       <SearchBar />
-      <AddIcon v-if="userStore.isAdmin" @click="() => seriesModal.show()" />
+      <AddIcon v-if="userStore.isAdmin" @click="() => newSeriesModal.show()" />
     </div>
     <TextList :entries="listStore.entries" />
-    <SeriesModal ref="seriesModal" />
+    <NewSeriesModal ref="newSeriesModal" />
   </div>
 </template>
 

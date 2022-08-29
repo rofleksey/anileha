@@ -9,5 +9,26 @@
 </template>
 
 <style scoped>
-@import "../assets/icon.css";
+.icon {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.icon:hover {
+  cursor: pointer;
+  opacity: 1;
+}
+
+svg {
+  width: 24px;
+  height: 24px;
+  fill: #64bcff;
+  transition: fill 200ms ease;
+  margin-left: 10px;
+  margin-right: 5px;
+}
+
+.icon:hover svg {
+  fill: #defefc;
+}
 </style>

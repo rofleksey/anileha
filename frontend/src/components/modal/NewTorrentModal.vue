@@ -2,12 +2,12 @@
 import { ref, toRaw } from "vue";
 import axios from "axios";
 import { notify } from "@kyvg/vue3-notification";
-import TextInput from "../input/TextInput.vue";
 import SquareButton from "../input/SquareButton.vue";
 import BaseModal from "./BaseModal.vue";
 import FileInput from "../input/FileInput.vue";
+import CheckBoxInput from "../input/CheckBoxInput.vue";
 
-const nameRef = ref("");
+const autoRef = ref(true);
 const filesRef = ref([]);
 const baseModal = ref(null);
 
@@ -19,49 +19,50 @@ function hide() {
   baseModal.value.hide();
 }
 
+const props = defineProps({
+  seriesId: {
+    type: Number,
+    required: true,
+  },
+});
+
 defineExpose({
   show,
   hide,
 });
 
-const createSeries = () => {
-  const name = nameRef.value;
-  if (name.trim().length === 0) {
-    notify({
-      title: "Failed to create series",
-      text: "Name is blank",
-      type: "error",
-    });
-    return;
-  }
+const addTorrent = () => {
   if (filesRef.value.length === 0) {
     notify({
-      title: "Failed to create series",
-      text: "Thumbnail is not selected",
+      title: "Failed to add torrent",
+      text: "Files are not selected",
       type: "error",
     });
     return;
   }
   const unwrappedFiles = filesRef.value.map((proxy) => toRaw(proxy));
   const formData = new FormData();
-  formData.append("name", name);
-  formData.append("thumb", unwrappedFiles[0]);
+  formData.append("seriesId", props.seriesId);
+  formData.append("auto", autoRef.value);
+  unwrappedFiles.forEach((file) => {
+    formData.append(`files`, file);
+  });
   axios({
     method: "post",
-    url: "/admin/series",
+    url: "/admin/torrent",
     data: formData,
     headers: { "Content-Type": "multipart/form-data" },
   })
     .then(() => {
       notify({
-        title: "Created",
+        title: "Added",
         type: "success",
       });
       baseModal.value.hide();
     })
     .catch((err) => {
       notify({
-        title: "Failed to create series",
+        title: "Failed to add torrent",
         text: err?.response?.data?.error ?? "",
         type: "error",
       });
@@ -70,15 +71,16 @@ const createSeries = () => {
 </script>
 
 <template>
-  <BaseModal title="New Series" ref="baseModal" @submit="createSeries">
+  <BaseModal title="Add torrent" ref="baseModal" @submit="addTorrent">
     <FileInput
-      hint="Select thumbnail"
-      type="image"
+      hint="Select torrent files"
+      file-type="application/x-bittorrent"
+      :multiple="true"
       @select="(val) => (filesRef = val)"
     />
-    <TextInput v-model="nameRef" type="text" placeholder="Name" />
+    <CheckBoxInput v-model="autoRef" text="Auto download/convert" />
     <template #actions>
-      <SquareButton @click="createSeries" text="create" />
+      <SquareButton @click="addTorrent" text="add" />
     </template>
   </BaseModal>
 </template>

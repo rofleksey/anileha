@@ -30,13 +30,13 @@ function formatSeries(data) {
       onclick: () => {
         if (window.confirm(`Delete series ${series.name}?`)) {
           axios
-            .delete(`/admin/series/${series.id}`)
-            .then(() => {
-              notify({
-                title: "Deleted",
-                type: "success",
-              });
-            })
+              .delete(`/admin/series/${series.id}`)
+              .then(() => {
+                notify({
+                  title: "Deleted",
+                  type: "success",
+                });
+              })
               .catch((err) => {
                 notify({
                   title: "Failed to delete series",
@@ -69,14 +69,21 @@ function formatTorrents(data) {
         id: "updated_at",
         text: format(new Date(t.updatedAt)),
       },
-      {
-        id: "length",
-        text: `${prettyBytes(t.totalDowloadLength ?? 0)} / ${prettyBytes(
-            t.totalLength ?? 0
-        )}`,
-      },
     ];
-    if (t.status === "processing") {
+    if (t.status === "download") {
+      details.push({
+        id: "length",
+        text: `${prettyBytes(t.bytesRead ?? 0)} / ${prettyBytes(
+            t.totalDownloadLength ?? 0
+        )}`,
+      });
+    } else {
+      details.push({
+        id: "length",
+        text: `${prettyBytes(t.totalDownloadLength ?? 0)}`,
+      });
+    }
+    if (t.status === "download") {
       if (t.progress.progress) {
         details.push({
           id: "progress",
@@ -86,19 +93,19 @@ function formatTorrents(data) {
       if (t.progress.elapsed) {
         details.push({
           id: "elapsed",
-          text: t.progress.elapsed + "s elapsed",
+          text: durationFormat(t.progress.elapsed * 1000) + " elapsed",
         });
       }
       if (t.progress.eta) {
         details.push({
           id: "eta",
-          text: t.progress.eta + "s remaining",
+          text: durationFormat(t.progress.eta * 1000) + " remaining",
         });
       }
       if (t.progress.speed) {
         details.push({
           id: "speed",
-          text: t.progress.speed + " fps",
+          text: prettyBytes(t.progress.speed) + "/s",
         });
       }
     }
@@ -108,22 +115,28 @@ function formatTorrents(data) {
         text: "auto",
       });
     }
-    if (t.status === "processing") {
+    details.push({
+      id: "files",
+      text: "files",
+      link: `/torrents/files/${t.id}`,
+      admin: true,
+    });
+    if (t.status === "download") {
       details.push({
         id: "stop",
         text: "stop",
         onclick: () => {
           if (window.confirm(`Stop torrent ${t.name}?`)) {
             axios
-              .post(`/admin/torrent/stop`, {
-                torrentId: t.id,
-              })
-              .then(() => {
-                notify({
-                  title: "Stopped",
-                  type: "success",
-                });
-              })
+                .post(`/admin/torrent/stop`, {
+                  torrentId: t.id,
+                })
+                .then(() => {
+                  notify({
+                    title: "Stopped",
+                    type: "success",
+                  });
+                })
                 .catch((err) => {
                   notify({
                     title: "Failed to stop torrent",
@@ -142,13 +155,13 @@ function formatTorrents(data) {
       onclick: () => {
         if (window.confirm(`Delete torrent ${t.name}?`)) {
           axios
-            .delete(`/admin/torrent/${t.id}`)
-            .then(() => {
-              notify({
-                title: "Deleted",
-                type: "success",
-              });
-            })
+              .delete(`/admin/torrent/${t.id}`)
+              .then(() => {
+                notify({
+                  title: "Deleted",
+                  type: "success",
+                });
+              })
               .catch((err) => {
                 notify({
                   title: "Failed to delete torrent",
@@ -164,6 +177,38 @@ function formatTorrents(data) {
       id: t.id,
       title: t.name,
       link: `/torrents/${t.id}`,
+      details,
+    };
+  });
+}
+
+function formatTorrentFiles(data) {
+  return data.map((f) => {
+    const details = [
+      {
+        id: "status",
+        text: f.status,
+      },
+      {
+        id: "length",
+        text: prettyBytes(f.length),
+      },
+    ];
+    if (f.season) {
+      details.push({
+        id: "episode",
+        text: `${f.season} | ${f.episode}`,
+      });
+    } else {
+      details.push({
+        id: "episode",
+        text: f.episode,
+      });
+    }
+    return {
+      id: f.id,
+      title: f.path,
+      link: "",
       details,
     };
   });
@@ -191,19 +236,19 @@ function formatConversions(data) {
       if (convert.progress.elapsed) {
         details.push({
           id: "elapsed",
-          text: convert.progress.elapsed + "s elapsed",
+          text: durationFormat(convert.progress.elapsed * 1000) + " elapsed",
         });
       }
       if (convert.progress.eta) {
         details.push({
           id: "eta",
-          text: convert.progress.eta + "s remaining",
+          text: durationFormat(convert.progress.eta * 1000) + " remaining",
         });
       }
       if (convert.progress.speed) {
         details.push({
           id: "speed",
-          text: convert.progress.speed + " fps",
+          text: convert.progress.speed + "x",
         });
       }
     }
@@ -243,13 +288,13 @@ function formatEpisodes(data) {
       onclick: () => {
         if (window.confirm(`Delete episode ${ep.name}?`)) {
           axios
-            .delete(`/admin/episodes/${ep.id}`)
-            .then(() => {
-              notify({
-                title: "Deleted",
-                type: "success",
-              });
-            })
+              .delete(`/admin/episodes/${ep.id}`)
+              .then(() => {
+                notify({
+                  title: "Deleted",
+                  type: "success",
+                });
+              })
               .catch((err) => {
                 notify({
                   title: "Failed to delete episode",
@@ -298,4 +343,9 @@ export async function getConversionsBySeriesId(seriesId) {
 export async function getEpisodesBySeriesId(seriesId) {
   const {data} = await axios(`/series/${seriesId}/episodes`);
   return formatEpisodes(data);
+}
+
+export async function getTorrentFilesByTorrentId(torrentId) {
+  const {data} = await axios(`/admin/torrent/${torrentId}`);
+  return formatTorrentFiles(data.files);
 }

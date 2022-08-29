@@ -40,9 +40,7 @@ function onChange() {
     if (file.size > props.maxFileSize) {
       notify({
         title: "Failed to select files",
-        text: `Files should be less than ${prettyBytes(
-          props.maxFileSize
-        )}`,
+        text: `Files should be less than ${prettyBytes(props.maxFileSize)}`,
         type: "error",
       });
       return;
@@ -66,7 +64,13 @@ function onChange() {
 <template>
   <div class="file-input" @click="() => inputRef.click()">
     <span>{{ hintText }}</span>
-    <input class="actual-input" ref="inputRef" @change="onChange" type="file" />
+    <input
+      :multiple="multiple"
+      class="actual-input"
+      ref="inputRef"
+      @change="onChange"
+      type="file"
+    />
   </div>
 </template>
 

@@ -1,29 +1,30 @@
 <script setup>
 import { useListStore } from "../stores/list";
-import { useUserStore } from "../stores/user";
 import SearchBar from "../components/input/SearchBar.vue";
 import TextList from "../components/info/TextList.vue";
 import { onMounted, ref } from "vue";
 import { notify } from "@kyvg/vue3-notification";
 import { useRoute } from "vue-router";
-import { getTorrentsBySeriesId } from "../api/api";
-import AddIcon from "../components/modal/icons/AddIcon.vue";
-import NewTorrentModal from "../components/modal/NewTorrentModal.vue";
+import { getTorrentFilesByTorrentId } from "../api/api";
+import DownloadIcon from "../components/modal/icons/DownloadIcon.vue";
+import ConvertIcon from "../components/modal/icons/ConvertIcon.vue";
+import StartTorrentModal from "../components/modal/StartTorrentModal.vue";
+import StartConversionModal from "../components/modal/StartConversionModal.vue";
 
 const listStore = useListStore();
-const userStore = useUserStore();
-const newTorrentModal = ref(null);
+const startTorrentModal = ref(null);
+const startConversionModal = ref(null);
 const route = useRoute();
 
 onMounted(() => {
   listStore.setData([]);
-  getTorrentsBySeriesId(route.params.id)
+  getTorrentFilesByTorrentId(route.params.id)
     .then((data) => {
       listStore.setData(data);
     })
     .catch((err) => {
       notify({
-        title: "Failed to get torrents",
+        title: "Failed to get torrent files",
         text: err?.response?.data?.error ?? "",
         type: "error",
       });
@@ -35,10 +36,15 @@ onMounted(() => {
   <div class="search">
     <div class="search-row">
       <SearchBar />
-      <AddIcon v-if="userStore.isAdmin" @click="() => newTorrentModal.show()" />
+      <DownloadIcon @click="() => startTorrentModal.show()" />
+      <ConvertIcon @click="() => startConversionModal.show()" />
     </div>
     <TextList :entries="listStore.entries" />
-    <NewTorrentModal :series-id="route.params.id" ref="newTorrentModal" />
+    <StartTorrentModal :torrent-id="route.params.id" ref="startTorrentModal" />
+    <StartConversionModal
+      :torrent-id="route.params.id"
+      ref="startConversionModal"
+    />
   </div>
 </template>
 
