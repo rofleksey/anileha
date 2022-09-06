@@ -9,7 +9,7 @@ const emit = defineEmits(["pressed"]);
 </script>
 
 <template>
-  <button @click="() => emit('pressed')" rel="closeBtn" class="close">
+  <button @click="() => emit('pressed')">
     {{ text }}
   </button>
 </template>

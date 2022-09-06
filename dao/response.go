@@ -67,6 +67,7 @@ type ConversionResponseDao struct {
 
 type EpisodeResponseDao struct {
 	ID           uint      `json:"id"`
+	SeriesId     uint      `json:"seriesId"`
 	ConversionId uint      `json:"conversionId"`
 	Name         string    `json:"name"`
 	CreatedAt    time.Time `json:"createdAt"`

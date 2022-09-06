@@ -18,6 +18,7 @@ func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
 	}
 	return dao.EpisodeResponseDao{
 		ID:           episode.ID,
+		SeriesId:     episode.SeriesId,
 		ConversionId: episode.ConversionId,
 		Name:         episode.Name,
 		CreatedAt:    episode.CreatedAt,

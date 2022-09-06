@@ -42,7 +42,7 @@ const router = createRouter({
       {
       path: "/episodes/:id",
       name: "single episode",
-      component: () => import("../views/SingleEpisodeView.vue")
+      component: () => import("../views/PlayerView.vue")
     },
     {
       path: "/convert/series/:id",
