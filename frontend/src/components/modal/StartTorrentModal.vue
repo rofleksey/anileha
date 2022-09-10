@@ -41,7 +41,7 @@ const startTorrent = () => {
   }
   axios
     .post("/admin/torrent/start", {
-      torrentId: props.torrentId,
+      torrentId: Number(props.torrentId),
       fileIndices: files,
     })
     .then(() => {

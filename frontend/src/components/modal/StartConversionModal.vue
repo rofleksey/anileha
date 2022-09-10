@@ -41,7 +41,7 @@ const startConversion = () => {
   }
   axios
     .post("/admin/convert/start", {
-      torrentId: props.torrentId,
+      torrentId: Number(props.torrentId),
       fileIndices: files,
     })
     .then(() => {
