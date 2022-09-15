@@ -3,6 +3,7 @@ import prettyBytes from "pretty-bytes";
 import {format} from "timeago.js";
 import durationFormat from "format-duration";
 import {notify} from "@kyvg/vue3-notification";
+import sanitize from "sanitize-filename";
 
 function formatSeries(data) {
   return data.map((series) => {
@@ -266,7 +267,7 @@ function formatConversions(data) {
   });
 }
 
-function formatEpisodes(data) {
+function formatEpisodes(data, seriesData) {
   return data.map((ep) => {
     const details = [
       {
@@ -282,6 +283,22 @@ function formatEpisodes(data) {
         text: prettyBytes(ep.length),
       },
     ];
+    details.push({
+      id: "download",
+      text: "download",
+      onclick: () => {
+        const seriesName = seriesData.name;
+        const link = document.createElement("a");
+        link.href = ep.link;
+        link.setAttribute(
+            "download",
+            sanitize(`${seriesName} - ${ep.name}.mp4`)
+        );
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+    });
     details.push({
       id: "delete",
       text: "delete",
@@ -341,8 +358,9 @@ export async function getConversionsBySeriesId(seriesId) {
 }
 
 export async function getEpisodesBySeriesId(seriesId) {
+  const {data: seriesData} = await axios(`/series/${seriesId}`);
   const {data} = await axios(`/series/${seriesId}/episodes`);
-  return formatEpisodes(data);
+  return formatEpisodes(data, seriesData);
 }
 
 export async function getTorrentFilesByTorrentId(torrentId) {

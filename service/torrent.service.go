@@ -382,10 +382,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	}
 
 	// extract metadata
-	episodeMetadata, multipleSuccess := roflmeta.ParseMultipleEpisodeMetadata(filenames)
-	if !multipleSuccess {
-		s.log.Warn("failed to apply multiple episode metadata extraction", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
-	}
+	episodeMetadata := roflmeta.ParseMultipleEpisodeMetadata(filenames)
 
 	// don't assign season if torrent contains only single one
 	seasonCounter := make(map[string]struct{}, 10)

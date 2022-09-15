@@ -411,6 +411,8 @@ github.com/rofleksey/roflmeta v0.1.4 h1:NPVIME5o5jJnQbDbUut/yMAuQ0vuR5oxC6UPor0F
 github.com/rofleksey/roflmeta v0.1.4/go.mod h1:T2vJBZsNApMubqi8Rmjxw4+Ni22unYnobo9jAz1O3eE=
 github.com/rofleksey/roflmeta v0.1.5 h1:QMT05r5ld2oQYhclfvi9bah/1nTetF4sjNmhtix9biM=
 github.com/rofleksey/roflmeta v0.1.5/go.mod h1:T2vJBZsNApMubqi8Rmjxw4+Ni22unYnobo9jAz1O3eE=
+github.com/rofleksey/roflmeta v0.1.6 h1:XnOE1xu1BA7j9UzBEu5c95BngZc4LvuVppSPViSZnDQ=
+github.com/rofleksey/roflmeta v0.1.6/go.mod h1:T2vJBZsNApMubqi8Rmjxw4+Ni22unYnobo9jAz1O3eE=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/rogpeppe/go-internal v1.8.0 h1:FCbCCtXNOY3UtUuHUYaghJg4y7Fd14rXifAYUAtL9R8=
