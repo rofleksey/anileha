@@ -4,6 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
+	gin2 "anileha/rest"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -73,7 +74,7 @@ func registerEpisodeController(
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
-	episodeGroup.Use(AdminMiddleware(config))
+	episodeGroup.Use(gin2.AdminMiddleware(config))
 	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)

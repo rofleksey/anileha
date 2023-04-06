@@ -3,6 +3,7 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -66,13 +67,20 @@ func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) 
 		return nil, err
 	}
 	url := fmt.Sprintf("%s/%s", util.EpisodeRoute, filepath.Base(episodePath))
-	episode := db.NewEpisode(conversion.SeriesId, conversion.ID, conversion.EpisodeName, nil, uint64(stat.Size()), conversion.VideoDurationSec, episodePath, url)
+	episode := db.Episode{
+		SeriesId:     conversion.SeriesId,
+		ConversionId: conversion.ID,
+		Length:       uint64(stat.Size()),
+		DurationSec:  conversion.VideoDurationSec,
+		Path:         episodePath,
+		Url:          url,
+	}
 	queryResult := s.db.Create(&episode)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrCreationFailed
+		return nil, rest.ErrCreationFailed
 	}
 	return &episode, nil
 }
@@ -84,7 +92,7 @@ func (s *EpisodeService) GetEpisodeById(id uint) (*db.Episode, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &episode, nil
 }
@@ -105,14 +113,14 @@ func (s *EpisodeService) DeleteEpisodeById(id uint) error {
 		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return util.ErrNotFound
+		return rest.ErrNotFoundInst
 	}
 	queryResult = s.db.Delete(&db.Episode{}, id)
 	if queryResult.Error != nil {
 		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return util.ErrNotFound
+		return rest.ErrNotFoundInst
 	}
 	go s.cleanUpEpisode(episode)
 	return nil

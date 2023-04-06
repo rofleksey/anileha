@@ -3,13 +3,15 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/util"
 	"context"
 	"errors"
+	"fmt"
 	torrentLib "github.com/anacrolix/torrent"
-	"github.com/rofleksey/roflmeta"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 	"gorm.io/gorm"
 	"os"
 	"path"
@@ -26,7 +28,6 @@ type TorrentService struct {
 	cTorrentMap     sync.Map // cTorrentMap Stores torrentLib.Client torrent entries [uint -> *torrentLib.Torrent]
 	fileService     *FileService
 	log             *zap.Logger
-	pipelineFacade  *PipelineFacade
 	infoFolder      string
 	downloadsFolder string
 	readyFolder     string
@@ -35,24 +36,24 @@ type TorrentService struct {
 func createDirs(config *config.Config) (string, string, string, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to get working dir")
 	}
 	infoFolder := path.Join(workingDir, config.Data.Dir, util.TorrentInfoSubDir)
 	err = os.MkdirAll(infoFolder, os.ModePerm)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to create info dir")
 	}
 
 	downloadsFolder := path.Join(workingDir, config.Data.Dir, util.TorrentDownloadsSubDir)
 	err = os.MkdirAll(downloadsFolder, os.ModePerm)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to create downloads dir")
 	}
 
 	readyFolder := path.Join(workingDir, config.Data.Dir, util.TorrentReadySubDir)
 	err = os.MkdirAll(readyFolder, os.ModePerm)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("failed to create ready dir")
 	}
 
 	return infoFolder, downloadsFolder, readyFolder, nil
@@ -64,12 +65,11 @@ func NewTorrentService(
 	log *zap.Logger,
 	config *config.Config,
 	fileService *FileService,
-	pipelineFacade *PipelineFacade,
 ) (*TorrentService, error) {
-	if err := database.Model(&db.Torrent{}).Where("status = ? or status = ?", db.TORRENT_DOWNLOADING, db.TORRENT_CREATING).Updates(db.Torrent{Status: db.TORRENT_ERROR}).Error; err != nil {
+	if err := database.Model(&db.Torrent{}).Where("status = ? or status = ?", db.TorrentDownloading, db.TorrentCreating).Updates(db.Torrent{Status: db.TorrentError}).Error; err != nil {
 		return nil, err
 	}
-	if err := database.Model(&db.TorrentFile{}).Where("status = ?", db.TORRENT_FILE_DOWNLOADING).Updates(map[string]interface{}{"status": db.TORRENT_FILE_ERROR, "selected": false}).Error; err != nil {
+	if err := database.Model(&db.TorrentFile{}).Where("status = ?", db.TorrentFileDownloading).Updates(map[string]interface{}{"status": db.TorrentFileError, "selected": false}).Error; err != nil {
 		return nil, err
 	}
 	infoFolder, downloadsFolder, readyFolder, err := createDirs(config)
@@ -97,7 +97,6 @@ func NewTorrentService(
 		client:          client,
 		fileService:     fileService,
 		log:             log,
-		pipelineFacade:  pipelineFacade,
 		infoFolder:      infoFolder,
 		downloadsFolder: downloadsFolder,
 		readyFolder:     readyFolder,
@@ -145,40 +144,40 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.Torrent, error) {
 		return db.Order("torrent_files.episode_index ASC")
 	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return nil, rest.ErrInternal(queryResult.Error.Error())
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &torrent, nil
 }
 
-func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
+func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, *rest.StatusError) {
 	var file db.TorrentFile
 	queryResult := s.db.First(&file, "id = ?", id)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return nil, rest.ErrInternal(queryResult.Error.Error())
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &file, nil
 }
 
-func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
+func (s *TorrentService) GetAllTorrents() ([]db.Torrent, *rest.StatusError) {
 	var torrentArr []db.Torrent
 	queryResult := s.db.Order("torrents.created_at DESC").Find(&torrentArr)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return nil, rest.ErrInternal(queryResult.Error.Error())
 	}
 	return torrentArr, nil
 }
 
-func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, error) {
+func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, *rest.StatusError) {
 	var torrentArr []db.Torrent
 	queryResult := s.db.Where("series_id = ?", seriesId).Order("torrents.created_at DESC").Find(&torrentArr)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return nil, rest.ErrInternal(queryResult.Error.Error())
 	}
 	return torrentArr, nil
 }
@@ -189,32 +188,34 @@ func (s *TorrentService) DeleteTorrentById(id uint) error {
 		return db.Order("torrent_files.episode_index ASC")
 	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
-		return queryResult.Error
+		return rest.ErrInternal(queryResult.Error.Error())
 	}
 	if queryResult.RowsAffected == 0 {
-		return util.ErrNotFound
+		return rest.ErrNotFoundInst
 	}
-	if torrent.Status == db.TORRENT_DOWNLOADING {
+	if torrent.Status == db.TorrentDownloading {
 		err := s.StopTorrent(torrent)
 		if err != nil {
-			return err
+			return rest.ErrInternal(err.Error())
 		}
 	}
-	if err := s.db.Delete(&db.TorrentFile{}, "torrent_id = ?", id).Error; err != nil {
-		return err
-	}
-	queryResult = s.db.Delete(&db.Torrent{}, id)
-	if queryResult.Error != nil {
-		return queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return util.ErrNotFound
-	}
-	go s.cleanUpTorrent(torrent)
-	return nil
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&db.TorrentFile{}, "torrent_id = ?", id).Error; err != nil {
+			return rest.ErrInternal(err.Error())
+		}
+		queryResult = tx.Delete(&db.Torrent{}, id)
+		if queryResult.Error != nil {
+			return rest.ErrInternal(queryResult.Error.Error())
+		}
+		if queryResult.RowsAffected == 0 {
+			return rest.ErrNotFoundInst
+		}
+		go s.cleanUpTorrent(torrent)
+		return nil
+	})
+	return err
 }
 
-// onFailedImport Logs error, deletes torrent from DB, cleans up torrent files
 func (s *TorrentService) onFailedImport(torrent db.Torrent, err error) {
 	s.log.Warn("failed to import torrent", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
 	deleteErr := s.DeleteTorrentById(torrent.ID)
@@ -289,14 +290,14 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// update torrent status
-		if err := tx.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Status: db.TORRENT_READY}).Error; err != nil {
+		if err := tx.Model(&db.Torrent{}).Where("id = ?", id).Updates(db.Torrent{Status: db.TorrentReady}).Error; err != nil {
 			return err
 		}
 
 		// update downloaded files' statuses
 		for _, file := range torrent.Files {
-			if file.Selected && file.Status != db.TORRENT_FILE_READY {
-				if err := tx.Model(&db.TorrentFile{}).Where("id = ?", file.ID).Updates(db.TorrentFile{Status: db.TORRENT_FILE_READY, ReadyPath: file.ReadyPath}).Error; err != nil {
+			if file.Selected && file.Status != db.TorrentFileReady {
+				if err := tx.Model(&db.TorrentFile{}).Where("id = ?", file.ID).Updates(db.TorrentFile{Status: db.TorrentFileReady, ReadyPath: file.ReadyPath}).Error; err != nil {
 					return err
 				}
 			}
@@ -309,17 +310,13 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 		s.log.Error("transaction on torrent completion failed", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name), zap.Error(err))
 		return
 	}
-	if torrent.Auto {
-		s.pipelineFacade.Channel <- PipelineMessageTorrentFinished{
-			TorrentId: id,
-		}
-	}
 	s.log.Info("torrent finished", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 }
 
 // torrentCompletionWatcher Polls for torrent's completion, calls onTorrentCompletion
 func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []db.TorrentFile, totalDownloadLength uint, cTorrent *torrentLib.Torrent) {
 	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
 	cFiles := cTorrent.Files()
 	etaCalc := util.NewEtaCalculator(0, float64(totalDownloadLength))
 	etaCalc.Start()
@@ -346,7 +343,6 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 			if bytesRead < totalDownloadLength {
 				continue
 			}
-			ticker.Stop()
 
 			cTorrent.Drop()
 			s.cTorrentMap.Delete(id)
@@ -370,44 +366,28 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	info := cTorrent.Info()
 
 	torrent.Name = info.BestName()
-	torrent.Status = db.TORRENT_IDLE
+	torrent.Status = db.TorrentIdle
 	s.log.Info("torrent received info", zap.Int("fileCount", len(cTorrent.Files())), zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	filenames := make([]string, 0, len(info.Files))
 	for i, torrentFile := range cTorrent.Files() {
-		file := db.NewTorrentFile(torrent.ID, i, torrentFile.DisplayPath(), false, uint(torrentFile.Length()))
+		file := db.TorrentFile{
+			TorrentId:    torrent.ID,
+			TorrentIndex: i,
+			TorrentPath:  torrentFile.DisplayPath(),
+			Length:       uint(torrentFile.Length()),
+		}
 		files = append(files, file)
 		filenames = append(filenames, file.TorrentPath)
 	}
 
-	// extract metadata
-	episodeMetadata := roflmeta.ParseMultipleEpisodeMetadata(filenames)
-
-	// don't assign season if torrent contains only single one
-	seasonCounter := make(map[string]struct{}, 10)
-	for _, metadata := range episodeMetadata {
-		if metadata.Episode != "" {
-			seasonCounter[metadata.Season] = struct{}{}
-		}
-	}
-	assignSeasons := len(seasonCounter) > 1
-	for i := range files {
-		files[i].Episode = episodeMetadata[i].Episode
-		if assignSeasons {
-			files[i].Season = episodeMetadata[i].Season
-		}
-	}
-
 	// sort by episode / season
 	sort.Slice(files, func(i, j int) bool {
-		if files[i].Season == files[j].Season {
-			return files[i].Episode < files[j].Episode
-		}
-		return files[i].Season < files[j].Season
+		return files[i].TorrentPath < files[j].TorrentPath
 	})
 	for i := range files {
-		files[i].EpisodeIndex = i
+		files[i].ClientIndex = i
 	}
 
 	totalLength := uint(0)
@@ -417,65 +397,79 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	}
 	torrent.TotalLength = totalLength
 
-	queryResult := s.db.Create(files)
-	if queryResult.Error != nil {
-		s.onFailedImport(torrent, queryResult.Error)
-		return queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		s.onFailedImport(torrent, util.ErrFileMapping)
-		return util.ErrFileMapping
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		queryResult := tx.Create(files)
+		if queryResult.Error != nil {
+			s.onFailedImport(torrent, queryResult.Error)
+			return queryResult.Error
+		}
+		if queryResult.RowsAffected == 0 {
+			s.onFailedImport(torrent, util.ErrFileMapping)
+			return util.ErrFileMapping
+		}
+
+		queryResult = tx.Save(&torrent)
+		if queryResult.Error != nil {
+			s.onFailedImport(torrent, queryResult.Error)
+			return queryResult.Error
+		}
+		if queryResult.RowsAffected == 0 {
+			s.onFailedImport(torrent, rest.ErrNotFoundInst)
+			return rest.ErrNotFoundInst
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
 	}
 
-	queryResult = s.db.Save(&torrent)
-	if queryResult.Error != nil {
-		s.onFailedImport(torrent, queryResult.Error)
-		return queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		s.onFailedImport(torrent, util.ErrNotFound)
-		return util.ErrNotFound
-	}
 	cTorrent.Drop()
 	s.cTorrentMap.Delete(torrent.ID)
 	s.log.Info("torrent initialized", zap.Uint("torrentId", torrent.ID), zap.String("torrentName", torrent.Name))
 	return nil
 }
 
-func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string, auto bool) (uint, error) {
+func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) *rest.StatusError {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
-		return 0, err
+		return rest.ErrInternal(err.Error())
 	}
 	err = os.Rename(tempPath, newPath)
 	if err != nil {
-		return 0, err
+		return rest.ErrInternal(err.Error())
 	}
-	torrent := db.NewTorrent(seriesId, newPath, auto)
+	torrent := db.Torrent{
+		SeriesId: seriesId,
+		FilePath: newPath,
+	}
 	queryResult := s.db.Create(&torrent)
 	if queryResult.Error != nil {
 		deleteErr := os.Remove(newPath)
 		if deleteErr != nil {
 			s.log.Warn("error deleting torrent on add error", zap.Error(deleteErr))
 		}
-		return 0, queryResult.Error
+		return rest.ErrInternal(queryResult.Error.Error())
 	}
 	if queryResult.RowsAffected == 0 {
 		deleteErr := os.Remove(newPath)
 		if deleteErr != nil {
 			s.log.Warn("error deleting torrent on add error", zap.Error(deleteErr))
 		}
-		return 0, util.ErrCreationFailed
+		return rest.ErrCreationFailed
 	}
-	err = s.initTorrent(torrent)
-	if err != nil {
-		return 0, err
-	}
-	s.log.Info("added new torrent", zap.Uint("seriesId", seriesId), zap.Uint("torrentId", torrent.ID))
-	return torrent.ID, nil
+	go func() {
+		err = s.initTorrent(torrent)
+		if err != nil {
+			s.log.Error("failed to init torrent", zap.Error(err))
+		}
+	}()
+	s.log.Info("adding new torrent in the background", zap.Uint("seriesId", seriesId), zap.Uint("torrentId", torrent.ID))
+	return nil
 }
 
-func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileIndices) error {
+func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices []int) *rest.StatusError {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if exists {
 		cTorrent := mapEntry.(*torrentLib.Torrent)
@@ -484,7 +478,7 @@ func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileI
 	}
 	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
 	if err != nil {
-		return err
+		return rest.ErrInternal(fmt.Sprintf("failed to add torrent from file: %s", err.Error()))
 	}
 	s.cTorrentMap.Store(torrent.ID, cTorrent)
 	<-cTorrent.GotInfo()
@@ -493,35 +487,35 @@ func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileI
 		cFile := cTorrent.Files()[torrent.Files[i].TorrentIndex]
 		cFile.SetPriority(torrentLib.PiecePriorityNone)
 		torrent.Files[i].Selected = false
-		torrent.Files[i].Status = db.TORRENT_FILE_IDLE
+		torrent.Files[i].Status = db.TorrentFileIdle
 	}
 	unselectedFiles := make([]uint, 0, len(torrent.Files))
 	selectedFiles := make([]uint, 0, len(torrent.Files))
 	for i := range torrent.Files {
-		if fileIndices.Contains(torrent.Files[i].EpisodeIndex) {
+		if fileIndices == nil || slices.Contains(fileIndices, torrent.Files[i].ClientIndex) {
 			cFile := cTorrent.Files()[torrent.Files[i].TorrentIndex]
 			cFile.SetPriority(torrentLib.PiecePriorityNormal)
 			downloadLength += uint(cFile.Length())
 			torrent.Files[i].Selected = true
-			torrent.Files[i].Status = db.TORRENT_FILE_DOWNLOADING
+			torrent.Files[i].Status = db.TorrentFileDownloading
 			selectedFiles = append(selectedFiles, torrent.Files[i].ID)
 		} else {
 			unselectedFiles = append(unselectedFiles, torrent.Files[i].ID)
 		}
 	}
-	err = s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TORRENT_DOWNLOADING, TotalDownloadLength: downloadLength}).Error
+	err = s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TorrentDownloading, TotalDownloadLength: downloadLength}).Error
 	if err != nil {
-		return err
+		return rest.ErrInternal(err.Error())
 	}
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		for _, id := range unselectedFiles {
-			err = s.db.Model(&db.TorrentFile{}).Where("id = ?", id).Updates(map[string]interface{}{"status": db.TORRENT_FILE_IDLE, "selected": false}).Error
+			err = s.db.Model(&db.TorrentFile{}).Where("id = ?", id).Updates(map[string]interface{}{"status": db.TorrentFileIdle, "selected": false}).Error
 			if err != nil {
 				return err
 			}
 		}
 		for _, id := range selectedFiles {
-			err = s.db.Model(&db.TorrentFile{}).Where("id = ?", id).Updates(map[string]interface{}{"status": db.TORRENT_FILE_DOWNLOADING, "selected": true}).Error
+			err = s.db.Model(&db.TorrentFile{}).Where("id = ?", id).Updates(map[string]interface{}{"status": db.TorrentFileDownloading, "selected": true}).Error
 			if err != nil {
 				return err
 			}
@@ -529,7 +523,7 @@ func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileI
 		return nil
 	})
 	if err != nil {
-		return err
+		return rest.ErrInternal(err.Error())
 	}
 	go s.torrentCompletionWatcher(torrent.ID, torrent.Name, torrent.Files, downloadLength, cTorrent)
 	return nil
@@ -538,23 +532,27 @@ func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices util.FileI
 func (s *TorrentService) StopTorrent(torrent db.Torrent) error {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if !exists {
-		return util.ErrCTorrentNotFound
+		return rest.ErrNotFoundInst
 	}
 	cTorrent := mapEntry.(*torrentLib.Torrent)
 	downloadLength := int64(0)
 	for i := range torrent.Files {
 		torrent.Files[i].Selected = false
-		torrent.Files[i].Status = db.TORRENT_FILE_IDLE
+		torrent.Files[i].Status = db.TorrentFileIdle
 	}
 	cTorrent.Drop()
 	<-cTorrent.Closed()
-	// TODO: separate db transactions from services
-	// TODO: do more transactions
-	err := s.db.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TORRENT_IDLE, "total_download_length": downloadLength}).Error
-	if err != nil {
-		return err
-	}
-	err = s.db.Model(&db.TorrentFile{}).Where("torrent_id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TORRENT_FILE_IDLE, "selected": false}).Error
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TorrentIdle, "total_download_length": downloadLength}).Error
+		if err != nil {
+			return rest.ErrInternal(err.Error())
+		}
+		err = tx.Model(&db.TorrentFile{}).Where("torrent_id = ?", torrent.ID).Updates(map[string]interface{}{"status": db.TorrentFileIdle, "selected": false}).Error
+		if err != nil {
+			return rest.ErrInternal(err.Error())
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}

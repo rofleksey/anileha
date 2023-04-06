@@ -5,8 +5,8 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/service"
-	"anileha/util"
 	"context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -22,32 +22,28 @@ func registerProbeController(
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	probeGroup := engine.Group("/admin/probe")
-	probeGroup.Use(AdminMiddleware(config))
+	probeGroup.Use(rest.AdminMiddleware(config))
 	probeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetTorrentById(req.TorrentId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		file := torrent.Files[req.FileIndex]
-		if file.Status != db.TORRENT_FILE_READY {
-			c.Error(util.ErrFileIsNotReadyToBeConverted)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
+		if file.Status != db.TorrentFileReady {
+			c.Error(rest.ErrFileIsNotReadyToBeConverted)
 			return
 		}
 		if file.ReadyPath == nil {
-			c.Error(util.ErrReadyFileNotFound)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
+			c.Error(rest.ErrReadyFileNotFound)
 			return
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		probe, err := ffprobe.ProbeURL(ctx, *file.ReadyPath)
 		if err != nil {
@@ -59,35 +55,30 @@ func registerProbeController(
 	})
 
 	analyzeGroup := engine.Group("/admin/analyze")
-	analyzeGroup.Use(AdminMiddleware(config))
+	analyzeGroup.Use(rest.AdminMiddleware(config))
 	analyzeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetTorrentById(req.TorrentId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		file := torrent.Files[req.FileIndex]
-		if file.Status != db.TORRENT_FILE_READY {
-			c.Error(util.ErrFileIsNotReadyToBeConverted)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
+		if file.Status != db.TorrentFileReady {
+			c.Error(rest.ErrFileIsNotReadyToBeConverted)
 			return
 		}
 		if file.ReadyPath == nil {
-			c.Error(util.ErrReadyFileNotFound)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
+			c.Error(rest.ErrReadyFileNotFound)
 			return
 		}
-		result, err := analyzer.Analyze(*file.ReadyPath, true)
+		result, err := analyzer.Probe(*file.ReadyPath)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, result)

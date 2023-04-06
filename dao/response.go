@@ -7,11 +7,11 @@ import (
 )
 
 type SeriesResponseDao struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	Query     *string   `json:"query"`
-	Thumb     string    `json:"thumb"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID         uint      `json:"id"`
+	Name       string    `json:"name"`
+	Query      *string   `json:"query"`
+	Thumb      string    `json:"thumb"`
+	LastUpdate time.Time `json:"lastUpdate"`
 }
 
 type TorrentResponseDao struct {
@@ -23,7 +23,6 @@ type TorrentResponseDao struct {
 	TotalDownloadLength uint                     `json:"totalDownloadLength"`
 	Progress            util.Progress            `json:"progress"`
 	BytesRead           uint                     `json:"bytesRead"`
-	Auto                bool                     `json:"auto"`
 	Files               []TorrentFileResponseDao `json:"files"`
 	UpdatedAt           time.Time                `json:"updatedAt"`
 }
@@ -42,13 +41,11 @@ type TorrentResponseWithoutFilesDao struct {
 }
 
 type TorrentFileResponseDao struct {
-	Path         string               `json:"path"`
-	Status       db.TorrentFileStatus `json:"status"`
-	Selected     bool                 `json:"selected"`
-	Length       uint                 `json:"length"`
-	Episode      string               `json:"episode"`
-	EpisodeIndex int                  `json:"episodeIndex"`
-	Season       string               `json:"season"`
+	Path        string               `json:"path"`
+	Status      db.TorrentFileStatus `json:"status"`
+	Selected    bool                 `json:"selected"`
+	Length      uint                 `json:"length"`
+	ClientIndex int                  `json:"clientIndex"`
 }
 
 type ConversionResponseDao struct {
@@ -59,7 +56,7 @@ type ConversionResponseDao struct {
 	EpisodeId     *uint               `json:"episodeId"`
 	EpisodeName   string              `json:"episodeName"`
 	Name          string              `json:"name"`
-	FFmpegCommand string              `json:"ffmpegCommand"`
+	Command       string              `json:"command"`
 	Status        db.ConversionStatus `json:"status"`
 	Progress      util.Progress       `json:"progress"`
 	UpdatedAt     time.Time           `json:"updatedAt"`

@@ -1,6 +1,13 @@
 package analyze
 
-import "gopkg.in/vansante/go-ffprobe.v2"
+import (
+	"gopkg.in/vansante/go-ffprobe.v2"
+	"regexp"
+)
+
+var videoRegex = regexp.MustCompile("video:(\\d+)([a-z]+)")
+var audioRegex = regexp.MustCompile("audio:(\\d+)([a-z]+)")
+var subRegex = regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
 
 type SubsType string
 
@@ -20,48 +27,38 @@ const (
 	StreamSub   StreamType = "subtitle"
 )
 
-type ParsedStream struct {
-	Index         int
-	RelativeIndex int
-	Language      *string
-	Codec         string
-	CodecFull     string
-	Title         *string
-}
-
-type StreamWithScore struct {
+type StreamWithIndex struct {
 	*ffprobe.Stream
 	RelativeIndex int
-	Score         uint64
-}
-
-type ScoreResult struct {
-	Ambiguous       bool
-	Video           *StreamWithScore
-	AudioCandidates []*StreamWithScore
-	SubCandidates   []*StreamWithScore
 }
 
 // result types
 
-type ResultStream struct {
+type BaseStream struct {
 	RelativeIndex int
+	Size          uint64
+	Lang          string
 }
 
 type VideoStream struct {
-	ResultStream
+	BaseStream
 	Width       int
 	Height      int
 	DurationSec int
 }
 
+type AudioStream struct {
+	BaseStream
+}
+
 type SubStream struct {
-	ResultStream
-	Type SubsType
+	BaseStream
+	Type       SubsType
+	TextLength int
 }
 
 type Result struct {
 	Video VideoStream
-	Audio *ResultStream
-	Sub   *SubStream
+	Audio []AudioStream
+	Sub   []SubStream
 }

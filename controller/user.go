@@ -4,6 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/service"
 	"anileha/util"
 	"github.com/gin-contrib/sessions"
@@ -64,9 +65,9 @@ func registerUserController(
 	})
 	userGroup.GET("/me", func(c *gin.Context) {
 		session := sessions.Default(c)
-		user := session.Get(UserKey)
+		user := session.Get(rest.UserKey)
 		if user == nil {
-			if CheckLocalhostAdmin(config, session, user, c) {
+			if rest.CheckLocalhostAdmin(config, session, user, c) {
 				c.JSON(http.StatusOK, LoginResponse{config.Admin.Username, true})
 				return
 			}
@@ -79,36 +80,31 @@ func registerUserController(
 	userGroup.POST("/login", func(c *gin.Context) {
 		var req dao.AuthRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			_ = c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
 		user, err := service.GetUserByLogin(req.User)
 		if err != nil {
 			_ = c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		if !util.CheckPasswordHash(req.Pass, config.User.Salt, user.Hash) {
-			_ = c.Error(util.ErrInvalidPassword)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrInvalidPassword.Error()})
+			_ = c.Error(rest.ErrInvalidPassword)
 			return
 		}
 		session := sessions.Default(c)
-		session.Set(UserKey, db.NewAuthUser(*user))
+		session.Set(rest.UserKey, db.NewAuthUser(*user))
 		if err := session.Save(); err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrSessionSavingFailed.Error()})
+			_ = c.Error(rest.ErrSessionSavingFailed)
 			return
 		}
 		c.JSON(http.StatusOK, LoginResponse{user.Login, user.Admin})
 	})
 	userGroup.POST("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set(UserKey, nil)
+		session.Set(rest.UserKey, nil)
 		if err := session.Save(); err != nil {
-			_ = c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrSessionSavingFailed.Error()})
+			_ = c.Error(rest.ErrSessionSavingFailed)
 			return
 		}
 		c.String(http.StatusOK, "OK")

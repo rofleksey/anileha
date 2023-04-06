@@ -2,16 +2,16 @@ package main
 
 import (
 	"anileha/analyze"
+	"anileha/command"
 	"anileha/config"
 	"anileha/controller"
 	"anileha/db"
 	"anileha/logger"
+	"anileha/rest"
 	"anileha/service"
 	"go.uber.org/fx"
 )
 
-// HINT: embed structs in return type (?)
-// func keklol() (>>orel MyStruct<<)
 // HINT: replace all model pointers to objects (where possible)
 // HINT: properly recover from all errors
 // HINT: remove rows changed check where possible
@@ -28,7 +28,7 @@ func main() {
 		// main components
 		logger.Export,
 		config.Export,
-		controller.RestExport,
+		rest.RestExport,
 		db.ServiceExport,
 
 		// services
@@ -39,7 +39,6 @@ func main() {
 		service.TorrentServiceExport,
 		service.ConversionServiceExport,
 		service.EpisodeServiceExport,
-		service.PipelineServiceExport,
 		service.UserServiceExport,
 
 		// rest controllers
@@ -53,7 +52,7 @@ func main() {
 		controller.UserControllerExport,
 
 		// misc
-		analyze.TextAnalyzerExport,
 		analyze.ProbeAnalyzerExport,
+		command.ProducerExport,
 	).Run()
 }

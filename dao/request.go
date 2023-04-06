@@ -4,22 +4,38 @@ type QueryRequestDao struct {
 	Query string `json:"query" binding:"required"`
 }
 
-type TorrentWithFileIndicesRequestDao struct {
-	TorrentId   uint   `json:"torrentId" binding:"required"`
-	FileIndices string `json:"fileIndices" binding:"required"`
+type StartTorrentRequestDao struct {
+	TorrentId     uint   `json:"torrentId" binding:"required"`
+	FileIndices   []int  `json:"fileIndices"`
+	PrefAudioLang string `json:"prefAudioLang"`
+	PrefSubLang   string `json:"prefSubLang"`
+}
+
+type StartConversionFileChanPrefData struct {
+	Disable bool   `json:"disable"`
+	Stream  *int   `json:"stream"`
+	File    string `json:"file"`
+	Lang    string `json:"lang"`
+}
+
+type StartConversionFilePrefData struct {
+	Index int                             `json:"index" binding:"required"`
+	Audio StartConversionFileChanPrefData `json:"audio" binding:"required"`
+	Sub   StartConversionFileChanPrefData `json:"sub" binding:"required"`
+}
+
+type StartConversionRequestDao struct {
+	TorrentId uint                          `json:"torrentId" binding:"required"`
+	Files     []StartConversionFilePrefData `json:"files" binding:"required"`
 }
 
 type TorrentWithFileIndexRequestDao struct {
 	TorrentId uint `json:"torrentId" binding:"required"`
-	FileIndex uint `json:"fileIndex"`
+	FileIndex int  `json:"fileIndex" binding:"required"`
 }
 
-type TorrentIdRequestDao struct {
-	TorrentId uint `json:"torrentId" binding:"required"`
-}
-
-type ConvertIdRequestDao struct {
-	ConversionId uint `json:"conversionId" binding:"required"`
+type IdRequestDao struct {
+	Id uint `json:"id" binding:"required"`
 }
 
 type NewUserRequestDao struct {

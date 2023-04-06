@@ -1,7 +1,6 @@
 package analyze
 
 import (
-	"anileha/config"
 	"anileha/ffmpeg"
 	"anileha/util"
 	"context"
@@ -13,31 +12,21 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
-
-var videoRegex = regexp.MustCompile("video:(\\d+)([a-z]+)")
-var audioRegex = regexp.MustCompile("audio:(\\d+)([a-z]+)")
-var subRegex = regexp.MustCompile("subtitle:(\\d+)([a-z]+)")
 
 // ProbeAnalyzer Selects streams and generates FFmpeg command for encoding
 // For video: Use the last video stream
 // For audio: select the only stream, else selects the only japanese stream, else selects the most heavy one (among japanese or all if not present)
 // For subs: select the only stream, else selects the only english stream, else selects the stream with most occurrences of english words (among english or all if not present)
 type ProbeAnalyzer struct {
-	textAnalyzer  *TextAnalyzer
-	regexMap      map[StreamType]*regexp.Regexp
-	log           *zap.Logger
-	prefAudioLang string
-	prefSubLang   string
+	regexMap map[StreamType]*regexp.Regexp
+	log      *zap.Logger
 }
 
 func NewProbeAnalyzer(
-	textAnalyzer *TextAnalyzer,
-	config *config.Config,
 	log *zap.Logger,
 ) *ProbeAnalyzer {
 	regexMap := make(map[StreamType]*regexp.Regexp)
@@ -45,11 +34,8 @@ func NewProbeAnalyzer(
 	regexMap[StreamAudio] = audioRegex
 	regexMap[StreamSub] = subRegex
 	return &ProbeAnalyzer{
-		textAnalyzer:  textAnalyzer,
-		regexMap:      regexMap,
-		log:           log,
-		prefAudioLang: config.Conversion.PrefAudioLang,
-		prefSubLang:   config.Conversion.PrefSubLang,
+		regexMap: regexMap,
+		log:      log,
 	}
 }
 
@@ -172,60 +158,25 @@ func (p *ProbeAnalyzer) getSubsType(stream *ffprobe.Stream) SubsType {
 	}
 }
 
-func (p *ProbeAnalyzer) Analyze(inputFile string, allowAmbiguousResults bool) (*Result, error) {
-	scoredResult, err := p.getScoreResult(inputFile)
-	if err != nil {
-		return nil, err
-	}
-	if !allowAmbiguousResults && (len(scoredResult.SubCandidates) == 0 || len(scoredResult.AudioCandidates) == 0) {
-		return nil, util.ErrNoValidStreamsFound
-	}
-	if !allowAmbiguousResults && (len(scoredResult.SubCandidates) > 1 || len(scoredResult.AudioCandidates) > 1 || scoredResult.Ambiguous) {
-		return nil, util.ErrAmbiguousSelection
-	}
-	var audioStream *ResultStream = nil
-	if len(scoredResult.AudioCandidates) > 0 {
-		audioStream = &ResultStream{
-			RelativeIndex: scoredResult.AudioCandidates[0].RelativeIndex,
-		}
-	}
-	var subStream *SubStream = nil
-	if len(scoredResult.SubCandidates) > 0 {
-		subStream = &SubStream{
-			ResultStream: ResultStream{
-				RelativeIndex: scoredResult.SubCandidates[0].RelativeIndex,
-			},
-			Type: p.getSubsType(scoredResult.SubCandidates[0].Stream),
-		}
-	}
-	duration, err := p.GetVideoDurationSec(inputFile)
-	if err != nil {
-		return nil, err
-	}
-	return &Result{
-		Video: VideoStream{
-			ResultStream: ResultStream{
-				RelativeIndex: scoredResult.Video.RelativeIndex,
-			},
-			Width:       scoredResult.Video.Width,
-			Height:      scoredResult.Video.Height,
-			DurationSec: duration,
-		},
-		Audio: audioStream,
-		Sub:   subStream,
-	}, nil
+func (p *ProbeAnalyzer) getLang(stream *ffprobe.Stream) string {
+	lang, _ := stream.TagList.GetString("language")
+	return lang
 }
 
-func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
+func (p *ProbeAnalyzer) Probe(inputFile string) (*Result, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	probe, err := ffprobe.ProbeURL(ctx, inputFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to run ffprobe: %w", err)
 	}
-	var videoStream *StreamWithScore
-	audioStreams := make([]*StreamWithScore, 0, 10)
-	subStreams := make([]*StreamWithScore, 0, 10)
+
+	var videoIndex *StreamWithIndex
+
+	audioIndices := make([]StreamWithIndex, 0, 10)
+	subIndices := make([]StreamWithIndex, 0, 10)
+
 	for _, stream := range probe.Streams {
 		switch stream.CodecType {
 		case "video":
@@ -233,126 +184,87 @@ func (p *ProbeAnalyzer) getScoreResult(inputFile string) (*ScoreResult, error) {
 			if stream.CodecName == "mjpeg" {
 				continue
 			}
-			if videoStream != nil {
+			if videoIndex != nil {
 				return nil, util.ErrMoreThanOneVideoStream
 			}
-			videoStream = &StreamWithScore{
+			videoIndex = &StreamWithIndex{
 				Stream:        stream,
 				RelativeIndex: 0,
 			}
 		case "audio":
-			audioStreams = append(audioStreams, &StreamWithScore{
+			audioIndices = append(audioIndices, StreamWithIndex{
 				Stream:        stream,
-				RelativeIndex: len(audioStreams),
+				RelativeIndex: len(audioIndices),
 			})
 		case "subtitle":
-			subStreams = append(subStreams, &StreamWithScore{
+			subIndices = append(subIndices, StreamWithIndex{
 				Stream:        stream,
-				RelativeIndex: len(subStreams),
+				RelativeIndex: len(subIndices),
 			})
 		}
 	}
 
-	if videoStream == nil {
+	if videoIndex == nil {
 		return nil, util.ErrVideoStreamNotFound
 	}
 
-	if len(audioStreams) == 1 && len(subStreams) == 1 {
-		p.log.Info("has single audio and sub stream", zap.String("inputFile", inputFile))
-		return &ScoreResult{
-			Video:           videoStream,
-			AudioCandidates: audioStreams,
-			SubCandidates:   subStreams,
-		}, nil
-	}
+	audioStreams := make([]AudioStream, 0, len(audioIndices))
+	subStreams := make([]SubStream, 0, len(subIndices))
 
-	p.log.Info("has multiple audio or sub streams", zap.Int("audio", len(audioStreams)), zap.Int("sub", len(subStreams)), zap.String("inputFile", inputFile))
-
-	prefLangAudio := make([]*StreamWithScore, 0, len(audioStreams))
-	for _, stream := range audioStreams {
-		lang, _ := stream.Stream.TagList.GetString("language")
-		if lang == p.prefAudioLang {
-			prefLangAudio = append(prefLangAudio, stream)
-		}
-	}
-
-	prefLangSubs := make([]*StreamWithScore, 0, len(subStreams))
-	for _, stream := range subStreams {
-		lang, _ := stream.Stream.TagList.GetString("language")
-		if lang == p.prefSubLang {
-			prefLangSubs = append(prefLangSubs, stream)
-		}
-	}
-
-	if len(prefLangSubs) == 1 && len(prefLangAudio) == 1 {
-		p.log.Info("has exactly 1 preferred lang sub and audio", zap.String("inputFile", inputFile))
-		return &ScoreResult{
-			Video:           videoStream,
-			AudioCandidates: prefLangAudio,
-			SubCandidates:   prefLangSubs,
-		}, nil
-	}
-
-	p.log.Info("does NOT have EXACTLY 1 preferred lang sub and audio", zap.Int("audio", len(prefLangAudio)), zap.Int("sub", len(prefLangSubs)), zap.String("inputFile", inputFile))
-
-	var remainingAudio []*StreamWithScore
-	var remainingSubs []*StreamWithScore
-
-	if len(prefLangAudio) == 0 {
-		remainingAudio = audioStreams
-	} else {
-		remainingAudio = prefLangAudio
-	}
-
-	if len(prefLangSubs) == 0 {
-		remainingSubs = subStreams
-	} else {
-		remainingSubs = prefLangSubs
-	}
-
-	for _, audioStream := range remainingAudio {
-		size, err := p.GetStreamSize(inputFile, StreamAudio, audioStream.RelativeIndex)
+	for _, audioIndex := range audioIndices {
+		size, err := p.GetStreamSize(inputFile, StreamAudio, audioIndex.RelativeIndex)
 		if err != nil {
 			continue
 		}
-		p.log.Info("got audio stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", audioStream.RelativeIndex), zap.Uint64("size", size))
-		audioStream.Score = size
+		audioStreams = append(audioStreams, AudioStream{
+			BaseStream{
+				RelativeIndex: audioIndex.RelativeIndex,
+				Size:          size,
+				Lang:          p.getLang(audioIndex.Stream),
+			},
+		})
 	}
-	sort.SliceStable(remainingAudio, func(i, j int) bool {
-		return remainingAudio[i].Score > remainingAudio[j].Score
-	})
 
-	for _, subStream := range remainingSubs {
-		text, err := p.ExtractSubText(inputFile, subStream.RelativeIndex)
+	for _, subIndex := range subIndices {
+		text, err := p.ExtractSubText(inputFile, subIndex.RelativeIndex)
+		textLength := len(text)
+
 		if err != nil {
-			p.log.Warn("failed to get subtitle text", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
-		} else {
-			p.log.Info("extracted text from subtitle", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Int("textLength", len(text)), zap.Error(err))
+			p.log.Warn("failed to get subtitle text", zap.Int("relativeIndex", subIndex.RelativeIndex), zap.Error(err))
 		}
-		if err != nil || len(text) <= 32 {
-			p.log.Info("subtitle doesn't have text, using scoring based on stream size", zap.Int("relativeIndex", subStream.RelativeIndex), zap.Error(err))
-			size, err := p.GetStreamSize(inputFile, StreamSub, subStream.RelativeIndex)
-			if err != nil {
-				continue
-			}
-			p.log.Info("got sub stream size", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("size", size))
-			subStream.Score = size
-		} else {
-			numberOfEngWords := p.textAnalyzer.CountWords(text)
-			subStream.Score = numberOfEngWords
-			p.log.Info("got number of eng words in sub stream", zap.String("inputFile", inputFile), zap.Int("relativeIndex", subStream.RelativeIndex), zap.Uint64("wordCount", numberOfEngWords))
-		}
-	}
-	sort.SliceStable(remainingSubs, func(i, j int) bool {
-		return remainingSubs[i].Score > remainingSubs[j].Score
-	})
 
-	p.log.Warn("has ambiguous selection of subs/audio", zap.Int("audio", len(prefLangAudio)), zap.Int("sub", len(prefLangSubs)), zap.String("inputFile", inputFile))
-	return &ScoreResult{
-		Ambiguous:       true,
-		Video:           videoStream,
-		AudioCandidates: remainingAudio,
-		SubCandidates:   remainingSubs,
+		size, err := p.GetStreamSize(inputFile, StreamSub, subIndex.RelativeIndex)
+		if err != nil {
+			p.log.Warn("failed to get subtitle stream size", zap.Int("relativeIndex", subIndex.RelativeIndex), zap.Error(err))
+		}
+
+		subStreams = append(subStreams, SubStream{
+			BaseStream: BaseStream{
+				RelativeIndex: subIndex.RelativeIndex,
+				Size:          size,
+				Lang:          p.getLang(subIndex.Stream),
+			},
+			Type:       p.getSubsType(subIndex.Stream),
+			TextLength: textLength,
+		})
+	}
+
+	durationSec, err := p.GetVideoDurationSec(inputFile)
+	if err != nil {
+		p.log.Warn("failed to get video duration", zap.String("inputFile", inputFile), zap.Error(err))
+	}
+
+	videoStream := VideoStream{
+		BaseStream: BaseStream{
+			RelativeIndex: videoIndex.RelativeIndex,
+		},
+		DurationSec: durationSec,
+	}
+
+	return &Result{
+		Video: videoStream,
+		Audio: audioStreams,
+		Sub:   subStreams,
 	}, nil
 }
 

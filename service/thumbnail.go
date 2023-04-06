@@ -3,6 +3,7 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,7 @@ func (s *ThumbService) GetThumbById(id uint) (*db.Thumb, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &thumb, nil
 }
@@ -71,7 +72,7 @@ func (s *ThumbService) DeleteThumbById(id uint) error {
 		return queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return util.ErrNotFound
+		return rest.ErrNotFoundInst
 	}
 	s.log.Info("deleted thumb", zap.Uint("thumbId", id))
 	return nil
@@ -87,7 +88,10 @@ func (s *ThumbService) AddThumb(name string, tempPath string) (uint, error) {
 		return 0, err
 	}
 	downloadUrl := fmt.Sprintf("%s/%s", util.ThumbRoute, filepath.Base(newPath))
-	thumb := db.NewThumb(name, tempPath, downloadUrl)
+	thumb := db.Thumb{
+		Path:        tempPath,
+		DownloadUrl: downloadUrl,
+	}
 	queryResult := s.db.Create(&thumb)
 	if queryResult.Error != nil {
 		deleteErr := os.Remove(newPath)
@@ -101,7 +105,7 @@ func (s *ThumbService) AddThumb(name string, tempPath string) (uint, error) {
 		if deleteErr != nil {
 			s.log.Error("error deleting thumb on error", zap.Error(deleteErr))
 		}
-		return 0, util.ErrCreationFailed
+		return 0, rest.ErrCreationFailed
 	}
 	s.log.Info("created thumb", zap.Uint("thumbId", thumb.ID), zap.String("thumbName", name))
 	return thumb.ID, nil

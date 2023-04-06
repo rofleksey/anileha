@@ -1,7 +1,5 @@
 package db
 
-type AnyChannel chan interface{}
-
 type AuthUser struct {
 	ID    uint
 	Login string

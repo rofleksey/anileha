@@ -1,9 +1,8 @@
-package controller
+package rest
 
 import (
 	"anileha/config"
 	"anileha/db"
-	"anileha/util"
 	"context"
 	"encoding/gob"
 	"errors"
@@ -15,7 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"net/http"
 	"path"
 	"time"
 )
@@ -34,6 +32,7 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	engine.Use(ginzap.RecoveryWithZap(logger, true))
 	engine.Use(static.Serve("/", static.LocalFile(path.Join("frontend", "dist"), false)))
+	engine.Use(ErrorMiddleware(logger))
 
 	// user login
 	hashKey := []byte(config.User.CookieHashKey)
@@ -50,50 +49,6 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	return engine, nil
 }
 
-var UserKey = "user"
-
-func forceLoginAsAdmin(config *config.Config, session sessions.Session) error {
-	user := db.NewUser(config.Admin.Username, "", "")
-	user.Admin = true
-	session.Set(UserKey, db.NewAuthUser(user))
-	err := session.Save()
-	return err
-}
-
-func CheckLocalhostAdmin(config *config.Config, session sessions.Session, entry interface{}, c *gin.Context) bool {
-	if c.ClientIP() == "::1" {
-		if entry == nil || !entry.(*db.AuthUser).Admin {
-			if err := forceLoginAsAdmin(config, session); err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return true
-			}
-		}
-		c.Next()
-		return true
-	}
-	return false
-}
-
-func AdminMiddleware(config *config.Config) func(c *gin.Context) {
-	return func(c *gin.Context) {
-		session := sessions.Default(c)
-		entry := session.Get(UserKey)
-		if CheckLocalhostAdmin(config, session, entry, c) {
-			return
-		}
-		if entry == nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-			return
-		}
-		user := entry.(*db.AuthUser)
-		if !user.Admin {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": util.ErrUnauthorized.Error()})
-			return
-		}
-		c.Next()
-	}
-}
-
 func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config, gin *gin.Engine, shutdowner fx.Shutdowner) {
 	lifecycle.Append(
 		fx.Hook{
@@ -101,10 +56,10 @@ func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config,
 				log.Info("server started", zap.Uint("port", config.Rest.Port))
 				go func() {
 					err := gin.Run(fmt.Sprintf("0.0.0.0:%d", config.Rest.Port))
-					log.Error("gin fatal error", zap.Error(err))
+					log.Error("rest fatal error", zap.Error(err))
 					err = shutdowner.Shutdown()
 					if err != nil {
-						log.Fatal("failed to shutdown gracefully", zap.String("where", "gin"), zap.Error(err))
+						log.Fatal("failed to shutdown gracefully", zap.String("where", "rest"), zap.Error(err))
 					}
 				}()
 				return nil

@@ -45,21 +45,13 @@ type MailConfig struct {
 	RegisterTemplatePath string `validate:"required" yaml:"registerTemplatePath"`
 }
 
-type ConversionConfig struct {
-	Parallelism   int    `validate:"required" yaml:"parallelism"`
-	PrefAudioLang string `validate:"required" yaml:"prefAudioLang"`
-	PrefSubLang   string `validate:"required" yaml:"prefSubLang"`
-	WordsPath     string `validate:"required" yaml:"wordsPath"`
-}
-
 type Config struct {
-	Db         DbConfig         `validate:"dive,required" yaml:"db"`
-	Rest       RestConfig       `validate:"dive,required" yaml:"rest"`
-	Data       DataConfig       `validate:"dive,required" yaml:"data"`
-	User       UserConfig       `validate:"dive,required" yaml:"user"`
-	Admin      AdminConfig      `validate:"dive,required" yaml:"admin"`
-	Mail       MailConfig       `validate:"dive,required" yaml:"mail"`
-	Conversion ConversionConfig `validate:"dive,required" yaml:"conversion"`
+	Db    DbConfig    `validate:"dive,required" yaml:"db"`
+	Rest  RestConfig  `validate:"dive,required" yaml:"rest"`
+	Data  DataConfig  `validate:"dive,required" yaml:"data"`
+	User  UserConfig  `validate:"dive,required" yaml:"user"`
+	Admin AdminConfig `validate:"dive,required" yaml:"admin"`
+	Mail  MailConfig  `validate:"dive,required" yaml:"mail"`
 }
 
 func LoadConfig() (*Config, error) {

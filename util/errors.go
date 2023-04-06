@@ -1,28 +1,16 @@
 package util
 
-import "errors"
+import (
+	"errors"
+)
 
-var ErrNotFound = errors.New("not found")
-var ErrCreationFailed = errors.New("creation failed")
-var ErrInvalidIndicesString = errors.New("invalid indices string")
 var ErrFileMapping = errors.New("file mapping failed")
+var ErrCancelled = errors.New("cancelled")
+var ErrInvalidStreamSize = errors.New("invalid stream size")
+var ErrUnknownByteLengthStr = errors.New("unknown byte length string")
+var ErrMoreThanOneVideoStream = errors.New("found more than one video stream")
 var ErrVideoStreamNotFound = errors.New("video stream not found")
-var ErrMoreThanOneVideoStream = errors.New("found more than 1 video stream")
-var ErrUnknownByteLengthStr = errors.New("unknown byte length identifier")
 var ErrNoValidStreamsFound = errors.New("no valid streams found")
 var ErrAmbiguousSelection = errors.New("ambiguous selection")
-var ErrFileIsNotReadyToBeConverted = errors.New("file is not ready to be converted")
-var ErrQueueParallelismInvalid = errors.New("queue parallelism is invalid")
-var ErrCancelled = errors.New("cancelled")
 var ErrUnsupportedSubs = errors.New("unsupported subs")
-var ErrInvalidStreamSize = errors.New("invalid stream size")
-var ErrReadyFileNotFound = errors.New("ready file not found")
 var ErrCTorrentNotFound = errors.New("ctorrent not found")
-var ErrAlreadyStarted = errors.New("already started")
-var ErrAlreadyStopped = errors.New("already stopped")
-var ErrUnauthorized = errors.New("unauthorized")
-var ErrLinkExpired = errors.New("link expired")
-var ErrInvalidPassword = errors.New("invalid password")
-var ErrSessionSavingFailed = errors.New("session saving failed")
-var ErrUserWithThisEmailAlreadyExists = errors.New("user with this email already exists")
-var ErrUserWithThisLoginAlreadyExists = errors.New("user with this login already exists")

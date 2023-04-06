@@ -1,7 +1,6 @@
 package ffmpeg
 
 import (
-	"anileha/db"
 	"anileha/util"
 	"bufio"
 	"bytes"
@@ -135,7 +134,7 @@ func (c *Command) logsWriter(logsChan chan string, externalLog *zap.Logger) {
 	externalLog.Warn("closing logs file", zap.String("file", *c.logsPath))
 }
 
-func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan db.AnyChannel, externalLog *zap.Logger) {
+func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan chan any, externalLog *zap.Logger) {
 	scanner := bufio.NewScanner(reader)
 	// to properly handle carriage return
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -194,7 +193,7 @@ func (c *Command) prepareArgs(withExecutable bool) []string {
 	return args
 }
 
-func (c *Command) Execute(externalLog *zap.Logger) (db.AnyChannel, context.CancelFunc, error) {
+func (c *Command) Execute(externalLog *zap.Logger) (chan any, context.CancelFunc, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	args := c.prepareArgs(false)
@@ -212,7 +211,7 @@ func (c *Command) Execute(externalLog *zap.Logger) (db.AnyChannel, context.Cance
 		cancelFunc()
 		return nil, nil, err
 	}
-	outputChan := make(db.AnyChannel, 32)
+	outputChan := make(chan any, 32)
 	go c.processWatcher(cmd, stdoutReader, outputChan, externalLog)
 	return outputChan, cancelFunc, nil
 }

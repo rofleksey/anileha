@@ -3,6 +3,7 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/util"
 	"bytes"
 	"github.com/gofrs/uuid"
@@ -105,7 +106,11 @@ func (s *UserService) newConfirmWorker(name, hash, email string) (string, error)
 	}
 	confirmIdStr := confirmId.String()
 	channel := make(chan struct{}, 1)
-	user := db.NewUser(name, hash, email)
+	user := db.User{
+		Login: name,
+		Hash:  hash,
+		Email: email,
+	}
 	go s.confirmWorker(confirmIdStr, user, channel)
 	s.registerMap.Store(confirmIdStr, channel)
 	return confirmIdStr, nil
@@ -126,7 +131,7 @@ func (s *UserService) RequestRegistration(name, pass, email string) (string, err
 func (s *UserService) ConfirmRegistration(confirmId string) error {
 	entry, exists := s.registerMap.LoadAndDelete(confirmId)
 	if !exists {
-		return util.ErrLinkExpired
+		return rest.ErrLinkExpired
 	}
 	channel := entry.(chan struct{})
 	// this will trigger confirmWorker
@@ -141,7 +146,7 @@ func (s *UserService) GetUserById(id uint) (*db.User, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &user, nil
 }
@@ -153,7 +158,7 @@ func (s *UserService) GetUserByLogin(login string) (*db.User, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &user, nil
 }
@@ -165,7 +170,7 @@ func (s *UserService) GetUserByEmail(email string) (*db.User, error) {
 		return nil, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, util.ErrNotFound
+		return nil, rest.ErrNotFoundInst
 	}
 	return &user, nil
 }
@@ -173,11 +178,11 @@ func (s *UserService) GetUserByEmail(email string) (*db.User, error) {
 func (s *UserService) CheckUserExists(login string, email string) error {
 	_, err := s.GetUserByLogin(login)
 	if err != nil {
-		return util.ErrUserWithThisLoginAlreadyExists
+		return rest.ErrUserWithThisLoginAlreadyExists
 	}
 	_, err = s.GetUserByEmail(email)
 	if err != nil {
-		return util.ErrUserWithThisEmailAlreadyExists
+		return rest.ErrUserWithThisEmailAlreadyExists
 	}
 	return nil
 }
@@ -189,8 +194,11 @@ func createAdminUser(database *gorm.DB, config *config.Config, service *UserServ
 	}
 	username := config.Admin.Username
 	hash, _ := util.HashPassword(config.Admin.Password, config.User.Salt)
-	user := db.NewUser(username, hash, "")
-	user.Admin = true
+	user := db.User{
+		Login: username,
+		Hash:  hash,
+		Admin: true,
+	}
 	database.Create(&user)
 }
 

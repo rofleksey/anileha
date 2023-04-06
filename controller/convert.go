@@ -1,14 +1,15 @@
 package controller
 
 import (
-	"anileha/analyze"
+	"anileha/command"
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
+	"anileha/rest"
 	"anileha/service"
-	"anileha/util"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"strconv"
 )
@@ -22,7 +23,7 @@ func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
 		EpisodeId:     c.EpisodeId,
 		EpisodeName:   c.EpisodeName,
 		Name:          c.Name,
-		FFmpegCommand: c.Command,
+		Command:       c.Command,
 		Status:        c.Status,
 		Progress:      c.Progress,
 		UpdatedAt:     c.UpdatedAt,
@@ -42,14 +43,13 @@ func registerConvertController(
 	engine *gin.Engine,
 	torrentService *service.TorrentService,
 	convertService *service.ConversionService,
-	analyzer *analyze.ProbeAnalyzer,
 ) {
 	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(AdminMiddleware(config))
+	convertGroup.Use(rest.AdminMiddleware(config))
 	convertGroup.GET("", func(c *gin.Context) {
 		conversions, err := convertService.GetAllConversions()
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, mapConversionsToResponseSlice(conversions))
@@ -58,12 +58,12 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			c.Error(rest.ErrBadRequest("failed to parse id"))
 			return
 		}
 		conversion, err := convertService.GetConversionById(uint(id))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, mapConversionToResponse(*conversion))
@@ -72,12 +72,12 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			c.Error(rest.ErrBadRequest("failed to parse id"))
 			return
 		}
 		logs, err := convertService.GetLogsById(uint(id))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(err)
 			return
 		}
 		c.String(http.StatusOK, *logs)
@@ -86,87 +86,85 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			c.Error(rest.ErrBadRequest("failed to parse id"))
 			return
 		}
 		conversions, err := convertService.GetConversionsBySeriesId(uint(id))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(err)
 			return
 		}
 		c.JSON(http.StatusOK, mapConversionsToResponseSlice(conversions))
 	})
 	convertGroup.POST("/start", func(c *gin.Context) {
-		var req dao.TorrentWithFileIndicesRequestDao
+		var req dao.StartConversionRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetTorrentById(req.TorrentId)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		fileIndices, err := util.ParseFileIndices(req.FileIndices)
-		if err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		torrentFiles := make([]db.TorrentFile, 0, fileIndices.Length())
-		analysisArr := make([]*analyze.Result, 0, fileIndices.Length())
+		torrentFiles := make([]db.TorrentFile, 0, 32)
+		prefsArr := make([]command.Preferences, 0, 32)
 		for _, file := range torrent.Files {
-			if fileIndices.Contains(file.EpisodeIndex) {
-				if file.Status != db.TORRENT_FILE_READY {
-					c.Error(util.ErrFileIsNotReadyToBeConverted)
-					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": util.ErrFileIsNotReadyToBeConverted.Error()})
+			reqIndex := slices.IndexFunc(req.Files, func(data dao.StartConversionFilePrefData) bool {
+				return data.Index == file.ClientIndex
+			})
+			if reqIndex >= 0 {
+				reqFile := req.Files[reqIndex]
+				if file.Status != db.TorrentFileReady {
+					c.Error(rest.ErrFileIsNotReadyToBeConverted)
 					return
 				}
 				if file.ReadyPath == nil {
-					c.Error(util.ErrReadyFileNotFound)
-					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": util.ErrReadyFileNotFound.Error()})
-					return
-				}
-				analysis, err := analyzer.Analyze(*file.ReadyPath, true)
-				if err != nil {
-					c.Error(err)
-					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					c.Error(rest.ErrReadyFileNotFound)
 					return
 				}
 				torrentFiles = append(torrentFiles, file)
-				analysisArr = append(analysisArr, analysis)
+				prefsArr = append(prefsArr, command.Preferences{
+					Audio: command.PreferencesData{
+						Disable:      reqFile.Audio.Disable,
+						ExternalFile: reqFile.Audio.File,
+						StreamIndex:  reqFile.Audio.Stream,
+						Lang:         reqFile.Audio.Lang,
+					},
+					Sub: command.PreferencesData{
+						Disable:      reqFile.Sub.Disable,
+						ExternalFile: reqFile.Sub.File,
+						StreamIndex:  reqFile.Sub.Stream,
+						Lang:         reqFile.Sub.Lang,
+					},
+				})
 			}
 		}
-		err = convertService.StartConversion(*torrent, torrentFiles, analysisArr)
+		err = convertService.StartConversion(*torrent, torrentFiles, prefsArr)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		c.String(http.StatusOK, "OK")
 	})
 	convertGroup.POST("/stop", func(c *gin.Context) {
-		var req dao.ConvertIdRequestDao
+		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		conversion, err := convertService.GetConversionById(req.ConversionId)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if conversion.Status == db.CONVERSION_ERROR || conversion.Status == db.CONVERSION_CANCELLED || conversion.Status == db.CONVERSION_READY {
-			c.JSON(http.StatusBadRequest, gin.H{"error": util.ErrAlreadyStopped.Error()})
-			return
-		}
-		err = convertService.StopConversion(req.ConversionId)
+		conversion, err := convertService.GetConversionById(req.Id)
 		if err != nil {
 			c.Error(err)
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if conversion.Status == db.ConversionError || conversion.Status == db.ConversionCancelled || conversion.Status == db.ConversionReady {
+			c.Error(rest.ErrAlreadyStopped)
+			return
+		}
+		err = convertService.StopConversion(req.Id)
+		if err != nil {
+			c.Error(err)
 			return
 		}
 		c.String(http.StatusOK, "OK")

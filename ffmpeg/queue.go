@@ -1,14 +1,13 @@
 package ffmpeg
 
 import (
-	"anileha/db"
 	"anileha/util"
 	"context"
 	"go.uber.org/zap"
 )
 
 type Queuable interface {
-	Execute(externalLog *zap.Logger) (db.AnyChannel, context.CancelFunc, error)
+	Execute(externalLog *zap.Logger) (chan any, context.CancelFunc, error)
 }
 
 type QueueSignalStarted struct{}
@@ -33,7 +32,6 @@ type queueItem struct {
 }
 
 type Queue struct {
-	parallelCount      int
 	inputChan          chan interface{}
 	workerChan         chan queueItem
 	workerFeedBackChan chan uint
@@ -41,12 +39,8 @@ type Queue struct {
 	log                *zap.Logger
 }
 
-func NewQueue(parallelCount int, outputChan chan OutputMessage, log *zap.Logger) (*Queue, error) {
-	if parallelCount <= 0 {
-		return nil, util.ErrQueueParallelismInvalid
-	}
+func NewQueue(outputChan chan OutputMessage, log *zap.Logger) (*Queue, error) {
 	return &Queue{
-		parallelCount:      parallelCount,
 		inputChan:          make(chan interface{}),
 		workerChan:         make(chan queueItem, 1024),
 		workerFeedBackChan: make(chan uint),
@@ -152,7 +146,5 @@ func (q *Queue) processWorker() {
 
 func (q *Queue) Start() {
 	go q.inputWorker()
-	for i := 0; i < q.parallelCount; i++ {
-		go q.processWorker()
-	}
+	go q.processWorker()
 }
