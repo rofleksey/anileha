@@ -19,7 +19,7 @@ func NewSeriesService(db *gorm.DB, log *zap.Logger) *SeriesService {
 	}
 }
 
-func (s *SeriesService) GetSeriesById(id uint) (*db.Series, *rest.StatusError) {
+func (s *SeriesService) GetSeriesById(id uint) (*db.Series, error) {
 	var series db.Series
 	queryResult := s.db.Preload("Thumb").First(&series, "id = ?", id)
 	if queryResult.Error != nil {
@@ -31,7 +31,7 @@ func (s *SeriesService) GetSeriesById(id uint) (*db.Series, *rest.StatusError) {
 	return &series, nil
 }
 
-func (s *SeriesService) GetAllSeries() ([]db.Series, *rest.StatusError) {
+func (s *SeriesService) GetAllSeries() ([]db.Series, error) {
 	var seriesArr []db.Series
 	queryResult := s.db.Order("series.created_at DESC").Preload("Thumb").Find(&seriesArr)
 	if queryResult.Error != nil {
@@ -40,7 +40,7 @@ func (s *SeriesService) GetAllSeries() ([]db.Series, *rest.StatusError) {
 	return seriesArr, nil
 }
 
-func (s *SeriesService) SearchSeries(query string) ([]db.Series, *rest.StatusError) {
+func (s *SeriesService) SearchSeries(query string) ([]db.Series, error) {
 	var seriesArr []db.Series
 	queryResult := s.db.Where("name ILIKE '%' || ? || '%'", query).Order("series.created_at DESC").Preload("Thumb").Find(&seriesArr)
 	if queryResult.Error != nil {
@@ -49,7 +49,7 @@ func (s *SeriesService) SearchSeries(query string) ([]db.Series, *rest.StatusErr
 	return seriesArr, nil
 }
 
-func (s *SeriesService) DeleteSeriesById(id uint) *rest.StatusError {
+func (s *SeriesService) DeleteSeriesById(id uint) error {
 	queryResult := s.db.Delete(&db.Series{}, id)
 	if queryResult.Error != nil {
 		return rest.ErrInternal(queryResult.Error.Error())
@@ -60,9 +60,9 @@ func (s *SeriesService) DeleteSeriesById(id uint) *rest.StatusError {
 	return nil
 }
 
-func (s *SeriesService) AddSeries(name string, thumbId uint) (uint, *rest.StatusError) {
+func (s *SeriesService) AddSeries(name string, thumbId uint) (uint, error) {
 	series := db.Series{
-		Name:    name,
+		Title:   name,
 		ThumbID: &thumbId,
 	}
 	queryResult := s.db.Create(&series)

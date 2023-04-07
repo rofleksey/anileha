@@ -5,6 +5,7 @@ import (
 	"anileha/db"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -34,19 +35,21 @@ func CheckLocalhostAdmin(config *config.Config, session sessions.Session, entry 
 	return false
 }
 
-func AdminMiddleware(config *config.Config) func(c *gin.Context) {
+func AdminMiddleware(log *zap.Logger, config *config.Config) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		entry := session.Get(UserKey)
-		if CheckLocalhostAdmin(config, session, entry, c) {
-			return
-		}
+		//if CheckLocalhostAdmin(config, session, entry, c) {
+		//	return
+		//}
 		if entry == nil {
+			log.Debug("user is not authorized")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorizedInst.Error()})
 			return
 		}
-		user := entry.(*db.AuthUser)
+		user, _ := entry.(*db.AuthUser)
 		if !user.Admin {
+			log.Debug("user is not admin", zap.Uint("id", user.ID))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": ErrUnauthorizedInst.Error()})
 			return
 		}

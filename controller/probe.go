@@ -10,26 +10,28 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"gopkg.in/vansante/go-ffprobe.v2"
 	"net/http"
 	"time"
 )
 
 func registerProbeController(
+	log *zap.Logger,
 	config *config.Config,
 	engine *gin.Engine,
 	torrentService *service.TorrentService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	probeGroup := engine.Group("/admin/probe")
-	probeGroup.Use(rest.AdminMiddleware(config))
+	probeGroup.Use(rest.AdminMiddleware(log, config))
 	probeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.TorrentId)
+		torrent, err := torrentService.GetTorrentById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return
@@ -55,14 +57,14 @@ func registerProbeController(
 	})
 
 	analyzeGroup := engine.Group("/admin/analyze")
-	analyzeGroup.Use(rest.AdminMiddleware(config))
+	analyzeGroup.Use(rest.AdminMiddleware(log, config))
 	analyzeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.TorrentId)
+		torrent, err := torrentService.GetTorrentById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return

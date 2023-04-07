@@ -31,7 +31,11 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	// logging
 	engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
 	engine.Use(ginzap.RecoveryWithZap(logger, true))
+
+	// frontend
 	engine.Use(static.Serve("/", static.LocalFile(path.Join("frontend", "dist"), false)))
+
+	// error handling
 	engine.Use(ErrorMiddleware(logger))
 
 	// user login
@@ -68,4 +72,4 @@ func startEngine(lifecycle fx.Lifecycle, log *zap.Logger, config *config.Config,
 	)
 }
 
-var RestExport = fx.Options(fx.Provide(newEngine), fx.Invoke(startEngine))
+var Export = fx.Options(fx.Provide(newEngine), fx.Invoke(startEngine))

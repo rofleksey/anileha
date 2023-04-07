@@ -1,86 +1,80 @@
-<script setup>
-import { ref, toRaw } from "vue";
-import axios from "axios";
-import { notify } from "@kyvg/vue3-notification";
-import SquareButton from "../input/SquareButton.vue";
-import BaseModal from "./BaseModal.vue";
-import FileInput from "../input/FileInput.vue";
-import CheckBoxInput from "../input/CheckBoxInput.vue";
+<template>
+  <q-dialog ref="dialogRef" @hide="onDialogHide">
+    <q-card class="q-dialog-plugin card">
+      <q-card-section>
+        <div class="text-h6">Add torrent</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-file
+          ref="torrentFileRef"
+          v-model="torrentFile"
+          label="Torrent File"
+          accept=".torrent"
+          max-file-size="8388608"
+          :rules="[ val => val || 'Required' ]">
+          <template v-slot:prepend>
+            <q-icon name="attach_file"/>
+          </template>
+        </q-file>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn
+          color="accent"
+          :loading="postLoading"
+          flat
+          round
+          icon="add"
+          @click="onOKClick"/>
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</template>
 
-const autoRef = ref(true);
-const filesRef = ref([]);
-const baseModal = ref(null);
+<script setup lang="ts">
+import {useDialogPluginComponent} from 'quasar'
+import {ref} from 'vue';
+import {postNewTorrent} from 'src/lib/post-api';
+import {showError} from 'src/lib/util';
 
-function show() {
-  baseModal.value.show();
+const {dialogRef, onDialogHide, onDialogOK} = useDialogPluginComponent()
+
+interface Props {
+  seriesId: number;
 }
 
-function hide() {
-  baseModal.value.hide();
-}
+const props = defineProps<Props>()
 
-const props = defineProps({
-  seriesId: {
-    type: Number,
-    required: true,
-  },
-});
+defineEmits([
+  ...useDialogPluginComponent.emits
+])
 
-defineExpose({
-  show,
-  hide,
-});
+const torrentFileRef = ref<any>(null);
 
-const addTorrent = () => {
-  if (filesRef.value.length === 0) {
-    notify({
-      title: "Failed to add torrent",
-      text: "Files are not selected",
-      type: "error",
-    });
+const postLoading = ref(false);
+const torrentFile = ref<File | null>(null);
+
+function onOKClick() {
+  if (postLoading.value) {
     return;
   }
-  const unwrappedFiles = filesRef.value.map((proxy) => toRaw(proxy));
-  const formData = new FormData();
-  formData.append("seriesId", props.seriesId);
-  formData.append("auto", autoRef.value);
-  unwrappedFiles.forEach((file) => {
-    formData.append(`files`, file);
-  });
-  axios({
-    method: "post",
-    url: "/admin/torrent",
-    data: formData,
-    headers: { "Content-Type": "multipart/form-data" },
-  })
+  const file = torrentFile.value;
+  if (!file || !torrentFileRef.value?.validate()) {
+    return
+  }
+  postLoading.value = true;
+  postNewTorrent(props.seriesId, file)
     .then(() => {
-      notify({
-        title: "Added",
-        type: "success",
-      });
-      baseModal.value.hide();
+      onDialogOK();
     })
-    .catch((err) => {
-      notify({
-        title: "Failed to add torrent",
-        text: err?.response?.data?.error ?? "",
-        type: "error",
-      });
+    .catch((e) => {
+      showError('failed to add torrent', e);
+    })
+    .finally(() => {
+      postLoading.value = false;
     });
-};
+}
 </script>
 
-<template>
-  <BaseModal title="Add torrent" ref="baseModal" @submit="addTorrent">
-    <FileInput
-      hint="Select torrent files"
-      file-type="application/x-bittorrent"
-      :multiple="true"
-      @select="(val) => (filesRef = val)"
-    />
-    <CheckBoxInput v-model="autoRef" text="Auto download/convert" />
-    <template #actions>
-      <SquareButton @click="addTorrent" text="add" />
-    </template>
-  </BaseModal>
-</template>
+<style lang="sass" scoped>
+
+</style>

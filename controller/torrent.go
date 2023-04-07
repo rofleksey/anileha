@@ -65,14 +65,14 @@ func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.Torrent
 }
 
 func registerTorrentController(
-	config *config.Config,
 	log *zap.Logger,
+	config *config.Config,
 	engine *gin.Engine,
 	fileService *service.FileService,
 	torrentService *service.TorrentService,
 ) {
 	torrentGroup := engine.Group("/admin/torrent")
-	torrentGroup.Use(rest.AdminMiddleware(config))
+	torrentGroup.Use(rest.AdminMiddleware(log, config))
 
 	torrentGroup.GET("", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()
@@ -105,6 +105,7 @@ func registerTorrentController(
 		}
 		torrents, err := torrentService.GetTorrentsBySeriesId(uint(id))
 		if err != nil {
+			log.Info("error occurred")
 			c.Error(err)
 			return
 		}
@@ -116,7 +117,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.TorrentId)
+		torrent, err := torrentService.GetTorrentById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return
@@ -156,14 +157,16 @@ func registerTorrentController(
 	})
 	torrentGroup.DELETE(":id", func(c *gin.Context) {
 		idString := c.Param("id")
-		_, err := strconv.ParseUint(idString, 10, 64)
+		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-
-		log.Info("not implemented")
-
+		err = torrentService.DeleteTorrentById(uint(id))
+		if err != nil {
+			c.Error(err)
+			return
+		}
 		c.String(http.StatusOK, "OK")
 	})
 	torrentGroup.POST("", func(c *gin.Context) {

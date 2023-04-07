@@ -1,71 +1,78 @@
-<script setup>
-import { useUserStore } from "../../stores/user";
-import { ref } from "vue";
-import axios from "axios";
-import { notify } from "@kyvg/vue3-notification";
-import TextInput from "../input/TextInput.vue";
-import SquareButton from "../input/SquareButton.vue";
-import BaseModal from "./BaseModal.vue";
+<template>
+  <q-dialog ref="dialogRef" @hide="onDialogHide">
+    <q-card class="q-dialog-plugin card">
+      <q-card-section>
+        <div class="text-h6">Login</div>
+      </q-card-section>
+      <q-card-section class="q-pt-none">
+        <q-input
+          ref="usernameRef"
+          v-model="username"
+          label="Username"
+          :rules="[ val => val.trim().length > 0 || 'Required' ]"/>
+        <q-input
+          ref="passwordRef"
+          v-model="password"
+          label="Password"
+          :rules="[ val => val.trim().length > 0 || 'Required' ]"/>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn
+          color="accent"
+          :loading="postLoading"
+          flat
+          round
+          icon="done"
+          @click="onOKClick"/>
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</template>
 
-const userRef = ref("");
-const passRef = ref("");
-const baseModal = ref(null);
+<script setup lang="ts">
+import {useDialogPluginComponent} from 'quasar'
+import {ref} from 'vue';
+import {postLogin} from 'src/lib/post-api';
+import {showError, showSuccess} from 'src/lib/util';
+import {useUserStore} from 'stores/user-store';
 
-function show() {
-  baseModal.value.show();
-}
-
-function hide() {
-  baseModal.value.hide();
-}
-
-defineExpose({
-  show,
-  hide,
-});
-
+const {dialogRef, onDialogHide, onDialogOK} = useDialogPluginComponent()
 const userStore = useUserStore();
 
-const attemptLogin = () => {
-  const user = userRef.value;
-  const pass = passRef.value;
-  if (user.trim().length === 0 || pass.trim().length === 0) {
-    notify({
-      title: "Failed to login",
-      text: "Either username or password is blank",
-      type: "error",
-    });
+defineEmits([
+  ...useDialogPluginComponent.emits
+])
+
+const usernameRef = ref<any>(null);
+const passwordRef = ref<any>(null);
+
+const postLoading = ref(false);
+const username = ref('');
+const password = ref('');
+
+function onOKClick() {
+  if (postLoading.value) {
     return;
   }
-  axios
-    .post("/user/login", {
-      user,
-      pass,
+  if (!usernameRef.value?.validate() || !passwordRef.value?.validate()) {
+    return
+  }
+  postLoading.value = true;
+  postLogin(username.value, password.value)
+    .then((user) => {
+      userStore.setUser(user);
+      showSuccess('Login success');
+      onDialogOK();
     })
-    .then(({ data }) => {
-      userStore.setUser(data.user, data.isAdmin);
-      notify({
-        title: "Login OK",
-        type: "success",
-      });
-      baseModal.value.hide();
+    .catch((e) => {
+      showError('failed to login', e);
     })
-    .catch((err) => {
-      notify({
-        title: "Failed to login",
-        text: err?.response?.data?.error ?? "",
-        type: "error",
-      });
+    .finally(() => {
+      postLoading.value = false;
     });
-};
+}
 </script>
 
-<template>
-  <BaseModal title="Sign in" ref="baseModal" @submit="attemptLogin">
-    <TextInput v-model="userRef" type="text" placeholder="Username" />
-    <TextInput v-model="passRef" type="password" placeholder="Password" />
-    <template #actions>
-      <SquareButton @click="attemptLogin" text="sign in" />
-    </template>
-  </BaseModal>
-</template>
+<style lang="sass" scoped>
+
+</style>

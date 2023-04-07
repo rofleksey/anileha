@@ -8,6 +8,7 @@ import (
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 )
@@ -21,7 +22,7 @@ func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
 		ID:           episode.ID,
 		SeriesId:     episode.SeriesId,
 		ConversionId: episode.ConversionId,
-		Name:         episode.Name,
+		Name:         episode.Title,
 		CreatedAt:    episode.CreatedAt,
 		Thumb:        thumb,
 		Length:       episode.Length,
@@ -39,6 +40,7 @@ func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao 
 }
 
 func registerEpisodeController(
+	log *zap.Logger,
 	config *config.Config,
 	engine *gin.Engine,
 	episodeService *service.EpisodeService,
@@ -74,7 +76,7 @@ func registerEpisodeController(
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
-	episodeGroup.Use(gin2.AdminMiddleware(config))
+	episodeGroup.Use(gin2.AdminMiddleware(log, config))
 	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)

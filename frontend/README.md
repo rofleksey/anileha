@@ -1,37 +1,43 @@
-# frontend
+# Anileha (frontend)
 
-This template should help get you started developing with Vue 3 in Vite.
+download and watch anime
 
-## Recommended IDE Setup
+## Install the dependencies
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and
-disable Vetur)
-+ [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
+yarn
+# or
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### Start the app in development mode (hot-code reloading, error reporting, etc.)
 
-```sh
-npm run dev
+```bash
+quasar dev
 ```
 
-### Compile and Minify for Production
+### Lint the files
 
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
+```bash
+yarn lint
+# or
 npm run lint
 ```
+
+### Format the files
+
+```bash
+yarn format
+# or
+npm run format
+```
+
+### Build the app for production
+
+```bash
+quasar build
+```
+
+### Customize the configuration
+
+See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).

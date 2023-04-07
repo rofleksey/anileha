@@ -10,10 +10,10 @@ type Series struct {
 	ID         uint `gorm:"primarykey"`
 	CreatedAt  time.Time
 	LastUpdate time.Time
-	Name       string
+	Title      string
 	Query      *string // Query to automatically add torrents to this series
-	ThumbID    *uint   `gorm:"unique"`
-	Thumb      *Thumb  `gorm:"foreignKey:ID;references:thumb_id"`
+	ThumbID    *uint
+	Thumb      *Thumb
 }
 
 // Thumb Represents unique thumbnail image
@@ -110,9 +110,9 @@ type Episode struct {
 	UpdatedAt    time.Time
 	SeriesId     uint
 	ConversionId uint
-	Name         string
+	Title        string
 	ThumbID      *uint
-	Thumb        *Thumb `gorm:"foreignKey:ID;references:thumb_id"`
+	Thumb        *Thumb
 	Length       uint64 // Length in bytes
 	DurationSec  int    // Duration in seconds
 	Path         string

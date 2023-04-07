@@ -28,7 +28,7 @@ func main() {
 		// main components
 		logger.Export,
 		config.Export,
-		rest.RestExport,
+		rest.Export,
 		db.ServiceExport,
 
 		// services

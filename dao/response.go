@@ -8,7 +8,7 @@ import (
 
 type SeriesResponseDao struct {
 	ID         uint      `json:"id"`
-	Name       string    `json:"name"`
+	Title      string    `json:"title"`
 	Query      *string   `json:"query"`
 	Thumb      string    `json:"thumb"`
 	LastUpdate time.Time `json:"lastUpdate"`
@@ -36,7 +36,6 @@ type TorrentResponseWithoutFilesDao struct {
 	TotalDownloadLength uint             `json:"totalDownloadLength"`
 	Progress            util.Progress    `json:"progress"`
 	BytesRead           uint             `json:"bytesRead"`
-	Auto                bool             `json:"auto"`
 	UpdatedAt           time.Time        `json:"updatedAt"`
 }
 

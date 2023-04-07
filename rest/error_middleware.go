@@ -17,6 +17,9 @@ func ErrorMiddleware(log *zap.Logger) func(c *gin.Context) {
 		}
 
 		lastError := ginError.Err
+		if lastError == nil {
+			return
+		}
 
 		statusError, statusErrorOk := lastError.(*StatusError)
 		if statusErrorOk {

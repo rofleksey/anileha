@@ -67,15 +67,15 @@ func registerUserController(
 		session := sessions.Default(c)
 		user := session.Get(rest.UserKey)
 		if user == nil {
-			if rest.CheckLocalhostAdmin(config, session, user, c) {
-				c.JSON(http.StatusOK, LoginResponse{config.Admin.Username, true})
-				return
-			}
-			c.String(http.StatusInternalServerError, "Unauthorized")
-		} else {
-			authUser := user.(*db.AuthUser)
-			c.JSON(http.StatusOK, LoginResponse{authUser.Login, authUser.Admin})
+			//if rest.CheckLocalhostAdmin(config, session, user, c) {
+			//	c.JSON(http.StatusOK, LoginResponse{config.Admin.Username, true})
+			//	return
+			//}
+			c.Error(rest.ErrUnauthorizedInst)
+			return
 		}
+		authUser := user.(*db.AuthUser)
+		c.JSON(http.StatusOK, LoginResponse{authUser.Login, authUser.Admin})
 	})
 	userGroup.POST("/login", func(c *gin.Context) {
 		var req dao.AuthRequestDao
@@ -93,6 +93,11 @@ func registerUserController(
 			return
 		}
 		session := sessions.Default(c)
+		session.Options(sessions.Options{
+			Path:     "/",
+			SameSite: http.SameSiteNoneMode,
+			Secure:   true,
+		})
 		session.Set(rest.UserKey, db.NewAuthUser(*user))
 		if err := session.Save(); err != nil {
 			_ = c.Error(rest.ErrSessionSavingFailed)

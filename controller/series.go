@@ -18,7 +18,7 @@ import (
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 	return dao.SeriesResponseDao{
 		ID:         series.ID,
-		Name:       series.Name,
+		Title:      series.Title,
 		Query:      series.Query,
 		LastUpdate: series.LastUpdate,
 		Thumb:      series.Thumb.DownloadUrl,
@@ -53,6 +53,7 @@ func registerSeriesController(
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponseSlice(seriesSlice))
 	})
+
 	engine.POST("/series/search", func(c *gin.Context) {
 		var req dao.QueryRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -66,6 +67,7 @@ func registerSeriesController(
 		}
 		c.JSON(http.StatusOK, mapSeriesToResponseSlice(series))
 	})
+
 	engine.GET("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
@@ -82,34 +84,38 @@ func registerSeriesController(
 	})
 
 	adminSeriesGroup := engine.Group("/admin/series")
-	adminSeriesGroup.Use(rest.AdminMiddleware(config))
+	adminSeriesGroup.Use(rest.AdminMiddleware(log, config))
 
 	adminSeriesGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")
-		_, err := strconv.ParseUint(idString, 10, 64)
+		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
 			c.Error(rest.ErrBadRequest(fmt.Sprintf("failed to parse id: %s", err.Error())))
 			return
 		}
-		log.Info("not implemented")
-		// TODO: delete series
+		err = seriesService.DeleteSeriesById(uint(id))
+		if err != nil {
+			c.Error(err)
+			return
+		}
 		c.String(http.StatusOK, "OK")
 	})
+
 	adminSeriesGroup.POST("/", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		names := form.Value["name"]
-		if names == nil || len(names) != 1 {
-			c.Error(rest.ErrBadRequest("error getting series name"))
+		titles := form.Value["title"]
+		if titles == nil || len(titles) != 1 {
+			c.Error(rest.ErrBadRequest("error getting series title"))
 			return
 		}
-		name := names[0]
-		trimmedName := strings.TrimSpace(name)
-		if len(trimmedName) == 0 {
-			c.Error(rest.ErrBadRequest("series name is blank"))
+		title := titles[0]
+		trimmedTitle := strings.TrimSpace(title)
+		if len(trimmedTitle) == 0 {
+			c.Error(rest.ErrBadRequest("series title is blank"))
 			return
 		}
 		files := form.File["thumb"]
@@ -134,7 +140,7 @@ func registerSeriesController(
 			c.Error(err)
 			return
 		}
-		seriesId, err := seriesService.AddSeries(name, thumbId)
+		seriesId, err := seriesService.AddSeries(trimmedTitle, thumbId)
 		if err != nil {
 			c.Error(err)
 			return

@@ -35,16 +35,16 @@ type StreamWithIndex struct {
 // result types
 
 type BaseStream struct {
-	RelativeIndex int
-	Size          uint64
-	Lang          string
+	RelativeIndex int    `json:"index"`
+	Size          uint64 `json:"size"`
+	Lang          string `json:"lang"`
 }
 
 type VideoStream struct {
 	BaseStream
-	Width       int
-	Height      int
-	DurationSec int
+	Width       int `json:"width"`
+	Height      int `json:"height"`
+	DurationSec int `json:"durationSec"`
 }
 
 type AudioStream struct {
@@ -53,12 +53,12 @@ type AudioStream struct {
 
 type SubStream struct {
 	BaseStream
-	Type       SubsType
-	TextLength int
+	Type       SubsType `json:"type"`
+	TextLength int      `json:"textLength"`
 }
 
 type Result struct {
-	Video VideoStream
-	Audio []AudioStream
-	Sub   []SubStream
+	Video VideoStream   `json:"video"`
+	Audio []AudioStream `json:"audio"`
+	Sub   []SubStream   `json:"sub"`
 }

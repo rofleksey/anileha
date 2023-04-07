@@ -141,7 +141,7 @@ func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
 func (s *TorrentService) GetTorrentById(id uint) (*db.Torrent, error) {
 	var torrent db.Torrent
 	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
-		return db.Order("torrent_files.episode_index ASC")
+		return db.Order("torrent_files.client_index ASC")
 	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		return nil, rest.ErrInternal(queryResult.Error.Error())
@@ -152,7 +152,7 @@ func (s *TorrentService) GetTorrentById(id uint) (*db.Torrent, error) {
 	return &torrent, nil
 }
 
-func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, *rest.StatusError) {
+func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, error) {
 	var file db.TorrentFile
 	queryResult := s.db.First(&file, "id = ?", id)
 	if queryResult.Error != nil {
@@ -164,7 +164,7 @@ func (s *TorrentService) GetTorrentFileById(id uint) (*db.TorrentFile, *rest.Sta
 	return &file, nil
 }
 
-func (s *TorrentService) GetAllTorrents() ([]db.Torrent, *rest.StatusError) {
+func (s *TorrentService) GetAllTorrents() ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
 	queryResult := s.db.Order("torrents.created_at DESC").Find(&torrentArr)
 	if queryResult.Error != nil {
@@ -173,7 +173,7 @@ func (s *TorrentService) GetAllTorrents() ([]db.Torrent, *rest.StatusError) {
 	return torrentArr, nil
 }
 
-func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, *rest.StatusError) {
+func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, error) {
 	var torrentArr []db.Torrent
 	queryResult := s.db.Where("series_id = ?", seriesId).Order("torrents.created_at DESC").Find(&torrentArr)
 	if queryResult.Error != nil {
@@ -185,7 +185,7 @@ func (s *TorrentService) GetTorrentsBySeriesId(seriesId uint) ([]db.Torrent, *re
 func (s *TorrentService) DeleteTorrentById(id uint) error {
 	var torrent db.Torrent
 	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
-		return db.Order("torrent_files.episode_index ASC")
+		return db.Order("torrent_files.client_index ASC")
 	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		return rest.ErrInternal(queryResult.Error.Error())
@@ -229,7 +229,7 @@ func (s *TorrentService) onFailedImport(torrent db.Torrent, err error) {
 func (s *TorrentService) onTorrentCompletion(id uint) {
 	var torrent db.Torrent
 	queryResult := s.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
-		return db.Order("torrent_files.episode_index ASC")
+		return db.Order("torrent_files.client_index ASC")
 	}).First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		s.log.Error("failed to complete torrent", zap.Uint("torrentId", torrent.ID), zap.Error(queryResult.Error))
@@ -431,7 +431,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	return nil
 }
 
-func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) *rest.StatusError {
+func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) error {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
 		return rest.ErrInternal(err.Error())
@@ -469,7 +469,7 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) *res
 	return nil
 }
 
-func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices []int) *rest.StatusError {
+func (s *TorrentService) StartTorrent(torrent db.Torrent, fileIndices []int) error {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if exists {
 		cTorrent := mapEntry.(*torrentLib.Torrent)

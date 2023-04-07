@@ -9,6 +9,7 @@ import (
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"net/http"
 	"strconv"
@@ -39,13 +40,14 @@ func mapConversionsToResponseSlice(conversions []db.Conversion) []dao.Conversion
 }
 
 func registerConvertController(
+	log *zap.Logger,
 	config *config.Config,
 	engine *gin.Engine,
 	torrentService *service.TorrentService,
 	convertService *service.ConversionService,
 ) {
 	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(rest.AdminMiddleware(config))
+	convertGroup.Use(rest.AdminMiddleware(log, config))
 	convertGroup.GET("", func(c *gin.Context) {
 		conversions, err := convertService.GetAllConversions()
 		if err != nil {

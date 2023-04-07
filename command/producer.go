@@ -76,12 +76,27 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 	if prefs.ExternalFile != "" {
 		return &selectedSubStream{
 			ExternalFile: prefs.ExternalFile,
+			Filter:       subtitlesSubFilter,
 		}
 	}
 
 	if prefs.StreamIndex != nil {
+		index := pie.FindFirstUsing(streams, func(stream analyze.SubStream) bool {
+			return stream.RelativeIndex == *prefs.StreamIndex
+		})
+		subsType := streams[index].Type
+
+		var filter subFilter
+
+		if subsType == analyze.SubsPicture {
+			filter = overlaySubFilter
+		} else {
+			filter = subtitlesSubFilter
+		}
+
 		return &selectedSubStream{
 			StreamIndex: prefs.StreamIndex,
+			Filter:      filter,
 		}
 	}
 
@@ -112,6 +127,7 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 
 		return &selectedSubStream{
 			StreamIndex: &index,
+			Filter:      overlaySubFilter,
 		}
 	}
 
@@ -125,6 +141,7 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 
 	return &selectedSubStream{
 		StreamIndex: &index,
+		Filter:      subtitlesSubFilter,
 	}
 }
 

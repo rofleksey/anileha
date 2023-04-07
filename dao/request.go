@@ -5,10 +5,8 @@ type QueryRequestDao struct {
 }
 
 type StartTorrentRequestDao struct {
-	TorrentId     uint   `json:"torrentId" binding:"required"`
-	FileIndices   []int  `json:"fileIndices"`
-	PrefAudioLang string `json:"prefAudioLang"`
-	PrefSubLang   string `json:"prefSubLang"`
+	Id          uint  `json:"id" binding:"required"`
+	FileIndices []int `json:"fileIndices"`
 }
 
 type StartConversionFileChanPrefData struct {
@@ -30,8 +28,8 @@ type StartConversionRequestDao struct {
 }
 
 type TorrentWithFileIndexRequestDao struct {
-	TorrentId uint `json:"torrentId" binding:"required"`
-	FileIndex int  `json:"fileIndex" binding:"required"`
+	Id        uint `json:"id" binding:"required"`
+	FileIndex int  `json:"fileIndex"`
 }
 
 type IdRequestDao struct {
