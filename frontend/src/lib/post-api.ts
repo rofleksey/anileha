@@ -1,7 +1,5 @@
 import axios from 'axios';
-import {Analysis, User} from 'src/lib/api-types';
-
-axios.defaults.timeout = 30000;
+import {Analysis, StartConversionRequest, User} from 'src/lib/api-types';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL
 console.log(`BASE_URL = ${BASE_URL}`)
@@ -67,4 +65,10 @@ export async function postAnalyze(torrentId: number, fileIndex: number): Promise
     withCredentials: true,
   });
   return data;
+}
+
+export async function postStartConversion(req: StartConversionRequest): Promise<void> {
+  await axios.post(`${BASE_URL}/admin/convert/start`, req, {
+    withCredentials: true,
+  });
 }

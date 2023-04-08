@@ -42,7 +42,7 @@ const quasar = useQuasar();
 const title = ref('');
 
 function onTabChange(value: string) {
-  router.push(`/series/${seriesId.value}/${value}`)
+  router.replace(`/series/${seriesId.value}/${value}`)
 }
 
 function onDeleteClick() {

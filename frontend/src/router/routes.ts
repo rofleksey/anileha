@@ -17,6 +17,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('pages/AllTorrentsPage.vue'),
   },
   {
+    path: '/conversions',
+    name: 'all-conversions',
+    component: () => import('pages/AllConversionsPage.vue'),
+  },
+  {
     path: '/series/:seriesId',
     name: 'series-parent',
     component: () => import('pages/series/SeriesParentPage.vue'),
@@ -34,7 +39,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'conversions',
         name: 'series-conversions',
-        component: () => import('pages/EmptyPage.vue'),
+        component: () => import('pages/series/SeriesConversionsPage.vue'),
       }
     ]
   },

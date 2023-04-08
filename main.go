@@ -6,6 +6,7 @@ import (
 	"anileha/config"
 	"anileha/controller"
 	"anileha/db"
+	"anileha/db/repo"
 	"anileha/logger"
 	"anileha/rest"
 	"anileha/service"
@@ -31,6 +32,11 @@ func main() {
 		rest.Export,
 		db.ServiceExport,
 
+		// repositories
+		repo.SeriesRepoExport,
+		repo.UserRepoExport,
+		repo.TorrentRepoExport,
+
 		// services
 		service.FileServiceExport,
 		service.HealthServiceExport,
@@ -44,7 +50,6 @@ func main() {
 		// rest controllers
 		controller.HealthControllerExport,
 		controller.SeriesControllerExport,
-		controller.ThumbControllerExport,
 		controller.TorrentControllerExport,
 		controller.ConvertControllerExport,
 		controller.ProbeControllerExport,

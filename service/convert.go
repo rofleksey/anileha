@@ -97,7 +97,7 @@ func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
 
 func (s *ConversionService) GetAllConversions() ([]db.Conversion, error) {
 	var conversions []db.Conversion
-	queryResult := s.db.Find(&conversions)
+	queryResult := s.db.Find(&conversions).Order("updated_at DESC")
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -123,7 +123,9 @@ func (s *ConversionService) GetLogsById(id uint) (*string, error) {
 
 func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
-	queryResult := s.db.Where("series_id = ?", seriesId).Order("updated_at DESC").Find(&conversions)
+	queryResult := s.db.Where("series_id = ?", seriesId).
+		Order("updated_at DESC").
+		Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -132,7 +134,9 @@ func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conver
 
 func (s *ConversionService) GetConversionsByTorrentId(torrentId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
-	queryResult := s.db.Where("torrent_id = ?", torrentId).Order("updated_at DESC").Find(&conversions)
+	queryResult := s.db.Where("torrent_id = ?", torrentId).
+		Order("updated_at DESC").
+		Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}
@@ -213,6 +217,8 @@ func (s *ConversionService) queueWorker() {
 func (s *ConversionService) prepareConversion(
 	torrent db.Torrent,
 	torrentFile db.TorrentFile,
+	episode string,
+	season string,
 	outputDir string,
 	videoPath string,
 	logsPath string,
@@ -220,12 +226,20 @@ func (s *ConversionService) prepareConversion(
 	durationSec int,
 ) (*db.Conversion, error) {
 	conversionName := fmt.Sprintf("%s - %s", torrent.Name, torrentFile.TorrentPath)
-	episodeName := torrentFile.TorrentPath
+	episodeName := episode
+
+	if season != "" {
+		episodeName = fmt.Sprintf("%s - %s", season, episode)
+	}
+
 	conversion := db.Conversion{
 		SeriesId:         torrent.SeriesId,
 		TorrentId:        torrent.ID,
+		TorrentFileId:    torrentFile.ID,
 		Name:             conversionName,
 		EpisodeName:      episodeName,
+		EpisodeString:    episode,
+		SeasonString:     season,
 		OutputDir:        outputDir,
 		VideoPath:        videoPath,
 		LogPath:          logsPath,
@@ -251,18 +265,19 @@ func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []d
 
 		videoPath := filepath.Join(folder, "video.mp4")
 		logsPath := filepath.Join(folder, "log.txt")
+		prefs := prefsArr[i]
 
 		probe, err := s.probeAnalyzer.Probe(*torrentFiles[i].ReadyPath)
 		if err != nil {
 			return rest.ErrInternal(fmt.Sprintf("probe of file %s failed: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
-		ffmpegCmd, err := s.cmdProducer.GetFFmpegCommand(*torrentFiles[i].ReadyPath, videoPath, logsPath, probe, prefsArr[i])
+		ffmpegCmd, err := s.cmdProducer.GetFFmpegCommand(*torrentFiles[i].ReadyPath, videoPath, logsPath, probe, prefs)
 		if err != nil {
 			return rest.ErrInternal(fmt.Sprintf("failed to get ffmpeg command for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
-		conversion, err := s.prepareConversion(torrent, torrentFiles[i], folder, videoPath, logsPath, ffmpegCmd, probe.Video.DurationSec)
+		conversion, err := s.prepareConversion(torrent, torrentFiles[i], prefs.Episode, prefs.Season, folder, videoPath, logsPath, ffmpegCmd, probe.Video.DurationSec)
 		if err != nil {
 			return rest.ErrInternal(fmt.Sprintf("failed to prepare conversion for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}

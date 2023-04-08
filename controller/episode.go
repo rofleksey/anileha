@@ -19,15 +19,14 @@ func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
 		thumb = &episode.Thumb.Path
 	}
 	return dao.EpisodeResponseDao{
-		ID:           episode.ID,
-		SeriesId:     episode.SeriesId,
-		ConversionId: episode.ConversionId,
-		Name:         episode.Title,
-		CreatedAt:    episode.CreatedAt,
-		Thumb:        thumb,
-		Length:       episode.Length,
-		DurationSec:  episode.DurationSec,
-		Url:          episode.Url,
+		ID:          episode.ID,
+		SeriesId:    episode.SeriesId,
+		Name:        episode.Title,
+		CreatedAt:   episode.CreatedAt,
+		Thumb:       thumb,
+		Length:      episode.Length,
+		DurationSec: episode.DurationSec,
+		Url:         episode.Url,
 	}
 }
 

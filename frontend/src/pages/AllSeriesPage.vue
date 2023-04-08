@@ -13,23 +13,27 @@
         <div class="text-subtitle2 ellipsis">{{ series.title }}</div>
       </q-card-section>
     </q-card>
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="curUser?.isAdmin">
       <q-btn fab icon="add" color="accent" @click="openCreateSeriesModal"/>
     </q-page-sticky>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
-import {Series} from 'src/lib/api-types';
+import {computed, ComputedRef, onMounted, ref} from 'vue';
+import {Series, User} from 'src/lib/api-types';
 import {BASE_URL, fetchAllSeries} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import {useQuasar} from 'quasar';
 import CreateSeriesModal from 'components/modal/CreateSeriesModal.vue';
 import {useRouter} from 'vue-router';
+import {useUserStore} from 'stores/user-store';
 
 const quasar = useQuasar();
 const router = useRouter();
+
+const userStore = useUserStore();
+const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
 const dataLoading = ref(false);
 const data = ref<Series[]>([]);

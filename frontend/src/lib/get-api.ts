@@ -1,7 +1,5 @@
 import axios from 'axios';
-import {Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
-
-axios.defaults.timeout = 120000;
+import {Conversion, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
 
 export const BASE_URL = import.meta.env.VITE_BASE_URL
 
@@ -35,6 +33,16 @@ export async function fetchAllTorrents(): Promise<Torrent[]> {
   return data;
 }
 
+export async function fetchAllConversions(): Promise<Conversion[]> {
+  const {data}: { data: Conversion[] } = await axios.get(
+    `${BASE_URL}/admin/convert`,
+    {
+      withCredentials: true,
+    }
+  );
+  return data;
+}
+
 export async function fetchTorrentById(id: number): Promise<TorrentWithFiles> {
   const {data}: { data: TorrentWithFiles } = await axios.get(
     `${BASE_URL}/admin/torrent/${id}`,
@@ -48,6 +56,16 @@ export async function fetchTorrentById(id: number): Promise<TorrentWithFiles> {
 export async function fetchTorrentsBySeriesId(id: number): Promise<Torrent[]> {
   const {data}: { data: Torrent[] } = await axios.get(
     `${BASE_URL}/admin/torrent/series/${id}`,
+    {
+      withCredentials: true,
+    }
+  );
+  return data;
+}
+
+export async function fetchConversionsBySeriesId(id: number): Promise<Conversion[]> {
+  const {data}: { data: Conversion[] } = await axios.get(
+    `${BASE_URL}/admin/convert/series/${id}`,
     {
       withCredentials: true,
     }

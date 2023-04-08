@@ -9,6 +9,7 @@ import (
 	"anileha/service"
 	"context"
 	"github.com/gin-gonic/gin"
+	"github.com/rofleksey/roflmeta"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gopkg.in/vansante/go-ffprobe.v2"
@@ -83,7 +84,14 @@ func registerProbeController(
 			c.Error(err)
 			return
 		}
-		c.JSON(http.StatusOK, result)
+		metadata := roflmeta.ParseSingleEpisodeMetadata(file.TorrentPath)
+		c.JSON(http.StatusOK, dao.AnalysisResponseDao{
+			AnalysisResult: result,
+			EpisodeMetadata: dao.EpisodeMetadata{
+				Season:  metadata.Season,
+				Episode: metadata.Episode,
+			},
+		})
 	})
 }
 

@@ -3,15 +3,16 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/db/repo"
 	"anileha/rest"
 	"anileha/util"
 	"bytes"
+	"fmt"
 	"github.com/gofrs/uuid"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"
-	"gorm.io/gorm"
-	"io/ioutil"
+	"os"
 	"sync"
 	"text/template"
 	"time"
@@ -23,7 +24,7 @@ type registerTemplateVars struct {
 }
 
 type UserService struct {
-	db               *gorm.DB
+	userRepo         *repo.UserRepo
 	log              *zap.Logger
 	dialer           *gomail.Dialer
 	registerTemplate *template.Template
@@ -36,11 +37,11 @@ type UserService struct {
 
 func NewUserService(
 	lifecycle fx.Lifecycle,
-	database *gorm.DB,
+	userRepo *repo.UserRepo,
 	log *zap.Logger,
 	config *config.Config,
 ) (*UserService, error) {
-	registerTemplateBytes, err := ioutil.ReadFile(config.Mail.RegisterTemplatePath)
+	registerTemplateBytes, err := os.ReadFile(config.Mail.RegisterTemplatePath)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func NewUserService(
 	}
 	dialer := gomail.NewDialer(config.Mail.Server, int(config.Mail.Port), config.Mail.Username, config.Mail.Password)
 	return &UserService{
-		db:               database,
+		userRepo:         userRepo,
 		log:              log,
 		dialer:           dialer,
 		registerTemplate: registerTemplate,
@@ -89,11 +90,12 @@ func (s *UserService) SendConfirmEmail(user, email, link string) error {
 func (s *UserService) confirmWorker(confirmId string, user db.User, channel chan struct{}) {
 	defer s.registerMap.Delete(confirmId)
 	timer := time.NewTimer(1 * time.Hour)
+	defer timer.Stop()
 	select {
 	case <-timer.C:
 		return
 	case <-channel:
-		if err := s.db.Create(&user).Error; err != nil {
+		if _, err := s.userRepo.Create(&user); err != nil {
 			s.log.Error("Failed to create user", zap.Error(err))
 		}
 	}
@@ -139,58 +141,52 @@ func (s *UserService) ConfirmRegistration(confirmId string) error {
 	return nil
 }
 
-func (s *UserService) GetUserById(id uint) (*db.User, error) {
-	var user db.User
-	queryResult := s.db.First(&user, "id = ?", id)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrNotFoundInst
-	}
-	return &user, nil
-}
-
-func (s *UserService) GetUserByLogin(login string) (*db.User, error) {
-	var user db.User
-	queryResult := s.db.First(&user, "login = ?", login)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrNotFoundInst
-	}
-	return &user, nil
-}
-
-func (s *UserService) GetUserByEmail(email string) (*db.User, error) {
-	var user db.User
-	queryResult := s.db.First(&user, "email = ?", email)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrNotFoundInst
-	}
-	return &user, nil
-}
-
-func (s *UserService) CheckUserExists(login string, email string) error {
-	_, err := s.GetUserByLogin(login)
+func (s *UserService) GetById(id uint) (*db.User, error) {
+	user, err := s.userRepo.GetById(id)
 	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
+	}
+	if user == nil {
+		return nil, rest.ErrNotFoundInst
+	}
+	return user, nil
+}
+
+func (s *UserService) GetByLogin(login string) (*db.User, error) {
+	user, err := s.userRepo.GetByLogin(login)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
+	}
+	if user == nil {
+		return nil, rest.ErrNotFoundInst
+	}
+	return user, nil
+}
+
+func (s *UserService) CheckExists(login string, email string) error {
+	user, err := s.userRepo.GetByLogin(login)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+	if user != nil {
 		return rest.ErrUserWithThisLoginAlreadyExists
 	}
-	_, err = s.GetUserByEmail(email)
+
+	user, err = s.userRepo.GetByEmail(email)
 	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+	if user != nil {
 		return rest.ErrUserWithThisEmailAlreadyExists
 	}
+
 	return nil
 }
 
-func createAdminUser(database *gorm.DB, config *config.Config, service *UserService) {
-	_, err := service.GetUserByLogin(config.Admin.Username)
-	if err == nil {
-		return
+func createAdminUser(userRepo *repo.UserRepo, config *config.Config) error {
+	existingUser, err := userRepo.GetByLogin(config.Admin.Username)
+	if err == nil && existingUser != nil {
+		return nil
 	}
 	username := config.Admin.Username
 	hash, _ := util.HashPassword(config.Admin.Password, config.User.Salt)
@@ -199,7 +195,11 @@ func createAdminUser(database *gorm.DB, config *config.Config, service *UserServ
 		Hash:  hash,
 		Admin: true,
 	}
-	database.Create(&user)
+	_, err = userRepo.Create(&user)
+	if err != nil {
+		return fmt.Errorf("failed to automatically create admin user: %w", err)
+	}
+	return nil
 }
 
 var UserServiceExport = fx.Options(fx.Provide(NewUserService), fx.Invoke(createAdminUser))

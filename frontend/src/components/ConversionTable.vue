@@ -9,7 +9,8 @@
     :loading="props.loading">
     <template v-slot:body-cell-status="props">
       <q-td :props="props">
-        <q-icon v-if="props.value === 'idle'" class="text-orange" name="stop" size="2rem"/>
+        <q-icon v-if="props.value === 'created'" class="text-orange" name="schedule" size="2rem"/>
+        <q-icon v-else-if="props.value === 'cancelled'" class="text-purple" name="block" size="2rem"/>
         <q-icon v-else-if="props.value === 'error'" class="text-red" name="error" size="2rem"/>
         <q-icon v-else-if="props.value === 'ready'" class="text-green" name="done" size="2rem"/>
         <q-circular-progress
@@ -22,20 +23,11 @@
         />
       </q-td>
     </template>
-    <template v-slot:body-cell-size="props">
-      <q-td :props="props" v-if="props.row.status === 'download'">
-        {{ prettyBytes(props.value) }} / {{ prettyBytes(props.row.totalDownloadLength) }}
-        ({{ prettyBytes(props.row.totalLength) }})
-      </q-td>
-      <q-td :props="props" v-else>
-        {{ prettyBytes(props.row.totalDownloadLength) }} ({{ prettyBytes(props.row.totalLength) }})
-      </q-td>
-    </template>
     <template v-slot:body-cell-eta="props">
-      <q-td :props="props" v-if="props.row.status === 'download'">
+      <q-td :props="props" v-if="props.row.status === 'processing'">
         {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }})
       </q-td>
-      <q-td :props="props" v-else-if="props.row.status === 'idle'">
+      <q-td :props="props" v-else-if="props.row.status === 'created'">
         -
       </q-td>
       <q-td :props="props" v-else>
@@ -43,23 +35,22 @@
       </q-td>
     </template>
     <template v-slot:body-cell-speed="props">
-      <q-td :props="props" v-if="props.row.status === 'download'">
-        {{ prettyBytes(props.row.progress.speed) }}ps
+      <q-td :props="props" v-if="props.row.status === 'processing'">
+        x{{ props.row.progress.speed }}
       </q-td>
-      <q-td :props="props" v-else-if="props.row.status === 'idle'">
+      <q-td :props="props" v-else-if="props.row.status === 'created'">
         -
       </q-td>
       <q-td :props="props" v-else>
-        avg {{ prettyBytes(props.row.totalDownloadLength / props.row.progress.elapsed) }}ps
+        avg x{{ props.row.progress.speed }}
       </q-td>
     </template>
   </q-table>
 </template>
 
 <script setup lang="ts">
-import prettyBytes from 'pretty-bytes';
 import durationFormat from 'format-duration';
-import {Torrent} from 'src/lib/api-types';
+import {Conversion, Torrent} from 'src/lib/api-types';
 import {useRouter} from 'vue-router';
 import {QuasarColumnType} from 'src/lib/util';
 
@@ -67,7 +58,7 @@ const router = useRouter();
 
 interface Props {
   title?: string;
-  data: Torrent[];
+  data: Conversion[];
   loading: boolean;
 }
 
@@ -89,12 +80,6 @@ const columns: QuasarColumnType[] = [
     sortable: true,
   },
   {
-    name: 'size',
-    label: 'Size',
-    field: 'bytesRead',
-    align: 'left',
-  },
-  {
     name: 'eta',
     label: 'ETA',
     field: 'progress',
@@ -108,9 +93,8 @@ const columns: QuasarColumnType[] = [
   }
 ]
 
-function onRowClick(e: any, torrent: Torrent) {
-  console.log(torrent.id);
-  router.push(`/torrent/${torrent.id}/download`)
+function onRowClick(e: any, conversion: Conversion) {
+  console.log(conversion.id);
 }
 </script>
 

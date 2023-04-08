@@ -139,6 +139,8 @@ func registerConvertController(
 						StreamIndex:  reqFile.Sub.Stream,
 						Lang:         reqFile.Sub.Lang,
 					},
+					Episode: reqFile.Episode,
+					Season:  reqFile.Season,
 				})
 			}
 		}

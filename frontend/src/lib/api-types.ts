@@ -43,8 +43,24 @@ export interface TorrentFile {
   length: number;
 }
 
+export type ConversionStatus = 'created' | 'processing' | 'error' | 'cancelled' | 'ready'
+
+export interface Conversion {
+  id: number;
+  seriesId: number;
+  torrentId: number;
+  torrentFileId: number;
+  updatedAt: number;
+  name: string;
+  episodeName: string;
+  command: string;
+  status: ConversionStatus;
+  progress: Progress;
+}
+
 export interface BaseStream {
   index: number;
+  name: string;
   size: number;
   lang: string;
 }
@@ -57,11 +73,37 @@ export interface VideoStream extends BaseStream {
 
 export interface SubStream extends BaseStream {
   type: string;
-  textLength: string;
+  textLength: number;
+}
+
+export function isSubStream(stream: BaseStream): stream is SubStream {
+  return (stream as SubStream).type !== undefined;
 }
 
 export interface Analysis {
   video: VideoStream;
   audio: BaseStream[];
   sub: SubStream[];
+  season: string;
+  episode: string;
+}
+
+export interface ConversionPreference {
+  disable?: boolean;
+  stream?: number;
+  file?: string;
+  lang?: string;
+}
+
+export interface StartConversionFileData {
+  index: number;
+  episode?: string;
+  season?: string;
+  audio: ConversionPreference;
+  sub: ConversionPreference;
+}
+
+export interface StartConversionRequest {
+  torrentId: number;
+  files: StartConversionFileData[];
 }

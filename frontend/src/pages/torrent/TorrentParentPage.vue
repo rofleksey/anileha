@@ -38,7 +38,7 @@ const data = ref<TorrentWithFiles | undefined>();
 const title = computed(() => data.value?.name ?? '');
 
 function onTabChange(value: string) {
-  router.push(`/torrent/${torrentId.value}/${value}`)
+  router.replace(`/torrent/${torrentId.value}/${value}`)
 }
 
 function onDeleteClick() {

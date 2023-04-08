@@ -19,9 +19,8 @@ func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
 	return dao.SeriesResponseDao{
 		ID:         series.ID,
 		Title:      series.Title,
-		Query:      series.Query,
 		LastUpdate: series.LastUpdate,
-		Thumb:      series.Thumb.DownloadUrl,
+		Thumb:      series.Thumb.Url,
 	}
 }
 
@@ -46,7 +45,7 @@ func registerSeriesController(
 ) {
 	// TODO: make this GET method
 	engine.GET("/series", func(c *gin.Context) {
-		seriesSlice, err := seriesService.GetAllSeries()
+		seriesSlice, err := seriesService.GetAll()
 		if err != nil {
 			c.Error(err)
 			return
@@ -60,7 +59,7 @@ func registerSeriesController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		series, err := seriesService.SearchSeries(req.Query)
+		series, err := seriesService.Search(req.Query)
 		if err != nil {
 			c.Error(err)
 			return
@@ -75,7 +74,7 @@ func registerSeriesController(
 			c.Error(rest.ErrBadRequest(fmt.Sprintf("failed to parse id: %s", err.Error())))
 			return
 		}
-		series, err := seriesService.GetSeriesById(uint(id))
+		series, err := seriesService.GetById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -93,7 +92,7 @@ func registerSeriesController(
 			c.Error(rest.ErrBadRequest(fmt.Sprintf("failed to parse id: %s", err.Error())))
 			return
 		}
-		err = seriesService.DeleteSeriesById(uint(id))
+		err = seriesService.DeleteById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -135,13 +134,14 @@ func registerSeriesController(
 			c.Error(rest.ErrInternal(err.Error()))
 			return
 		}
-		thumbId, err := thumbService.AddThumb(file.Filename, tempDst)
+		thumb, err := thumbService.CreateFromTempFile(tempDst)
 		if err != nil {
 			c.Error(err)
 			return
 		}
-		seriesId, err := seriesService.AddSeries(trimmedTitle, thumbId)
+		seriesId, err := seriesService.AddSeries(trimmedTitle, thumb)
 		if err != nil {
+			thumb.Delete()
 			c.Error(err)
 			return
 		}

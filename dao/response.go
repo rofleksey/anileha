@@ -9,7 +9,6 @@ import (
 type SeriesResponseDao struct {
 	ID         uint      `json:"id"`
 	Title      string    `json:"title"`
-	Query      *string   `json:"query"`
 	Thumb      string    `json:"thumb"`
 	LastUpdate time.Time `json:"lastUpdate"`
 }
@@ -71,4 +70,52 @@ type EpisodeResponseDao struct {
 	Length       uint64    `json:"length"`
 	DurationSec  int       `json:"durationSec"`
 	Url          string    `json:"link"`
+}
+
+type SubsType string
+
+const (
+	SubsText    SubsType = "text"
+	SubsPicture SubsType = "picture"
+	SubsUnknown SubsType = "unknown"
+)
+
+type BaseStream struct {
+	RelativeIndex int    `json:"index"`
+	Name          string `json:"name"`
+	Size          uint64 `json:"size"`
+	Lang          string `json:"lang"`
+}
+
+type VideoStream struct {
+	BaseStream
+	Width       int `json:"width"`
+	Height      int `json:"height"`
+	DurationSec int `json:"durationSec"`
+}
+
+type AudioStream struct {
+	BaseStream
+}
+
+type SubStream struct {
+	BaseStream
+	Type       SubsType `json:"type"`
+	TextLength int      `json:"textLength"`
+}
+
+type AnalysisResult struct {
+	Video VideoStream   `json:"video"`
+	Audio []AudioStream `json:"audio"`
+	Sub   []SubStream   `json:"sub"`
+}
+
+type EpisodeMetadata struct {
+	Episode string `json:"episode"`
+	Season  string `json:"season"`
+}
+
+type AnalysisResponseDao struct {
+	*AnalysisResult
+	EpisodeMetadata
 }

@@ -8,8 +8,10 @@ type PreferencesData struct {
 }
 
 type Preferences struct {
-	Audio PreferencesData
-	Sub   PreferencesData
+	Audio   PreferencesData
+	Sub     PreferencesData
+	Episode string
+	Season  string
 }
 
 type subFilter string

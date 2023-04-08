@@ -1,7 +1,7 @@
 package command
 
 import (
-	"anileha/analyze"
+	"anileha/dao"
 	"anileha/ffmpeg"
 	"anileha/util"
 	"fmt"
@@ -23,7 +23,7 @@ func NewProducer(
 	}
 }
 
-func (p *Producer) selectAudio(streams []analyze.AudioStream, prefs PreferencesData) *selectedAudioStream {
+func (p *Producer) selectAudio(streams []dao.AudioStream, prefs PreferencesData) *selectedAudioStream {
 	if len(streams) == 0 {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (p *Producer) selectAudio(streams []analyze.AudioStream, prefs PreferencesD
 	}
 
 	if prefs.Lang != "" {
-		newStreams := pie.Filter(streams, func(stream analyze.AudioStream) bool {
+		newStreams := pie.Filter(streams, func(stream dao.AudioStream) bool {
 			return stream.Lang == prefs.Lang
 		})
 		if len(newStreams) > 0 {
@@ -64,7 +64,7 @@ func (p *Producer) selectAudio(streams []analyze.AudioStream, prefs PreferencesD
 	}
 }
 
-func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData) *selectedSubStream {
+func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *selectedSubStream {
 	if len(streams) == 0 {
 		return nil
 	}
@@ -81,14 +81,14 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 	}
 
 	if prefs.StreamIndex != nil {
-		index := pie.FindFirstUsing(streams, func(stream analyze.SubStream) bool {
+		index := pie.FindFirstUsing(streams, func(stream dao.SubStream) bool {
 			return stream.RelativeIndex == *prefs.StreamIndex
 		})
 		subsType := streams[index].Type
 
 		var filter subFilter
 
-		if subsType == analyze.SubsPicture {
+		if subsType == dao.SubsPicture {
 			filter = overlaySubFilter
 		} else {
 			filter = subtitlesSubFilter
@@ -101,7 +101,7 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 	}
 
 	if prefs.Lang != "" {
-		newStreams := pie.Filter(streams, func(stream analyze.SubStream) bool {
+		newStreams := pie.Filter(streams, func(stream dao.SubStream) bool {
 			return stream.Lang == prefs.Lang
 		})
 		if len(newStreams) > 0 {
@@ -109,10 +109,10 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 		}
 	}
 
-	pictureSubs := pie.Filter(streams, func(stream analyze.SubStream) bool {
+	pictureSubs := pie.Filter(streams, func(stream dao.SubStream) bool {
 		return stream.TextLength < 32
 	})
-	textSubs := pie.Filter(streams, func(stream analyze.SubStream) bool {
+	textSubs := pie.Filter(streams, func(stream dao.SubStream) bool {
 		return stream.TextLength >= 32
 	})
 
@@ -145,7 +145,7 @@ func (p *Producer) selectSub(streams []analyze.SubStream, prefs PreferencesData)
 	}
 }
 
-func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPath string, probe *analyze.Result,
+func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPath string, probe *dao.AnalysisResult,
 	prefs Preferences) (*ffmpeg.Command, error) {
 	command := ffmpeg.NewCommand(inputFile, probe.Video.DurationSec, outputPath)
 	command.AddKeyValue("-acodec", "aac", ffmpeg.OptionOutput)
@@ -185,7 +185,7 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 	}
 
 	if audioPick != nil {
-		command.AddKeyValue("-map", fmt.Sprintf("0:a:%d", audioPick.StreamIndex), ffmpeg.OptionOutput)
+		command.AddKeyValue("-map", fmt.Sprintf("0:a:%d", *audioPick.StreamIndex), ffmpeg.OptionOutput)
 	}
 	command.WriteLogsTo(logsPath)
 	return command, nil

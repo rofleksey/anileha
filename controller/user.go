@@ -31,7 +31,7 @@ func registerUserController(
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		err := service.CheckUserExists(req.User, req.Email)
+		err := service.CheckExists(req.User, req.Email)
 		if err != nil {
 			_ = c.Error(err)
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -83,7 +83,7 @@ func registerUserController(
 			_ = c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		user, err := service.GetUserByLogin(req.User)
+		user, err := service.GetByLogin(req.User)
 		if err != nil {
 			_ = c.Error(err)
 			return
