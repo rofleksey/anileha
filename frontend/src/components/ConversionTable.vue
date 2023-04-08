@@ -25,7 +25,8 @@
     </template>
     <template v-slot:body-cell-eta="props">
       <q-td :props="props" v-if="props.row.status === 'processing'">
-        {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }})
+        {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }}
+        elapsed)
       </q-td>
       <q-td :props="props" v-else-if="props.row.status === 'created'">
         -
@@ -50,11 +51,8 @@
 
 <script setup lang="ts">
 import durationFormat from 'format-duration';
-import {Conversion, Torrent} from 'src/lib/api-types';
-import {useRouter} from 'vue-router';
+import {Conversion} from 'src/lib/api-types';
 import {QuasarColumnType} from 'src/lib/util';
-
-const router = useRouter();
 
 interface Props {
   title?: string;

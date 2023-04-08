@@ -20,8 +20,9 @@
         :columns="selectFilesColumns"
         v-model:selected="selectedForConversion"
         selection="multiple"
-        row-key="id"
-        :loading="dataLoading">
+        row-key="clientIndex"
+        :loading="dataLoading"
+        :pagination="{rowsPerPage: 10}">
       </q-table>
 
       <q-stepper-navigation>
@@ -52,11 +53,14 @@
               #{{ props.value.stream }} -
               {{ formatName(props.row.analysis.sub.find((it) => it.index === props.value.stream).name) }}
             </template>
+            <template v-else-if="props.value.file !== undefined">
+              file: {{ props.value.file }}
+            </template>
             <template v-else>
               disabled
             </template>
             <q-btn
-              @click="openStreamPickModal(props.row.clientIndex, props.row.analysis.sub, props.value.stream, 'sub')"
+              @click="openSubStreamPickModal(props.row.clientIndex, props.row.analysis.sub, props.value.stream, props.value.file)"
               flat
               round
               color="orange"
@@ -74,7 +78,7 @@
               disabled
             </template>
             <q-btn
-              @click="openStreamPickModal(props.row.clientIndex, props.row.analysis.audio, props.value.stream, 'audio')"
+              @click="openAudioStreamPickModal(props.row.clientIndex, props.row.analysis.audio, props.value.stream)"
               flat
               round
               color="orange"
@@ -129,8 +133,9 @@ import {QuasarColumnType, showError, showSuccess} from 'src/lib/util';
 import {useRoute} from 'vue-router';
 import {useQuasar} from 'quasar';
 import {postAnalyze, postStartConversion} from 'src/lib/post-api';
-import PickStreamModal from 'components/modal/PickStreamModal.vue';
+import PickAudioStreamModal from 'components/modal/PickAudioStreamModal.vue';
 import ChangeMetadataModal from 'components/modal/ChangeMetadataModal.vue';
+import PickSubtitleStreamModal from 'components/modal/PickSubtitleStreamModal.vue';
 
 const quasar = useQuasar();
 const route = useRoute();
@@ -270,7 +275,18 @@ const readyFiles = computed(() => {
     return [];
   }
   return torrent.files.filter((file) => file.status === 'ready');
-})
+});
+
+const externalSubtitleFiles = computed(() => {
+  const torrent = torrentData.value;
+  if (!torrent) {
+    return [];
+  }
+  return torrent.files.filter((file) => {
+    const lowerCase = file.path.toLowerCase();
+    return lowerCase.endsWith('.srt') || lowerCase.endsWith('.ssa') || lowerCase.endsWith('.ass');
+  }).map((file) => file.path);
+});
 
 const selectFilesColumns: QuasarColumnType[] = [
   {
@@ -310,23 +326,45 @@ const analysisColumns: QuasarColumnType[] = [
   },
 ]
 
-function openStreamPickModal(fileIndex: number, streams: (BaseStream | SubStream)[], curIndex: number, type: 'sub' | 'audio') {
+function openAudioStreamPickModal(fileIndex: number, streams: BaseStream[], curIndex: number) {
   quasar.dialog({
-    component: PickStreamModal,
+    component: PickAudioStreamModal,
     componentProps: {
       streams,
       curIndex,
     }
-  }).onOk((newIndex: number) => {
-    console.log(newIndex);
+  }).onOk(({stream, file}: { stream: number | undefined, file: string | undefined }) => {
     const analysisForFile = analysisData.value.find((it) => it.clientIndex === fileIndex);
     if (!analysisForFile) {
       return
     }
-    if (type === 'sub') {
-      analysisForFile.prefs.sub.stream = newIndex;
-    } else {
-      analysisForFile.prefs.audio.stream = newIndex;
+    if (stream !== undefined) {
+      analysisForFile.prefs.audio.stream = stream;
+    }
+  });
+}
+
+function openSubStreamPickModal(fileIndex: number, streams: SubStream[], curIndex: number | undefined,
+                                curFile: string | undefined) {
+  quasar.dialog({
+    component: PickSubtitleStreamModal,
+    componentProps: {
+      streams,
+      curIndex,
+      files: externalSubtitleFiles.value,
+      curFile
+    }
+  }).onOk(({stream, file}: { stream: number | undefined, file: string | undefined }) => {
+    const analysisForFile = analysisData.value.find((it) => it.clientIndex === fileIndex);
+    if (!analysisForFile) {
+      return
+    }
+    if (stream !== undefined) {
+      analysisForFile.prefs.sub.stream = stream;
+      analysisForFile.prefs.sub.file = undefined;
+    } else if (file !== undefined) {
+      analysisForFile.prefs.sub.file = file;
+      analysisForFile.prefs.sub.stream = undefined;
     }
   });
 }

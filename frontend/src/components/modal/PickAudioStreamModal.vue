@@ -2,7 +2,7 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin card">
       <q-card-section>
-        <div class="text-h6">Pick stream</div>
+        <div class="text-h6">Pick audio stream</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
         <q-select
@@ -12,7 +12,7 @@
           v-model="model"
           :options="data"
           map-options
-          label="Outlined"/>
+          label="Stream"/>
       </q-card-section>
       <q-card-actions align="right">
         <q-btn
@@ -29,13 +29,13 @@
 <script setup lang="ts">
 import {useDialogPluginComponent} from 'quasar'
 import {computed, onMounted, ref} from 'vue';
-import {BaseStream, isSubStream, SubStream} from 'src/lib/api-types';
+import {BaseStream} from 'src/lib/api-types';
 import prettyBytes from 'pretty-bytes';
 
 const {dialogRef, onDialogHide, onDialogOK} = useDialogPluginComponent()
 
 interface Props {
-  streams: (BaseStream | SubStream)[];
+  streams: BaseStream[];
   curIndex: number;
 }
 
@@ -61,11 +61,7 @@ const data = computed(() => {
 
     const prefix = `#${stream.index} - ${name}`;
 
-    if (isSubStream(stream) && stream.textLength >= 32) {
-      name = `${prefix} (${Math.ceil(stream.textLength / 1000)}k chars)`
-    } else {
-      name = `${prefix} (${prettyBytes(stream.size)})`;
-    }
+    name = `${prefix} (${prettyBytes(stream.size)})`;
 
     return {
       index: stream.index,
@@ -79,7 +75,9 @@ onMounted(() => {
 })
 
 function onOKClick() {
-  onDialogOK(model.value?.index);
+  onDialogOK({
+    stream: model.value?.index
+  });
 }
 </script>
 

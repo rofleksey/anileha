@@ -164,16 +164,16 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 
 	if subPick != nil {
 		switch subPick.Filter {
-		case overlaySubFilter:
+		case subtitlesSubFilter:
 			if subPick.ExternalFile != "" {
-				command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v]subtitles=f='%s'",
+				command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v]subtitles=f='%s'[vo]",
 					subPick.ExternalFile), ffmpeg.OptionOutput)
 			} else {
 				command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v]subtitles=f='%s':si=%d[vo]",
 					inputFile, *subPick.StreamIndex), ffmpeg.OptionOutput)
 			}
 			command.AddKeyValue("-map", "[vo]", ffmpeg.OptionPostOutput)
-		case subtitlesSubFilter:
+		case overlaySubFilter:
 			command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v][0:s:%d]overlay[vo]",
 				*subPick.StreamIndex), ffmpeg.OptionOutput)
 			command.AddKeyValue("-map", "[vo]", ffmpeg.OptionPostOutput)

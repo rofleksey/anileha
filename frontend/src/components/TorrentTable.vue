@@ -33,7 +33,8 @@
     </template>
     <template v-slot:body-cell-eta="props">
       <q-td :props="props" v-if="props.row.status === 'download'">
-        {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }})
+        {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }}
+        elapsed)
       </q-td>
       <q-td :props="props" v-else-if="props.row.status === 'idle'">
         -

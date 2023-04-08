@@ -9,6 +9,7 @@ import (
 	"anileha/rest"
 	"anileha/util"
 	"fmt"
+	"github.com/elliotchance/pie/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -124,7 +125,7 @@ func (s *ConversionService) GetLogsById(id uint) (*string, error) {
 func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
 	queryResult := s.db.Where("series_id = ?", seriesId).
-		Order("updated_at DESC").
+		Order("conversions.updated_at DESC").
 		Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -135,7 +136,7 @@ func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conver
 func (s *ConversionService) GetConversionsByTorrentId(torrentId uint) ([]db.Conversion, error) {
 	var conversions []db.Conversion
 	queryResult := s.db.Where("torrent_id = ?", torrentId).
-		Order("updated_at DESC").
+		Order("conversions.updated_at DESC").
 		Find(&conversions)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
@@ -266,6 +267,20 @@ func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []d
 		videoPath := filepath.Join(folder, "video.mp4")
 		logsPath := filepath.Join(folder, "log.txt")
 		prefs := prefsArr[i]
+
+		if prefs.Sub.ExternalFile != "" {
+			index := pie.FindFirstUsing(torrent.Files, func(file db.TorrentFile) bool {
+				return file.TorrentPath == prefs.Sub.ExternalFile
+			})
+			prefs.Sub.ExternalFile = *torrent.Files[index].ReadyPath
+		}
+
+		if prefs.Audio.ExternalFile != "" {
+			index := pie.FindFirstUsing(torrent.Files, func(file db.TorrentFile) bool {
+				return file.TorrentPath == prefs.Audio.ExternalFile
+			})
+			prefs.Audio.ExternalFile = *torrent.Files[index].ReadyPath
+		}
 
 		probe, err := s.probeAnalyzer.Probe(*torrentFiles[i].ReadyPath)
 		if err != nil {

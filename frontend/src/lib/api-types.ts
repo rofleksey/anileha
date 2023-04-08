@@ -75,11 +75,6 @@ export interface SubStream extends BaseStream {
   type: string;
   textLength: number;
 }
-
-export function isSubStream(stream: BaseStream): stream is SubStream {
-  return (stream as SubStream).type !== undefined;
-}
-
 export interface Analysis {
   video: VideoStream;
   audio: BaseStream[];
@@ -92,7 +87,6 @@ export interface ConversionPreference {
   disable?: boolean;
   stream?: number;
   file?: string;
-  lang?: string;
 }
 
 export interface StartConversionFileData {

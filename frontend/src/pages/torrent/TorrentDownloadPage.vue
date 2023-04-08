@@ -11,7 +11,7 @@
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
       <q-btn
         v-if="data?.status !== 'download'"
-        :disable="dataLoading || selectedForDownload.length === 0"
+        :disable="dataLoading || ticked.length === 0"
         fab
         icon="play_arrow"
         color="accent"
@@ -51,13 +51,6 @@ const selection = ref<number[]>([]);
 const ticked = ref<number[]>([]);
 const expanded = ref<number[]>([]);
 
-const selectedForDownload = computed(() => {
-  return ticked.value
-    .filter((index) =>
-      index >= 0
-      && data.value?.files?.find((it) => it.clientIndex === index)?.status !== 'ready');
-})
-
 const nodes = computed(() => {
   const torrent = data.value;
   if (!torrent) {
@@ -74,7 +67,7 @@ const nodes = computed(() => {
         const newNode = {
           id: (index === pathSplit.length - 1) ? file.clientIndex : miscCounter--,
           label: pathItem,
-          disabled: torrent.status === 'download' || file.status === 'ready',
+          disabled: torrent.status === 'download',
           children: [],
         }
         curNodeArray.push(newNode);
@@ -122,7 +115,7 @@ function onStopClick() {
 
 function onStartClick() {
   dataLoading.value = true;
-  postStartTorrent(torrentId.value, selectedForDownload.value)
+  postStartTorrent(torrentId.value, ticked.value)
     .then(() => {
       showSuccess('Torrent started');
       refreshData();
