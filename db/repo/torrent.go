@@ -188,15 +188,12 @@ func (r *TorrentRepo) StopTorrent(id uint) error {
 	})
 }
 
-func (r *TorrentRepo) Create(torrent *db.Torrent) (*uint, error) {
+func (r *TorrentRepo) Create(torrent *db.Torrent) (uint, error) {
 	queryResult := r.db.Create(torrent)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return 0, queryResult.Error
 	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrCreationFailed
-	}
-	return &torrent.ID, nil
+	return torrent.ID, nil
 }
 
 var TorrentRepoExport = fx.Options(fx.Provide(NewTorrentRepo))

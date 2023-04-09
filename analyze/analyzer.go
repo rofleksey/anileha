@@ -79,6 +79,7 @@ func (p *ProbeAnalyzer) parseStreamSize(sizeCommandResult string, streamType Str
 // Executes: ffmpeg -i <inputFile> -map 0:a:<streamIndex> -c copy -f null -
 // Last ffmpeg line: video:0kB audio:18619kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
 func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, streamIndex int) (uint64, error) {
+	var resultStr string
 	p.log.Info("getting stream size", zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex))
 	sizeCommand := ffmpeg.NewCommand(inputFile, 0, "-")
 	streamLetter := streamType[0:1]
@@ -89,11 +90,16 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	sizeCommand.AddKeyValue("-c", "copy", ffmpeg.OptionOutput)
 	sizeCommand.AddKeyValue("-f", "null", ffmpeg.OptionOutput)
 	result, err := sizeCommand.ExecuteSync()
+
+	if result != nil {
+		resultStr = string(result)
+	}
+
 	if err != nil {
-		p.log.Error(fmt.Sprintf("failed to get stream size: %s", *result), zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex), zap.Error(err))
+		p.log.Error(fmt.Sprintf("failed to get stream size: %s", resultStr), zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex), zap.Error(err))
 		return 0, err
 	}
-	size, err := p.parseStreamSize(*result, streamType)
+	size, err := p.parseStreamSize(resultStr, streamType)
 	if err != nil {
 		p.log.Error("failed to get stream size", zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex), zap.Error(err))
 		return 0, err
@@ -120,6 +126,7 @@ func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (int, error) {
 
 // ExtractSubText gets sub stream text
 func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (string, error) {
+	var resultStr string
 	p.log.Info("extracting stream subtitle text", zap.String("inputFile", inputFile), zap.Int("relativeIndex", streamIndex))
 	srtFileName := inputFile + ".srt"
 	defer func() {
@@ -130,8 +137,11 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
 	sizeCommand.AddKeyValue("-f", "srt", ffmpeg.OptionOutput)
 	output, err := sizeCommand.ExecuteSync()
+	if output != nil {
+		resultStr = string(output)
+	}
 	if err != nil {
-		p.log.Warn(fmt.Sprintf("failed to get sub text: %s", *output), zap.String("inputFile", inputFile), zap.Int("streamIndex", streamIndex), zap.Error(err))
+		p.log.Warn(fmt.Sprintf("failed to get sub text: %s", resultStr), zap.String("inputFile", inputFile), zap.Int("streamIndex", streamIndex), zap.Error(err))
 		return "", err
 	}
 	content, err := os.ReadFile(srtFileName)

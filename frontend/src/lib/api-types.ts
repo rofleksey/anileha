@@ -22,7 +22,7 @@ export type TorrentStatus = 'idle' | 'download' | 'error' | 'ready'
 
 export interface Torrent {
   id: number;
-  updatedAt: number;
+  updatedAt: string;
   name: string;
   status: TorrentStatus;
   totalLength: number;
@@ -50,12 +50,26 @@ export interface Conversion {
   seriesId: number;
   torrentId: number;
   torrentFileId: number;
-  updatedAt: number;
+  updatedAt: string;
   name: string;
   episodeName: string;
   command: string;
   status: ConversionStatus;
   progress: Progress;
+}
+
+export interface Episode {
+  id: number;
+  seriesId: number;
+  conversionId: number;
+  createdAt: string;
+  title: string;
+  episode: string;
+  season: string;
+  link: string;
+  thumb: string;
+  length: number;
+  durationSec: number;
 }
 
 export interface BaseStream {
@@ -75,6 +89,7 @@ export interface SubStream extends BaseStream {
   type: string;
   textLength: number;
 }
+
 export interface Analysis {
   video: VideoStream;
   audio: BaseStream[];

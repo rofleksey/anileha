@@ -216,14 +216,13 @@ func (c *Command) Execute(externalLog *zap.Logger) (chan any, context.CancelFunc
 	return outputChan, cancelFunc, nil
 }
 
-func (c *Command) ExecuteSync() (*string, error) {
+func (c *Command) ExecuteSync() ([]byte, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	args := c.prepareArgs(false)
 	cmd := exec.Command("ffmpeg", args...)
 	outputBytes, err := cmd.CombinedOutput()
-	outputStr := string(outputBytes)
-	return &outputStr, err
+	return outputBytes, err
 }
 
 func (c *Command) String() string {

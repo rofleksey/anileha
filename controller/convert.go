@@ -49,7 +49,7 @@ func registerConvertController(
 	convertGroup := engine.Group("/admin/convert")
 	convertGroup.Use(rest.AdminMiddleware(log, config))
 	convertGroup.GET("", func(c *gin.Context) {
-		conversions, err := convertService.GetAllConversions()
+		conversions, err := convertService.GetAll()
 		if err != nil {
 			c.Error(err)
 			return
@@ -63,7 +63,7 @@ func registerConvertController(
 			c.Error(rest.ErrBadRequest("failed to parse id"))
 			return
 		}
-		conversion, err := convertService.GetConversionById(uint(id))
+		conversion, err := convertService.GetById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -82,7 +82,11 @@ func registerConvertController(
 			c.Error(err)
 			return
 		}
-		c.String(http.StatusOK, *logs)
+		if logs == nil {
+			c.Error(rest.ErrInternal("logs are nil"))
+			return
+		}
+		c.String(http.StatusOK, string(logs))
 	})
 	convertGroup.GET("/series/:id", func(c *gin.Context) {
 		idString := c.Param("id")
@@ -91,7 +95,7 @@ func registerConvertController(
 			c.Error(rest.ErrBadRequest("failed to parse id"))
 			return
 		}
-		conversions, err := convertService.GetConversionsBySeriesId(uint(id))
+		conversions, err := convertService.GetBySeriesId(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -157,7 +161,7 @@ func registerConvertController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		conversion, err := convertService.GetConversionById(req.Id)
+		conversion, err := convertService.GetById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return

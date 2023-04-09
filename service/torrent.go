@@ -410,20 +410,13 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) erro
 		SeriesId: seriesId,
 		FilePath: newPath,
 	}
-	id, err := s.torrentRepo.Create(&torrent)
+	_, err = s.torrentRepo.Create(&torrent)
 	if err != nil {
 		deleteErr := os.Remove(newPath)
 		if deleteErr != nil {
 			s.log.Warn("error deleting torrent on add error", zap.Error(deleteErr))
 		}
 		return rest.ErrInternal(err.Error())
-	}
-	if id == nil {
-		deleteErr := os.Remove(newPath)
-		if deleteErr != nil {
-			s.log.Warn("error deleting torrent on add error", zap.Error(deleteErr))
-		}
-		return rest.ErrCreationFailed
 	}
 	s.log.Info("adding new torrent in the background",
 		zap.Uint("seriesId", seriesId),

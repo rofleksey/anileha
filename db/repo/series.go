@@ -2,7 +2,6 @@ package repo
 
 import (
 	"anileha/db"
-	"anileha/rest"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -62,15 +61,12 @@ func (r *SeriesRepo) Search(query string) ([]db.Series, error) {
 	return seriesArr, nil
 }
 
-func (r *SeriesRepo) Create(series *db.Series) (*uint, error) {
+func (r *SeriesRepo) Create(series *db.Series) (uint, error) {
 	queryResult := r.db.Create(series)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return 0, queryResult.Error
 	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrCreationFailed
-	}
-	return &series.ID, nil
+	return series.ID, nil
 }
 
 var SeriesRepoExport = fx.Options(fx.Provide(NewSeriesRepo))

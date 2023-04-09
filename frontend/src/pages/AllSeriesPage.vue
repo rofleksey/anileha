@@ -1,5 +1,5 @@
 <template>
-  <q-page class="row items-start q-gutter-lg content-start justify-center" padding>
+  <q-page class="full-width row items-start q-gutter-lg content-start justify-center" padding>
     <q-card
       class="series-card"
       v-for="series in data"

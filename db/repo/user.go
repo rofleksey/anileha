@@ -56,15 +56,15 @@ func (r *UserRepo) GetByEmail(email string) (*db.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepo) Create(user *db.User) (*uint, error) {
+func (r *UserRepo) Create(user *db.User) (uint, error) {
 	queryResult := r.db.Create(user)
 	if queryResult.Error != nil {
-		return nil, queryResult.Error
+		return 0, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrCreationFailed
+		return 0, rest.ErrCreationFailed
 	}
-	return &user.ID, nil
+	return user.ID, nil
 }
 
 var UserRepoExport = fx.Options(fx.Provide(NewUserRepo))

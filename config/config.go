@@ -24,6 +24,10 @@ type DataConfig struct {
 	Dir string `validate:"required" yaml:"dir"`
 }
 
+type ThumbConfig struct {
+	VideoFactors []float32 `validate:"min=1,dive,gte=0" yaml:"videoFactors"`
+}
+
 type UserConfig struct {
 	Salt             string `validate:"required" yaml:"salt"`
 	CookieHashKey    string `validate:"required" yaml:"cookieHashKey"`
@@ -49,6 +53,7 @@ type Config struct {
 	Db    DbConfig    `validate:"dive,required" yaml:"db"`
 	Rest  RestConfig  `validate:"dive,required" yaml:"rest"`
 	Data  DataConfig  `validate:"dive,required" yaml:"data"`
+	Thumb ThumbConfig `validate:"dive,required" yaml:"thumb"`
 	User  UserConfig  `validate:"dive,required" yaml:"user"`
 	Admin AdminConfig `validate:"dive,required" yaml:"admin"`
 	Mail  MailConfig  `validate:"dive,required" yaml:"mail"`

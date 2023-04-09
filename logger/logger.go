@@ -35,5 +35,5 @@ func provideZapLogger(lifecycle fx.Lifecycle) (*zap.Logger, error) {
 // var LoggerExport = fx.Options(fx.Provide(provideZapLogger), fx.Provide(provideZapSugar), fx.NopLogger)
 
 var Export = fx.Options(fx.Provide(provideZapLogger), fx.WithLogger(func(zapLogger *zap.Logger) fxevent.Logger {
-	return &fxevent.NopLogger
+	return &fxevent.ZapLogger{Logger: zapLogger}
 }))

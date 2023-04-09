@@ -9,6 +9,13 @@ rest:
   baseUrl: http://127.0.0.1:3000
 data:
   dir: data
+thumb:
+  videoFactors:
+    - 0.25
+    - 0.333
+    - 0.5
+    - 0.667
+    - 0.75
 user:
   salt: salt
   cookieHashKey: hash_key

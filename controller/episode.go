@@ -14,16 +14,14 @@ import (
 )
 
 func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
-	var thumb *string
-	if episode.Thumb != nil {
-		thumb = &episode.Thumb.Path
-	}
 	return dao.EpisodeResponseDao{
 		ID:          episode.ID,
 		SeriesId:    episode.SeriesId,
-		Name:        episode.Title,
+		Title:       episode.Title,
+		Episode:     episode.Episode,
+		Season:      episode.Season,
 		CreatedAt:   episode.CreatedAt,
-		Thumb:       thumb,
+		Thumb:       episode.Thumb.Url,
 		Length:      episode.Length,
 		DurationSec: episode.DurationSec,
 		Url:         episode.Url,
@@ -44,6 +42,21 @@ func registerEpisodeController(
 	engine *gin.Engine,
 	episodeService *service.EpisodeService,
 ) {
+	engine.GET("/episodes/series/:seriesId", func(c *gin.Context) {
+		idString := c.Param("seriesId")
+		id, err := strconv.ParseUint(idString, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
+			return
+		}
+		episodes, err := episodeService.GetBySeriesId(uint(id))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
+	})
+
 	engine.GET("/episodes/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
@@ -51,27 +64,12 @@ func registerEpisodeController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
 			return
 		}
-		episode, err := episodeService.GetEpisodeById(uint(id))
+		episode, err := episodeService.GetById(uint(id))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, mapEpisodeToResponse(*episode))
-	})
-
-	engine.GET("/series/:id/episodes", func(c *gin.Context) {
-		idString := c.Param("id")
-		id, err := strconv.ParseUint(idString, 10, 64)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse id"})
-			return
-		}
-		episodes, err := episodeService.GetEpisodesBySeriesId(uint(id))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
@@ -83,7 +81,7 @@ func registerEpisodeController(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse episode id"})
 			return
 		}
-		err = episodeService.DeleteEpisodeById(uint(episodeId))
+		err = episodeService.DeleteById(uint(episodeId))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

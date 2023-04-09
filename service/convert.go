@@ -5,6 +5,7 @@ import (
 	"anileha/command"
 	"anileha/config"
 	"anileha/db"
+	"anileha/db/repo"
 	"anileha/ffmpeg"
 	"anileha/rest"
 	"anileha/util"
@@ -12,14 +13,13 @@ import (
 	"github.com/elliotchance/pie/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"os"
 	"path"
 	"path/filepath"
 )
 
 type ConversionService struct {
-	db               *gorm.DB
+	conversionRepo   *repo.ConversionRepo
 	log              *zap.Logger
 	queue            *ffmpeg.Queue
 	queueChan        chan ffmpeg.OutputMessage
@@ -32,7 +32,7 @@ type ConversionService struct {
 }
 
 func NewConversionService(
-	database *gorm.DB,
+	conversionRepo *repo.ConversionRepo,
 	probeAnalyzer *analyze.ProbeAnalyzer,
 	cmdProducer *command.Producer,
 	fileService *FileService,
@@ -41,7 +41,7 @@ func NewConversionService(
 	log *zap.Logger,
 	config *config.Config,
 ) (*ConversionService, error) {
-	if err := database.Model(&db.Conversion{}).Where("status = ? OR status = ?", db.ConversionProcessing, db.ConversionCreated).Updates(db.Conversion{Status: db.ConversionError}).Error; err != nil {
+	if err := conversionRepo.ResetProcessing(); err != nil {
 		return nil, err
 	}
 	workingDir, err := os.Getwd()
@@ -60,7 +60,7 @@ func NewConversionService(
 	}
 	queue.Start()
 	service := &ConversionService{
-		db:               database,
+		conversionRepo:   conversionRepo,
 		probeAnalyzer:    probeAnalyzer,
 		cmdProducer:      cmdProducer,
 		fileService:      fileService,
@@ -84,83 +84,72 @@ func (s *ConversionService) cleanUpConversion(conversion db.Conversion) {
 	}
 }
 
-func (s *ConversionService) GetConversionById(id uint) (*db.Conversion, error) {
-	var conversion db.Conversion
-	queryResult := s.db.First(&conversion, "id = ?", id)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *ConversionService) GetById(id uint) (*db.Conversion, error) {
+	conversion, err := s.conversionRepo.GetById(id)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if conversion == nil {
 		return nil, rest.ErrNotFoundInst
 	}
-	return &conversion, nil
+	return conversion, nil
 }
 
-func (s *ConversionService) GetAllConversions() ([]db.Conversion, error) {
-	var conversions []db.Conversion
-	queryResult := s.db.Find(&conversions).Order("updated_at DESC")
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *ConversionService) GetAll() ([]db.Conversion, error) {
+	conversions, err := s.conversionRepo.GetAll()
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
 
-func (s *ConversionService) GetLogsById(id uint) (*string, error) {
-	var conversion db.Conversion
-	queryResult := s.db.First(&conversion, "id = ?", id)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *ConversionService) GetLogsById(id uint) ([]byte, error) {
+	conversion, err := s.conversionRepo.GetById(id)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if conversion == nil {
 		return nil, rest.ErrNotFoundInst
 	}
 	logBytes, err := os.ReadFile(conversion.LogPath)
 	if err != nil {
 		return nil, err
 	}
-	logString := string(logBytes)
-	return &logString, nil
+	return logBytes, nil
 }
 
-func (s *ConversionService) GetConversionsBySeriesId(seriesId uint) ([]db.Conversion, error) {
-	var conversions []db.Conversion
-	queryResult := s.db.Where("series_id = ?", seriesId).
-		Order("conversions.updated_at DESC").
-		Find(&conversions)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *ConversionService) GetBySeriesId(seriesId uint) ([]db.Conversion, error) {
+	conversions, err := s.conversionRepo.GetBySeriesId(seriesId)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
 
-func (s *ConversionService) GetConversionsByTorrentId(torrentId uint) ([]db.Conversion, error) {
-	var conversions []db.Conversion
-	queryResult := s.db.Where("torrent_id = ?", torrentId).
-		Order("conversions.updated_at DESC").
-		Find(&conversions)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *ConversionService) GetByTorrentId(torrentId uint) ([]db.Conversion, error) {
+	conversions, err := s.conversionRepo.GetByTorrentId(torrentId)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
 
 func (s *ConversionService) DeleteConversionById(id uint) error {
-	var conversion db.Conversion
-	queryResult := s.db.First(&conversion, "id = ?", id)
-	if queryResult.Error != nil {
-		return queryResult.Error
+	conversion, err := s.conversionRepo.GetById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if conversion == nil {
 		return rest.ErrNotFoundInst
 	}
-	queryResult = s.db.Delete(&db.Conversion{}, id)
-	if queryResult.Error != nil {
-		return queryResult.Error
+	count, err := s.conversionRepo.DeleteById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
-		return rest.ErrNotFoundInst
+	if count == 0 {
+		return rest.ErrDeletionFailed
 	}
-	go s.cleanUpConversion(conversion)
+	go s.cleanUpConversion(*conversion)
 	return nil
 }
 
@@ -168,14 +157,14 @@ func (s *ConversionService) queueWorker() {
 	for update := range s.queueChan {
 		switch msg := update.Msg.(type) {
 		case ffmpeg.QueueSignalStarted:
-			if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: db.ConversionProcessing}).Error; err != nil {
+			if err := s.conversionRepo.SetStatus(update.ID, db.ConversionProcessing); err != nil {
 				s.log.Error("failed to update db on conversion start", zap.Uint("conversionId", update.ID), zap.Error(err))
 				continue
 			}
 		case string:
 			s.log.Info(msg, zap.Uint("conversionId", update.ID))
 		case util.Progress:
-			if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Progress: msg}).Error; err != nil {
+			if err := s.conversionRepo.SetProgress(update.ID, msg); err != nil {
 				s.log.Error("failed to update db on conversion progress", zap.Uint("conversionId", update.ID), zap.Error(err))
 				continue
 			}
@@ -184,17 +173,17 @@ func (s *ConversionService) queueWorker() {
 			if msg.Err == nil {
 				finishedConversionId := update.ID
 				go func() {
-					conversion, err := s.GetConversionById(finishedConversionId)
+					conversion, err := s.GetById(finishedConversionId)
 					if err != nil {
 						s.log.Error("failed to get conversion by id", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
 						return
 					}
-					episode, err := s.episodeService.CreateEpisodeFromConversion(conversion)
+					episode, err := s.episodeService.CreateFromConversion(conversion)
 					if err != nil {
 						s.log.Error("failed to create episode", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
 						return
 					}
-					if err := s.db.Model(&db.Conversion{}).Where("id = ?", finishedConversionId).Updates(db.Conversion{Status: db.ConversionReady, EpisodeId: &episode.ID, Progress: util.Progress{Progress: 100}}).Error; err != nil {
+					if err := s.conversionRepo.SetFinish(finishedConversionId, episode.ID); err != nil {
 						s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
 						return
 					}
@@ -206,7 +195,7 @@ func (s *ConversionService) queueWorker() {
 				} else {
 					newStatus = db.ConversionError
 				}
-				if err := s.db.Model(&db.Conversion{}).Where("id = ?", update.ID).Updates(db.Conversion{Status: newStatus}).Error; err != nil {
+				if err := s.conversionRepo.SetStatus(update.ID, newStatus); err != nil {
 					s.log.Error("failed to update db on conversion error", zap.Uint("conversionId", update.ID), zap.Error(err))
 					continue
 				}
@@ -247,12 +236,9 @@ func (s *ConversionService) prepareConversion(
 		Command:          command.String(),
 		VideoDurationSec: durationSec,
 	}
-	queryResult := s.db.Create(&conversion)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
-	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrCreationFailed
+	_, err := s.conversionRepo.Create(&conversion)
+	if err != nil {
+		return nil, err
 	}
 	return &conversion, nil
 }
@@ -309,11 +295,8 @@ func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []d
 
 func (s *ConversionService) StopConversion(conversionId uint) error {
 	s.queue.Cancel(conversionId)
-	err := s.db.Model(&db.Conversion{}).Where("id = ?", conversionId).Updates(db.Conversion{Status: db.ConversionCancelled}).Error
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return s.conversionRepo.SetStatus(conversionId, db.ConversionCancelled)
 }
 
 func startQueueWorker(service *ConversionService) {

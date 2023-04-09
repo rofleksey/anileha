@@ -59,6 +59,7 @@ var (
 	ErrNotFoundInst                   = ErrNotFound("not found")
 	ErrReadyFileNotFound              = ErrNotFound("ready file not found")
 	ErrCreationFailed                 = ErrInternal("creation failed")
+	ErrDeletionFailed                 = ErrInternal("deletion failed")
 	ErrInvalidIndicesString           = ErrBadRequest("invalid indices string")
 	ErrFileIsNotReadyToBeConverted    = ErrBadRequest("file is not ready to be converted")
 	ErrAlreadyStarted                 = ErrBadRequest("already started")

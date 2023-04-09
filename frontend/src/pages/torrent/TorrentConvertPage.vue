@@ -110,6 +110,8 @@
           class="q-ml-sm"/>
         <q-btn
           @click="startConversion"
+          :loading="dataLoading"
+          :disable="dataLoading"
           color="primary"
           label="Convert"/>
       </q-stepper-navigation>
@@ -278,11 +280,7 @@ const readyFiles = computed(() => {
 });
 
 const externalSubtitleFiles = computed(() => {
-  const torrent = torrentData.value;
-  if (!torrent) {
-    return [];
-  }
-  return torrent.files.filter((file) => {
+  return readyFiles.value.filter((file) => {
     const lowerCase = file.path.toLowerCase();
     return lowerCase.endsWith('.srt') || lowerCase.endsWith('.ssa') || lowerCase.endsWith('.ass');
   }).map((file) => file.path);

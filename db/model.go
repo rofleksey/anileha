@@ -2,8 +2,6 @@ package db
 
 import (
 	"anileha/util"
-	"gorm.io/gorm"
-	"os"
 	"time"
 )
 
@@ -14,13 +12,6 @@ type Series struct {
 	LastUpdate time.Time
 	Title      string
 	Thumb      Thumb `gorm:"embedded"`
-}
-
-func (s *Series) AfterDelete(_ *gorm.DB) error {
-	go func() {
-		s.Thumb.Delete()
-	}()
-	return nil
 }
 
 type TorrentStatus string
@@ -52,13 +43,6 @@ type Torrent struct {
 	Files               []TorrentFile `gorm:"foreignKey:torrent_id;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
-func (t *Torrent) AfterDelete(_ *gorm.DB) error {
-	go func() {
-		_ = os.Remove(t.FilePath)
-	}()
-	return nil
-}
-
 type TorrentFileStatus string
 
 const (
@@ -84,15 +68,6 @@ type TorrentFile struct {
 	Length       uint    // Length in bytes
 	Selected     bool
 	Status       TorrentFileStatus
-}
-
-func (f *TorrentFile) AfterDelete(_ *gorm.DB) error {
-	go func() {
-		if f.ReadyPath != nil {
-			_ = os.Remove(*f.ReadyPath)
-		}
-	}()
-	return nil
 }
 
 type ConversionStatus string
@@ -133,15 +108,6 @@ type Conversion struct {
 	Status           ConversionStatus
 }
 
-func (c *Conversion) AfterDelete(_ *gorm.DB) error {
-	go func() {
-		_ = os.Remove(c.VideoPath)
-		_ = os.Remove(c.LogPath)
-		_ = os.Remove(c.OutputDir)
-	}()
-	return nil
-}
-
 // Episode Represents info about a single ready-to-watch episode
 type Episode struct {
 	ID        uint `gorm:"primarykey"`
@@ -154,19 +120,11 @@ type Episode struct {
 	Title       string
 	Episode     string
 	Season      string
-	Thumb       *Thumb `gorm:"embedded"`
+	Thumb       Thumb  `gorm:"embedded"`
 	Length      uint64 // Length in bytes
 	DurationSec int    // Duration in seconds
 	Path        string
 	Url         string
-}
-
-func (e *Episode) AfterDelete(_ *gorm.DB) error {
-	go func() {
-		e.Thumb.Delete()
-		_ = os.Remove(e.Path)
-	}()
-	return nil
 }
 
 type User struct {

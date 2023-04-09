@@ -47,6 +47,13 @@ func (s *SeriesService) Search(query string) ([]db.Series, error) {
 }
 
 func (s *SeriesService) DeleteById(id uint) error {
+	series, err := s.seriesRepo.GetById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+	if series == nil {
+		return rest.ErrNotFoundInst
+	}
 	rows, err := s.seriesRepo.DeleteById(id)
 	if err != nil {
 		return rest.ErrInternal(err.Error())
@@ -54,6 +61,7 @@ func (s *SeriesService) DeleteById(id uint) error {
 	if rows == 0 {
 		return rest.ErrNotFoundInst
 	}
+	series.Thumb.Delete()
 	return nil
 }
 
@@ -66,11 +74,8 @@ func (s *SeriesService) AddSeries(name string, thumb db.Thumb) (uint, error) {
 	if err != nil {
 		return 0, rest.ErrInternal(err.Error())
 	}
-	if id == nil {
-		return 0, rest.ErrCreationFailed
-	}
-	s.log.Info("created series", zap.Uint("seriesId", *id), zap.String("seriesName", name))
-	return *id, nil
+	s.log.Info("created series", zap.Uint("seriesId", id), zap.String("seriesName", name))
+	return id, nil
 }
 
 var SeriesServiceExport = fx.Options(fx.Provide(NewSeriesService))

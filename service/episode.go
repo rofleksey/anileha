@@ -3,29 +3,31 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
+	"anileha/db/repo"
 	"anileha/rest"
 	"anileha/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"os"
 	"path"
 	"path/filepath"
 )
 
 type EpisodeService struct {
-	db            *gorm.DB
+	episodeRepo   *repo.EpisodeRepo
 	log           *zap.Logger
 	fileService   *FileService
+	thumbService  *ThumbService
 	episodeFolder string
 }
 
 func NewEpisodeService(
 	lifecycle fx.Lifecycle,
-	db *gorm.DB,
+	episodeRepo *repo.EpisodeRepo,
 	fileService *FileService,
+	thumbService *ThumbService,
 	log *zap.Logger,
 	config *config.Config,
 ) (*EpisodeService, error) {
@@ -39,20 +41,22 @@ func NewEpisodeService(
 		return nil, err
 	}
 	return &EpisodeService{
-		db:            db,
+		episodeRepo:   episodeRepo,
 		fileService:   fileService,
+		thumbService:  thumbService,
 		log:           log,
 		episodeFolder: episodeFolder,
 	}, nil
 }
 
 func (s *EpisodeService) cleanUpEpisode(episode db.Episode) {
+	episode.Thumb.Delete()
 	if err := os.Remove(episode.Path); err != nil {
 		s.log.Error("failed to remove episode file", zap.Uint("episodeId", episode.ID), zap.String("file", episode.Path), zap.Error(err))
 	}
 }
 
-func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) (*db.Episode, error) {
+func (s *EpisodeService) CreateFromConversion(conversion *db.Conversion) (*db.Episode, error) {
 	// TODO: gen thumbnail
 	episodePath, err := s.fileService.GenFilePath(s.episodeFolder, conversion.VideoPath)
 	if err != nil {
@@ -66,6 +70,10 @@ func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) 
 	if err != nil {
 		return nil, err
 	}
+	thumb, err := s.thumbService.CreateForVideo(episodePath, conversion.VideoDurationSec)
+	if err != nil {
+		return nil, err
+	}
 	url := fmt.Sprintf("%s/%s", util.EpisodeRoute, filepath.Base(episodePath))
 	episode := db.Episode{
 		SeriesId:    conversion.SeriesId,
@@ -75,56 +83,58 @@ func (s *EpisodeService) CreateEpisodeFromConversion(conversion *db.Conversion) 
 		Length:      uint64(stat.Size()),
 		DurationSec: conversion.VideoDurationSec,
 		Path:        episodePath,
+		Thumb:       thumb,
 		Url:         url,
 	}
-	queryResult := s.db.Create(&episode)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+
+	id, err := s.episodeRepo.Create(&episode)
+	if err != nil {
+		thumb.Delete()
+		return nil, rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
-		return nil, rest.ErrCreationFailed
-	}
+
+	episode.ID = id
+
 	return &episode, nil
 }
 
-func (s *EpisodeService) GetEpisodeById(id uint) (*db.Episode, error) {
-	var episode db.Episode
-	queryResult := s.db.First(&episode, "id = ?", id)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *EpisodeService) GetById(id uint) (*db.Episode, error) {
+	episode, err := s.episodeRepo.GetById(id)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if episode == nil {
 		return nil, rest.ErrNotFoundInst
 	}
-	return &episode, nil
+	return episode, nil
 }
 
-func (s *EpisodeService) GetEpisodesBySeriesId(seriesId uint) ([]db.Episode, error) {
-	var episodes []db.Episode
-	queryResult := s.db.Where("series_id = ?", seriesId).Order("episodes.name ASC").Find(&episodes)
-	if queryResult.Error != nil {
-		return nil, queryResult.Error
+func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
+	episodes, err := s.episodeRepo.GetBySeriesId(seriesId)
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
 	}
 	return episodes, nil
 }
 
-func (s *EpisodeService) DeleteEpisodeById(id uint) error {
-	var episode db.Episode
-	queryResult := s.db.First(&episode, "id = ?", id)
-	if queryResult.Error != nil {
-		return queryResult.Error
+func (s *EpisodeService) DeleteById(id uint) error {
+	episode, err := s.episodeRepo.GetById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if episode == nil {
 		return rest.ErrNotFoundInst
 	}
-	queryResult = s.db.Delete(&db.Episode{}, id)
-	if queryResult.Error != nil {
-		return queryResult.Error
+
+	rows, err := s.episodeRepo.DeleteById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
 	}
-	if queryResult.RowsAffected == 0 {
+	if rows == 0 {
 		return rest.ErrNotFoundInst
 	}
-	go s.cleanUpEpisode(episode)
+
+	go s.cleanUpEpisode(*episode)
 	return nil
 }
 

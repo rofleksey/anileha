@@ -64,9 +64,11 @@ type EpisodeResponseDao struct {
 	ID           uint      `json:"id"`
 	SeriesId     uint      `json:"seriesId"`
 	ConversionId uint      `json:"conversionId"`
-	Name         string    `json:"name"`
+	Title        string    `json:"title"`
+	Episode      string    `json:"episode"`
+	Season       string    `json:"season"`
 	CreatedAt    time.Time `json:"createdAt"`
-	Thumb        *string   `json:"thumb"`
+	Thumb        string    `json:"thumb"`
 	Length       uint64    `json:"length"`
 	DurationSec  int       `json:"durationSec"`
 	Url          string    `json:"link"`

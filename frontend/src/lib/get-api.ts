@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {Conversion, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
+import {Conversion, Episode, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
 
 export const BASE_URL = import.meta.env.VITE_BASE_URL
 
@@ -66,6 +66,16 @@ export async function fetchTorrentsBySeriesId(id: number): Promise<Torrent[]> {
 export async function fetchConversionsBySeriesId(id: number): Promise<Conversion[]> {
   const {data}: { data: Conversion[] } = await axios.get(
     `${BASE_URL}/admin/convert/series/${id}`,
+    {
+      withCredentials: true,
+    }
+  );
+  return data;
+}
+
+export async function fetchEpisodesBySeriesId(id: number): Promise<Episode[]> {
+  const {data}: { data: Episode[] } = await axios.get(
+    `${BASE_URL}/episodes/series/${id}`,
     {
       withCredentials: true,
     }

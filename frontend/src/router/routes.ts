@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'episodes',
         name: 'series-episodes',
-        component: () => import('pages/EmptyPage.vue'),
+        component: () => import('pages/series/SeriesEpisodesPage.vue'),
       },
       {
         path: 'torrents',

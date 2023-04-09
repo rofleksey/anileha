@@ -36,6 +36,8 @@ func main() {
 		repo.SeriesRepoExport,
 		repo.UserRepoExport,
 		repo.TorrentRepoExport,
+		repo.ConversionRepoExport,
+		repo.EpisodeRepoExport,
 
 		// services
 		service.FileServiceExport,
@@ -55,6 +57,7 @@ func main() {
 		controller.ProbeControllerExport,
 		controller.EpisodeControllerExport,
 		controller.UserControllerExport,
+		controller.WebsocketControllerExport,
 
 		// misc
 		analyze.ProbeAnalyzerExport,
