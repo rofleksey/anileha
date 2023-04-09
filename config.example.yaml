@@ -5,21 +5,16 @@ db:
   username: postgres
   password: postgres
 rest:
-  port: 3000
-  baseUrl: http://127.0.0.1:3000
+  port: 7891
+  baseUrl: http://127.0.0.1:7891
 data:
   dir: data
 thumb:
-  videoFactors:
-    - 0.25
-    - 0.333
-    - 0.5
-    - 0.667
-    - 0.75
+  attempts: 5
 user:
   salt: salt
-  cookieHashKey: hash_key
-  cookieEncryptKey: encrypt_key
+  cookieHashKey: qwertyuiopasdfghjkl;'zxcvbnm,.qw
+  cookieEncryptKey: qwertyuiopasdfgh
 admin:
   username: admin
   password: admin

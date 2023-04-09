@@ -33,7 +33,7 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	engine.Use(ginzap.RecoveryWithZap(logger, true))
 
 	// frontend
-	engine.Use(static.Serve("/", static.LocalFile(path.Join("frontend", "dist"), false)))
+	engine.Use(static.Serve("/", static.LocalFile(path.Join("frontend", "dist", "spa"), false)))
 
 	// error handling
 	engine.Use(ErrorMiddleware(logger))

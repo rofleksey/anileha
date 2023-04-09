@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
-	gin2 "anileha/rest"
+	"anileha/rest"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -73,7 +73,22 @@ func registerEpisodeController(
 	})
 
 	episodeGroup := engine.Group("/admin/episodes")
-	episodeGroup.Use(gin2.AdminMiddleware(log, config))
+	episodeGroup.Use(rest.AdminMiddleware(log, config))
+
+	episodeGroup.POST("refreshThumb", func(c *gin.Context) {
+		var req dao.IdRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.Error(rest.ErrBadRequest(err.Error()))
+			return
+		}
+		err := episodeService.RefreshThumb(req.Id)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+		c.String(http.StatusOK, "OK")
+	})
+
 	episodeGroup.DELETE("/:id", func(c *gin.Context) {
 		episodeIdString := c.Param("id")
 		episodeId, err := strconv.ParseUint(episodeIdString, 10, 64)

@@ -72,3 +72,11 @@ export async function postStartConversion(req: StartConversionRequest): Promise<
     withCredentials: true,
   });
 }
+
+export async function refreshEpisodeThumb(id: number): Promise<void> {
+  await axios.post(`${BASE_URL}/admin/episodes/refreshThumb`, {
+    id
+  }, {
+    withCredentials: true,
+  });
+}
