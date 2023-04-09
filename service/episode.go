@@ -117,6 +117,31 @@ func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	return episodes, nil
 }
 
+func (s *EpisodeService) RefreshThumb(id uint) error {
+	episode, err := s.episodeRepo.GetById(id)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+	if episode == nil {
+		return rest.ErrNotFoundInst
+	}
+
+	oldThumb := episode.Thumb
+
+	newThumb, err := s.thumbService.CreateForVideo(episode.Path, episode.DurationSec)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+
+	if err := s.episodeRepo.SetThumb(id, newThumb); err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+
+	oldThumb.Delete()
+
+	return nil
+}
+
 func (s *EpisodeService) DeleteById(id uint) error {
 	episode, err := s.episodeRepo.GetById(id)
 	if err != nil {

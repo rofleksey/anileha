@@ -15,9 +15,11 @@
         <q-circular-progress
           v-else
           show-value
+          style="margin: 0"
           class="text-light-blue q-ma-md"
           :value="props.row.progress.progress"
-          size="2.5rem"
+          track-color="grey-9"
+          size="lg"
           color="light-blue"
         />
       </q-td>

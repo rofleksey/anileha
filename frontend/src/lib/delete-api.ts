@@ -20,3 +20,11 @@ export async function deleteTorrent(id: number): Promise<void> {
     withCredentials: true,
   })
 }
+
+export async function deleteEpisode(id: number): Promise<void> {
+  await axios({
+    method: 'delete',
+    url: `${BASE_URL}/admin/episodes/${id}`,
+    withCredentials: true,
+  })
+}

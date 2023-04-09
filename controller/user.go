@@ -94,9 +94,9 @@ func registerUserController(
 		}
 		session := sessions.Default(c)
 		session.Options(sessions.Options{
-			Path:     "/",
-			SameSite: http.SameSiteNoneMode,
-			Secure:   true,
+			Path: "/",
+			//SameSite: http.SameSiteNoneMode,
+			//Secure:   true,
 		})
 		session.Set(rest.UserKey, db.NewAuthUser(*user))
 		if err := session.Save(); err != nil {

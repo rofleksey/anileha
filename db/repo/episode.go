@@ -42,6 +42,12 @@ func (r *EpisodeRepo) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	return episodes, nil
 }
 
+func (r *EpisodeRepo) SetThumb(id uint, thumb db.Thumb) error {
+	return r.db.Model(&db.Episode{}).
+		Where("id = ?", id).
+		Updates(db.Episode{Thumb: thumb}).Error
+}
+
 func (r *EpisodeRepo) DeleteById(id uint) (int64, error) {
 	queryResult := r.db.Delete(&db.Episode{}, id)
 	if queryResult.Error != nil {

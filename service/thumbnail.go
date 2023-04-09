@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"golang.org/x/exp/rand"
 	"os"
 	"path"
 	"path/filepath"
@@ -63,21 +64,44 @@ type thumbnailResult struct {
 }
 
 func (s *ThumbService) videoFileThumbnailWorker(inputFile string, timeSeconds int, outputChan chan thumbnailResult) {
-	s.log.Info("generating thumbnail", zap.String("inputFile", inputFile))
-	sizeCommand := ffmpeg.NewCommand(inputFile, 0, "-")
-	sizeCommand.AddKeyValue("-ss", strconv.Itoa(timeSeconds), ffmpeg.OptionBase)
-	sizeCommand.AddKeyValue("-c:v", "mjpeg", ffmpeg.OptionOutput)
-	sizeCommand.AddKeyValue("-frames:v", "1", ffmpeg.OptionOutput)
-	sizeCommand.AddKeyValue("-f", "image2", ffmpeg.OptionOutput)
-	output, err := sizeCommand.ExecuteSync()
+	tempPath, err := s.fileService.GenFilePath(s.thumbDir, "thumb.jpg")
+	if err != nil {
+		outputChan <- thumbnailResult{
+			err: fmt.Errorf("can't create temp file: %w", err),
+		}
+		return
+	}
+
+	defer func() {
+		_ = os.Remove(tempPath)
+	}()
+
+	thumbCmd := ffmpeg.NewCommand(inputFile, 0, tempPath)
+	thumbCmd.AddKeyValue("-ss", strconv.Itoa(timeSeconds), ffmpeg.OptionBase)
+	thumbCmd.AddKeyValue("-frames:v", "1", ffmpeg.OptionOutput)
+
+	s.log.Info("generating thumbnail",
+		zap.String("inputFile", inputFile),
+		zap.String("command", thumbCmd.String()))
+
+	_, err = thumbCmd.ExecuteSync()
 	if err != nil {
 		outputChan <- thumbnailResult{
 			err: fmt.Errorf("ffmpeg error: %w", err),
 		}
 		return
 	}
+
+	imageBytes, err := os.ReadFile(tempPath)
+	if err != nil {
+		outputChan <- thumbnailResult{
+			err: fmt.Errorf("failed to read result: %w", err),
+		}
+		return
+	}
+
 	outputChan <- thumbnailResult{
-		result: output,
+		result: imageBytes,
 	}
 }
 
@@ -86,7 +110,11 @@ func (s *ThumbService) CreateForVideo(videoFile string, durationSec int) (db.Thu
 
 	var lastError error
 
-	factors := s.config.Thumb.VideoFactors
+	factors := make([]float32, 0, s.config.Thumb.Attempts)
+	for i := 0; i < s.config.Thumb.Attempts; i++ {
+		factors = append(factors, rand.Float32())
+	}
+
 	resultsChan := make(chan thumbnailResult, len(factors))
 
 	for _, factor := range factors {

@@ -25,7 +25,7 @@ type DataConfig struct {
 }
 
 type ThumbConfig struct {
-	VideoFactors []float32 `validate:"min=1,dive,gte=0" yaml:"videoFactors"`
+	Attempts int `validate:"gt=0" yaml:"attempts"`
 }
 
 type UserConfig struct {
