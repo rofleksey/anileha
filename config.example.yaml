@@ -7,6 +7,13 @@ db:
 rest:
   port: 7891
   baseUrl: http://127.0.0.1:7891
+ws:
+  writeTimeoutMs: 10000
+  pingTimeoutMs: 30000
+  pingIntervalMs: 20000
+  maxMessageSize: 1024
+  bufferSize: 1024
+  messageChanBufferSize: 256
 data:
   dir: data
 thumb:

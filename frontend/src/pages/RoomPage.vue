@@ -50,6 +50,7 @@ const route = useRoute();
 const roomStore = useRoomStore();
 
 const roomId = computed(() => route.query.id?.toString());
+console.log(roomId.value);
 
 const suggestedEpisodeId = computed(() => Number(route.query.episodeId));
 const episodeId = ref<number | null>(suggestedEpisodeId.value || null);
