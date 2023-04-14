@@ -34,7 +34,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchEpisodesBySeriesId(seriesId.value)
     .then((newEpisodes) => {
-      console.log(newEpisodes);
       data.value = newEpisodes;
     })
     .catch((e) => {

@@ -28,7 +28,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchTorrentsBySeriesId(seriesId.value)
     .then((newTorrents) => {
-      console.log(newTorrents);
       data.value = newTorrents;
     })
     .catch((e) => {

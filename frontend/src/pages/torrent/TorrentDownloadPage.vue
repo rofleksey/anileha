@@ -76,7 +76,6 @@ const nodes = computed(() => {
       curNodeArray = nodeItem.children;
     });
   });
-  console.log(rootNodes);
   return rootNodes;
 });
 
@@ -84,7 +83,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchTorrentById(torrentId.value)
     .then((newTorrent) => {
-      console.log(newTorrent);
       data.value = newTorrent;
       ticked.value = newTorrent.files
         .filter((file) => file.selected)

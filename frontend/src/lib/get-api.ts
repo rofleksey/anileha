@@ -2,6 +2,7 @@ import axios from 'axios';
 import {Conversion, Episode, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
 
 export const BASE_URL = import.meta.env.VITE_BASE_URL
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL
 
 export async function fetchMyself(): Promise<User> {
   const {data}: { data: User } = await axios.get(

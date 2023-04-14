@@ -1,4 +1,5 @@
 export interface User {
+  id: number;
   user: string;
   isAdmin: boolean;
 }
@@ -115,4 +116,25 @@ export interface StartConversionFileData {
 export interface StartConversionRequest {
   torrentId: number;
   files: StartConversionFileData[];
+}
+
+export interface RoomState {
+  episodeId: number | null;
+  timestamp: number;
+  playing: boolean;
+  initiatorId?: number;
+}
+
+export interface WatcherState {
+  id: number;
+  name: string;
+  timestamp: number;
+  progress: number;
+  status: string;
+}
+
+export interface WatcherStatePartial {
+  timestamp: number;
+  progress: number;
+  status: string;
 }

@@ -62,8 +62,6 @@ function onDeleteClick() {
   })
 }
 
-watch(seriesId, reloadTitle);
-
 function reloadTitle() {
   fetchSeriesById(seriesId.value)
     .then((series) => {

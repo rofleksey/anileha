@@ -1,5 +1,5 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
+  <q-dialog ref="dialogRef" @hide="onDialogHide" @keyup.enter="onOKClick">
     <q-card class="q-dialog-plugin card">
       <q-card-section>
         <div class="text-h6">Login</div>
@@ -9,11 +9,14 @@
           ref="usernameRef"
           v-model="username"
           label="Username"
+          clearable
           :rules="[ val => val.trim().length > 0 || 'Required' ]"/>
         <q-input
           ref="passwordRef"
           v-model="password"
           label="Password"
+          type="password"
+          clearable
           :rules="[ val => val.trim().length > 0 || 'Required' ]"/>
       </q-card-section>
       <q-card-actions align="right">

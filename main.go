@@ -48,6 +48,7 @@ func main() {
 		service.ConversionServiceExport,
 		service.EpisodeServiceExport,
 		service.UserServiceExport,
+		service.RoomServiceExport,
 
 		// rest controllers
 		controller.HealthControllerExport,

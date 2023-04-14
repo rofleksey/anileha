@@ -24,6 +24,7 @@ type registerTemplateVars struct {
 }
 
 type UserService struct {
+	config           *config.Config
 	userRepo         *repo.UserRepo
 	log              *zap.Logger
 	dialer           *gomail.Dialer
@@ -37,9 +38,9 @@ type UserService struct {
 
 func NewUserService(
 	lifecycle fx.Lifecycle,
-	userRepo *repo.UserRepo,
-	log *zap.Logger,
 	config *config.Config,
+	log *zap.Logger,
+	userRepo *repo.UserRepo,
 ) (*UserService, error) {
 	registerTemplateBytes, err := os.ReadFile(config.Mail.RegisterTemplatePath)
 	if err != nil {
@@ -54,6 +55,7 @@ func NewUserService(
 	return &UserService{
 		userRepo:         userRepo,
 		log:              log,
+		config:           config,
 		dialer:           dialer,
 		registerTemplate: registerTemplate,
 		from:             config.Mail.From,
@@ -180,6 +182,20 @@ func (s *UserService) CheckExists(login string, email string) error {
 		return rest.ErrUserWithThisEmailAlreadyExists
 	}
 
+	return nil
+}
+
+func (s *UserService) CreateManually(username string, password string, email string) error {
+	hash, _ := util.HashPassword(password, s.config.User.Salt)
+	user := db.User{
+		Login: username,
+		Hash:  hash,
+		Admin: false,
+		Email: email,
+	}
+	if _, err := s.userRepo.Create(&user); err != nil {
+		return rest.ErrBadRequest(err.Error())
+	}
 	return nil
 }
 

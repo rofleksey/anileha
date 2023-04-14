@@ -1,5 +1,5 @@
 module.exports = {
-  target: 'http://192.168.1.88:3000',
+  target: 'http://192.168.1.88:7891',
   baseUrl: '',
   port: 1234,
   headers: {

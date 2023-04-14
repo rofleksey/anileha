@@ -10,16 +10,19 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 	"net/http"
 )
 
 type LoginResponse struct {
+	Id      uint   `json:"id"`
 	User    string `json:"user"`
 	IsAdmin bool   `json:"isAdmin"`
 }
 
 func registerUserController(
 	engine *gin.Engine,
+	log *zap.Logger,
 	config *config.Config,
 	service *service.UserService,
 ) {
@@ -75,7 +78,7 @@ func registerUserController(
 			return
 		}
 		authUser := user.(*db.AuthUser)
-		c.JSON(http.StatusOK, LoginResponse{authUser.Login, authUser.Admin})
+		c.JSON(http.StatusOK, LoginResponse{authUser.ID, authUser.Login, authUser.Admin})
 	})
 	userGroup.POST("/login", func(c *gin.Context) {
 		var req dao.AuthRequestDao
@@ -103,7 +106,7 @@ func registerUserController(
 			_ = c.Error(rest.ErrSessionSavingFailed)
 			return
 		}
-		c.JSON(http.StatusOK, LoginResponse{user.Login, user.Admin})
+		c.JSON(http.StatusOK, LoginResponse{user.ID, user.Login, user.Admin})
 	})
 	userGroup.POST("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -112,6 +115,24 @@ func registerUserController(
 			_ = c.Error(rest.ErrSessionSavingFailed)
 			return
 		}
+		c.String(http.StatusOK, "OK")
+	})
+
+	adminUserGroup := engine.Group("/admin/user")
+	adminUserGroup.Use(rest.AdminMiddleware(log, config))
+	adminUserGroup.POST("", func(c *gin.Context) {
+		var req dao.NewUserRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			_ = c.Error(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if err := service.CreateManually(req.User, req.Pass, req.Email); err != nil {
+			c.Error(err)
+			return
+		}
+
 		c.String(http.StatusOK, "OK")
 	})
 }

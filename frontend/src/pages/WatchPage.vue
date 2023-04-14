@@ -8,6 +8,12 @@
         icon="download"
         @click="onDownloadClick"/>
       <q-btn
+        v-if="curUser && episodeId"
+        flat
+        round
+        icon="group"
+        @click="onGroupWatch"/>
+      <q-btn
         v-if="curUser?.isAdmin"
         flat
         round
@@ -36,6 +42,8 @@ import VideoPlayer from 'components/VideoPlayer.vue';
 import {deleteEpisode} from 'src/lib/delete-api';
 import {useQuasar} from 'quasar';
 import {refreshEpisodeThumb} from 'src/lib/post-api';
+import {nanoid} from 'nanoid';
+import {useRoomStore} from 'stores/room-store';
 
 const quasar = useQuasar();
 const router = useRouter();
@@ -44,6 +52,9 @@ const episodeId = computed(() => Number(route.params.episodeId));
 
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
+
+const roomStore = useRoomStore();
+const roomId = computed(() => roomStore.roomId);
 
 const dataLoading = ref(false);
 const data = ref<Episode | undefined>();
@@ -56,7 +67,15 @@ const videoSrc = computed(() => {
   return `${BASE_URL}${episode.link}`
 });
 
-watch(episodeId, refreshData);
+function onGroupWatch() {
+  router.push({
+    path: '/room',
+    query: {
+      id: roomId.value,
+      episodeId: episodeId.value
+    }
+  })
+}
 
 function onRefreshThumbClick() {
   quasar.dialog({

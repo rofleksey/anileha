@@ -235,7 +235,6 @@ function startAnalysis() {
   });
   loadAnalysis()
     .then((newData) => {
-      console.log(newData);
       analysisData.value = newData;
     })
     .catch((e) => {
@@ -388,7 +387,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchTorrentById(torrentId.value)
     .then((newTorrent) => {
-      console.log(newTorrent);
       torrentData.value = newTorrent;
     })
     .catch((e) => {

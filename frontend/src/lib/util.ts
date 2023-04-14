@@ -42,3 +42,12 @@ export function showSuccess(title: string, message?: string) {
     timeout: 3000,
   })
 }
+
+export function showHint(title: string, message?: string) {
+  Notify.create({
+    type: 'warning',
+    message: title,
+    caption: message,
+    timeout: 2000,
+  })
+}

@@ -21,7 +21,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchAllTorrents()
     .then((newTorrents) => {
-      console.log(newTorrents);
       data.value = newTorrents;
     })
     .catch((e) => {

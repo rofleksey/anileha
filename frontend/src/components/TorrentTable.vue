@@ -112,7 +112,6 @@ const columns: QuasarColumnType[] = [
 ]
 
 function onRowClick(e: any, torrent: Torrent) {
-  console.log(torrent.id);
   router.push(`/torrent/${torrent.id}/download`)
 }
 </script>

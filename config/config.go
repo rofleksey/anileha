@@ -20,6 +20,15 @@ type RestConfig struct {
 	BaseUrl string `validate:"required" yaml:"baseUrl"`
 }
 
+type WebSocketConfig struct {
+	WriteTimeoutMs        int   `validate:"required,gt=0" yaml:"writeTimeoutMs"`
+	PingTimeoutMs         int   `validate:"required,gt=0" yaml:"pingTimeoutMs"`
+	PingIntervalMs        int   `validate:"required,gt=0" yaml:"pingIntervalMs"`
+	MaxMessageSize        int64 `validate:"required,gt=0" yaml:"maxMessageSize"`
+	BufferSize            int   `validate:"required,gt=0" yaml:"bufferSize"`
+	MessageChanBufferSize int   `validate:"required,gt=0" yaml:"messageChanBufferSize"`
+}
+
 type DataConfig struct {
 	Dir string `validate:"required" yaml:"dir"`
 }
@@ -50,13 +59,14 @@ type MailConfig struct {
 }
 
 type Config struct {
-	Db    DbConfig    `validate:"dive,required" yaml:"db"`
-	Rest  RestConfig  `validate:"dive,required" yaml:"rest"`
-	Data  DataConfig  `validate:"dive,required" yaml:"data"`
-	Thumb ThumbConfig `validate:"dive,required" yaml:"thumb"`
-	User  UserConfig  `validate:"dive,required" yaml:"user"`
-	Admin AdminConfig `validate:"dive,required" yaml:"admin"`
-	Mail  MailConfig  `validate:"dive,required" yaml:"mail"`
+	Db        DbConfig        `validate:"dive,required" yaml:"db"`
+	Rest      RestConfig      `validate:"dive,required" yaml:"rest"`
+	WebSocket WebSocketConfig `validate:"dive,required" yaml:"ws"`
+	Data      DataConfig      `validate:"dive,required" yaml:"data"`
+	Thumb     ThumbConfig     `validate:"dive,required" yaml:"thumb"`
+	User      UserConfig      `validate:"dive,required" yaml:"user"`
+	Admin     AdminConfig     `validate:"dive,required" yaml:"admin"`
+	Mail      MailConfig      `validate:"dive,required" yaml:"mail"`
 }
 
 func LoadConfig() (*Config, error) {

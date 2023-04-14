@@ -11,7 +11,7 @@
           icon="menu"
         />
 
-        <q-btn flat no-caps no-wrap class="q-ml-xs" v-if="$q.screen.gt.xs">
+        <q-btn flat no-caps no-wrap class="q-ml-xs" v-if="$q.screen.gt.xs" @click="router.push('/')">
           <q-icon name="forklift" color="deep-purple-5" size="28px"/>
           <q-toolbar-title shrink class="text-weight-bold">
             AniLeha
@@ -98,7 +98,12 @@
     </q-drawer>
 
     <q-page-container>
-      <router-view/>
+      <router-view v-slot="{ Component }">
+        <keep-alive include="RoomPage">
+          <component :is="Component"></component>
+        </keep-alive>
+      </router-view>
+
     </q-page-container>
 
     <!--    <q-ajax-bar-->
@@ -164,7 +169,6 @@ function openLoginModal() {
 
 onMounted(() => {
   fetchMyself().then((user) => {
-    console.log(user);
     userStore.setUser(user);
   }).catch((e) => {
     console.error(e);

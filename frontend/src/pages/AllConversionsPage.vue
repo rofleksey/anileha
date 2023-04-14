@@ -21,7 +21,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchAllConversions()
     .then((newConversions) => {
-      console.log(newConversions);
       data.value = newConversions;
     })
     .catch((e) => {

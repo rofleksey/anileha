@@ -22,7 +22,6 @@ function refreshData() {
   dataLoading.value = true;
   fetchConversionsBySeriesId(seriesId.value)
     .then((newConversions) => {
-      console.log(newConversions);
       data.value = newConversions;
     })
     .catch((e) => {

@@ -66,6 +66,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('pages/WatchPage.vue'),
   },
   {
+    path: '/room',
+    name: 'room',
+    component: () => import('pages/RoomPage.vue'),
+  },
+  {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
   },

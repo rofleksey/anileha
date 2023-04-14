@@ -4,15 +4,33 @@
     @mousemove="restartHideControlsTimer"
     @keydown="playerKeyboardListener"
     @click="togglePlayback"
-    tabIndex="0"
+    tabIndex="-1"
     ref="playerRef">
+    <canvas
+      ref="canvasRef"
+      style="display: none"
+      :width="videoWidth"
+      :height="videoHeight"></canvas>
     <div class="video-container">
+      <q-inner-loading :showing="props.loading">
+        <slot>
+          <q-circular-progress
+            show-value
+            style="margin: 0"
+            class="text-light-blue q-ma-md"
+            :value="Math.floor(100 * props.progress)"
+            track-color="grey-9"
+            size="xl"
+            color="light-blue"
+          />
+        </slot>
+      </q-inner-loading>
       <video
         preload
         draggable="false"
         ref="videoRef"
         class="video"
-        :src="props.src" />
+        :src="props.src"/>
       <div class="controls">
         <div>
           <button
@@ -57,28 +75,35 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ComputedRef, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import {clamp, throttle} from 'lodash';
-import {User} from 'src/lib/api-types';
-import {useUserStore} from 'stores/user-store';
 import formatDuration from 'format-duration';
 
 interface Props {
-  src: string;
+  src: Blob | string;
+  loading?: boolean;
+  progress?: number;
 }
 
 const props = defineProps<Props>()
 
-const userStore = useUserStore();
-const curUser: ComputedRef<User | null> = computed(() => userStore.user);
+const emit = defineEmits<{
+  (e: 'time', timestamp: number): void
+  (e: 'seek', timestamp: number): void
+  (e: 'play'): void
+  (e: 'pause'): void
+}>()
 
 let hideControlsTimer: NodeJS.Timeout | number | undefined = undefined;
 let updateTimeInterval: NodeJS.Timeout | number | undefined = undefined;
 
+const canvasRef = ref<HTMLCanvasElement | undefined>()
 const playerRef = ref<HTMLDivElement | undefined>();
 const videoRef = ref<HTMLVideoElement | undefined>();
 const sliderRef = ref<HTMLDivElement | undefined>();
 const volumeSliderRef = ref<HTMLDivElement | undefined>();
+const videoWidth = ref(1920)
+const videoHeight = ref(1080)
 const playing = ref(false);
 const videoTimestamp = ref(0);
 const previewTimestamp = ref(0);
@@ -100,6 +125,8 @@ watch(videoRef, () => {
   video.controls = false;
   video.addEventListener('loadeddata', () => {
     totalDuration.value = video.duration;
+    videoWidth.value = video.width;
+    videoHeight.value = video.height;
   }, false);
 });
 
@@ -145,7 +172,9 @@ function updateTime() {
   if (!video) {
     return;
   }
-  videoTimestamp.value = video.currentTime;
+  const curTime = video.currentTime
+  videoTimestamp.value = curTime;
+  emit('time', curTime)
 }
 
 function playerKeyboardListener(e: KeyboardEvent) {
@@ -169,7 +198,13 @@ function playerKeyboardListener(e: KeyboardEvent) {
 }
 
 function togglePlayback(e?: MouseEvent) {
-  playing.value = !playing.value;
+  const newValue = !playing.value
+  playing.value = newValue;
+  if (newValue) {
+    emit('play')
+  } else {
+    emit('pause')
+  }
   e?.stopPropagation();
 }
 
@@ -189,9 +224,10 @@ const seekThrottle = throttle((newTime: number) => {
     return;
   }
   video.currentTime = newTime;
+  emit('seek', newTime)
 }, 100);
 
-function seekTo(newTime: number, throttle: boolean) {
+function seekTo(newTime: number, throttle: boolean, remote?: boolean) {
   const video = videoRef.value;
   if (!video) {
     return;
@@ -201,10 +237,15 @@ function seekTo(newTime: number, throttle: boolean) {
     seekThrottle(newTime);
   } else {
     video.currentTime = newTime;
+    if (!remote) {
+      emit('seek', newTime)
+    }
   }
 
   videoTimestamp.value = video.currentTime;
-  playing.value = false;
+  if (!remote) {
+    playing.value = false;
+  }
 
   restartHideControlsTimer();
 }
@@ -254,6 +295,37 @@ function toggleFullscreen(e?: MouseEvent) {
   }
   e?.stopPropagation();
 }
+
+defineExpose({
+  seek: (time: number) => seekTo(time, false, true),
+  setPlaying: (value: boolean) => {
+    console.log(`video player - set playing - ${value}`)
+    playing.value = value;
+  },
+  getTimestamp: () => {
+    return videoTimestamp.value
+  },
+  getPlaying: () => {
+    return playing.value
+  },
+  screenshot: () => {
+    const video = videoRef.value;
+    if (!video) {
+      return null;
+    }
+    const canvas = canvasRef.value;
+    if (!canvas) {
+      return null;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return null;
+    }
+    ctx.fillRect(0, 0, videoWidth.value, videoHeight.value);
+    ctx.drawImage(video, 0, 0, videoWidth.value, videoHeight.value);
+    return canvas.toDataURL('image/jpeg');
+  }
+})
 
 onMounted(() => {
   updateTimeInterval = setInterval(updateTime, 100);

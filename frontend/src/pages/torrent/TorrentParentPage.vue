@@ -58,8 +58,6 @@ function onDeleteClick() {
   })
 }
 
-watch(torrentId, reloadData);
-
 function reloadData() {
   fetchTorrentById(torrentId.value)
     .then((newTorrent) => {

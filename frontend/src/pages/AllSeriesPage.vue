@@ -3,6 +3,7 @@
     <q-card
       class="series-card"
       v-for="series in data"
+
       :key="series.id"
       @click="router.push(`/series/${series.id}/episodes`)">
       <q-img
