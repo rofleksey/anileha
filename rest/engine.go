@@ -22,7 +22,7 @@ func newEngine(config *config.Config, logger *zap.Logger) (*gin.Engine, error) {
 	gob.Register(&db.AuthUser{})
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
-	engine.MaxMultipartMemory = 1024 * 1024 * 5
+	engine.MaxMultipartMemory = 1024 * 1024 * 1024 * 5
 	err := engine.SetTrustedProxies(nil)
 	if err != nil {
 		return nil, err
