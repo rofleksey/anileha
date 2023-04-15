@@ -12,7 +12,9 @@
         />
 
         <q-btn flat no-caps no-wrap class="q-ml-xs" v-if="$q.screen.gt.xs" @click="router.push('/')">
-          <q-icon name="forklift" color="deep-purple-5" size="28px"/>
+          <q-avatar size="28px">
+            <img :src="Logo" alt="logo"/>
+          </q-avatar>
           <q-toolbar-title shrink class="text-weight-bold">
             AniLeha
           </q-toolbar-title>
@@ -122,6 +124,7 @@ import {fetchMyself} from 'src/lib/get-api';
 import LoginModal from 'components/modal/LoginModal.vue';
 import {useQuasar} from 'quasar';
 import {User} from 'src/lib/api-types';
+import Logo from './assets/logo.jpg'
 
 const quasar = useQuasar();
 const router = useRouter();
