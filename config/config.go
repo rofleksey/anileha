@@ -4,7 +4,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"os"
 )
 
 type DbConfig struct {
@@ -72,7 +72,7 @@ type Config struct {
 func LoadConfig() (*Config, error) {
 	config := Config{}
 
-	configBytes, err := ioutil.ReadFile("config.yaml")
+	configBytes, err := os.ReadFile("config.yaml")
 	if err != nil {
 		return nil, err
 	}

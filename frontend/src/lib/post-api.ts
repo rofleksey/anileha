@@ -50,7 +50,7 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/episodes`,
+    url: `${BASE_URL}/admin/episodes/`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
