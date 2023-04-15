@@ -28,6 +28,8 @@ export async function postNewSeries(title: string, thumb: File): Promise<void> {
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
     timeout: LONG_TIMEOUT,
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
   })
 }
 
@@ -53,6 +55,8 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
     withCredentials: true,
     onUploadProgress: progressCallback,
     timeout: 0,
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
   })
 }
 
@@ -67,6 +71,8 @@ export async function postNewTorrent(seriesId: number, file: File): Promise<void
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
     timeout: SUPER_LONG_TIMEOUT,
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
   })
 }
 
