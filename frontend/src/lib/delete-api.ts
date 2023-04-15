@@ -1,7 +1,5 @@
 import axios from 'axios';
 
-axios.defaults.timeout = 10000;
-
 const BASE_URL = import.meta.env.VITE_BASE_URL
 console.log(`BASE_URL = ${BASE_URL}`)
 

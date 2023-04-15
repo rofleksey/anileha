@@ -16,7 +16,7 @@
     >
       <q-table
         style="width: 100%"
-        :rows="readyFiles"
+        :rows="readyVideoFiles"
         :columns="selectFilesColumns"
         v-model:selected="selectedForConversion"
         selection="multiple"
@@ -131,7 +131,7 @@ import {
   TorrentWithFiles
 } from 'src/lib/api-types';
 import {fetchTorrentById} from 'src/lib/get-api';
-import {QuasarColumnType, showError, showSuccess} from 'src/lib/util';
+import {FileType, getFileType, QuasarColumnType, showError, showSuccess} from 'src/lib/util';
 import {useRoute} from 'vue-router';
 import {useQuasar} from 'quasar';
 import {postAnalyze, postStartConversion} from 'src/lib/post-api';
@@ -147,6 +147,7 @@ interface AnalysisWithPrefs {
   path: string;
   clientIndex: number;
   analysis: Analysis;
+  fileType: FileType;
   prefs: StartConversionFileData;
 }
 
@@ -155,6 +156,32 @@ const dataLoading = ref(false);
 const torrentData = ref<TorrentWithFiles | null>();
 const analysisData = ref<AnalysisWithPrefs[]>([]);
 const selectedForConversion = ref<TorrentFile[]>([]);
+
+const readyFiles = computed(() => {
+  const torrent = torrentData.value;
+  if (!torrent) {
+    return [];
+  }
+  return torrent.files.filter((file) => file.status === 'ready');
+});
+
+const readyVideoFiles = computed(() => {
+  return readyFiles.value
+    .filter((file) => getFileType(file.path) === 'video');
+});
+
+const externalSubtitleFiles = computed(() => {
+  return readyFiles.value
+    .filter((file) => getFileType(file.path) === 'subtitle')
+    .map((file) => file.path);
+});
+
+watch(step, () => {
+  const curStep = step.value;
+  if (curStep === 2) {
+    startAnalysis();
+  }
+})
 
 function formatName(name: string) {
   if (name.trim().length === 0) {
@@ -216,6 +243,7 @@ async function loadAnalysis(): Promise<AnalysisWithPrefs[]> {
       path: file.path,
       clientIndex: file.clientIndex,
       analysis: analysis,
+      fileType: getFileType(file.path),
       prefs: {
         index: file.clientIndex,
         sub: pickSubStream(analysis.sub, 'eng'),
@@ -262,28 +290,6 @@ function startConversion() {
       dataLoading.value = false;
     });
 }
-
-watch(step, () => {
-  const curStep = step.value;
-  if (curStep === 2) {
-    startAnalysis();
-  }
-})
-
-const readyFiles = computed(() => {
-  const torrent = torrentData.value;
-  if (!torrent) {
-    return [];
-  }
-  return torrent.files.filter((file) => file.status === 'ready');
-});
-
-const externalSubtitleFiles = computed(() => {
-  return readyFiles.value.filter((file) => {
-    const lowerCase = file.path.toLowerCase();
-    return lowerCase.endsWith('.srt') || lowerCase.endsWith('.ssa') || lowerCase.endsWith('.ass');
-  }).map((file) => file.path);
-});
 
 const selectFilesColumns: QuasarColumnType[] = [
   {

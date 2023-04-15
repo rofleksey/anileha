@@ -8,6 +8,12 @@
         round
         icon="delete"
         @click="onDeleteClick"/>
+      <q-btn
+        v-if="curUser?.isAdmin && tabName === 'episodes'"
+        flat
+        round
+        icon="upload"
+        @click="openUploadModal"/>
       <q-space/>
       <q-tabs :model-value="tabName" @update:model-value="onTabChange" shrink>
         <q-tab name="episodes" label="Episodes"/>
@@ -20,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ComputedRef, onMounted, ref, watch} from 'vue';
+import {computed, ComputedRef, onMounted, ref} from 'vue';
 import {useRoute, useRouter} from 'vue-router';
 import {fetchSeriesById} from 'src/lib/get-api';
 import {showError, showSuccess} from 'src/lib/util';
@@ -28,7 +34,9 @@ import {useQuasar} from 'quasar';
 import {deleteSeries} from 'src/lib/delete-api';
 import {useUserStore} from 'stores/user-store';
 import {User} from 'src/lib/api-types';
+import NewEpisodeModal from 'components/modal/NewEpisodeModal.vue';
 
+const quasar = useQuasar();
 const router = useRouter();
 const route = useRoute();
 const seriesId = computed(() => Number(route.params.seriesId));
@@ -37,12 +45,19 @@ const tabName = computed(() => route.name?.toString().replace('series-', ''));
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
-const quasar = useQuasar();
-
 const title = ref('');
 
 function onTabChange(value: string) {
   router.replace(`/series/${seriesId.value}/${value}`)
+}
+
+function openUploadModal() {
+  quasar.dialog({
+    component: NewEpisodeModal,
+    componentProps: {
+      seriesId: seriesId.value,
+    }
+  });
 }
 
 function onDeleteClick() {

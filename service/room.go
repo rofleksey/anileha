@@ -61,13 +61,13 @@ type WatcherState struct {
 	Id        uint    `json:"id"`
 	Name      string  `json:"name"`
 	Timestamp float64 `json:"time"`
-	Progress  int     `json:"progress"`
+	Progress  float64 `json:"progress"`
 	Status    string  `json:"status"`
 }
 
 type WatcherStatePartial struct {
 	Timestamp float64 `json:"time"`
-	Progress  int     `json:"progress"`
+	Progress  float64 `json:"progress"`
 	Status    string  `json:"status"`
 }
 
@@ -243,6 +243,12 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.AuthUser, 
 		watcherStates = append(watcherStates, w.state)
 	}
 
+	existingWatcher, watcherExists := userRoom.watchers[user.ID]
+	if watcherExists {
+		existingWatcher.client.Close(false)
+	}
+	userRoom.watchers[user.ID] = curWatcher
+
 	client.Send(MessageStructure[FullState]{
 		Type: "full-state",
 		Message: FullState{
@@ -250,12 +256,6 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.AuthUser, 
 			Watchers: watcherStates,
 		},
 	})
-
-	existingWatcher, watcherExists := userRoom.watchers[user.ID]
-	if watcherExists {
-		existingWatcher.client.Close(false)
-	}
-	userRoom.watchers[user.ID] = curWatcher
 
 	client.Start()
 }

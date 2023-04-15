@@ -407,7 +407,7 @@ func (s *TorrentService) AddTorrentFromFile(seriesId uint, tempPath string) erro
 		return rest.ErrInternal(err.Error())
 	}
 	torrent := db.Torrent{
-		SeriesId: seriesId,
+		SeriesId: &seriesId,
 		FilePath: newPath,
 	}
 	_, err = s.torrentRepo.Create(&torrent)

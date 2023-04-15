@@ -48,9 +48,9 @@ type TorrentFileResponseDao struct {
 
 type ConversionResponseDao struct {
 	ID            uint                `json:"id"`
-	SeriesId      uint                `json:"seriesId"`
-	TorrentId     uint                `json:"torrentId"`
-	TorrentFileId uint                `json:"torrentFileId"`
+	SeriesId      *uint               `json:"seriesId"`
+	TorrentId     *uint               `json:"torrentId"`
+	TorrentFileId *uint               `json:"torrentFileId"`
 	EpisodeId     *uint               `json:"episodeId"`
 	EpisodeName   string              `json:"episodeName"`
 	Name          string              `json:"name"`
@@ -62,7 +62,7 @@ type ConversionResponseDao struct {
 
 type EpisodeResponseDao struct {
 	ID           uint      `json:"id"`
-	SeriesId     uint      `json:"seriesId"`
+	SeriesId     *uint     `json:"seriesId"`
 	ConversionId uint      `json:"conversionId"`
 	Title        string    `json:"title"`
 	Episode      string    `json:"episode"`

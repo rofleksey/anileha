@@ -29,8 +29,8 @@ type Torrent struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	SeriesId uint
-	Series   Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	SeriesId *uint
+	Series   *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	FilePath            string // FilePath path to .torrent file
 	Name                string
@@ -87,12 +87,12 @@ type Conversion struct {
 	UpdatedAt     time.Time
 	util.Progress `gorm:"embedded"`
 
-	SeriesId      uint
-	Series        *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	TorrentId     uint
-	Torrent       *Torrent `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	TorrentFileId uint
-	TorrentFile   *TorrentFile `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	SeriesId      *uint
+	Series        *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	TorrentId     *uint
+	Torrent       *Torrent `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	TorrentFileId *uint
+	TorrentFile   *TorrentFile `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	EpisodeId     *uint
 	Episode       *Episode `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
@@ -114,8 +114,8 @@ type Episode struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	SeriesId uint
-	Series   *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	SeriesId *uint
+	Series   *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	Title       string
 	Episode     string

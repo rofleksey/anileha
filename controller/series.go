@@ -39,11 +39,7 @@ func registerSeriesController(
 	fileService *service.FileService,
 	thumbService *service.ThumbService,
 	seriesService *service.SeriesService,
-	torrentService *service.TorrentService,
-	convertService *service.ConversionService,
-	episodeService *service.EpisodeService,
 ) {
-	// TODO: make this GET method
 	engine.GET("/series", func(c *gin.Context) {
 		seriesSlice, err := seriesService.GetAll()
 		if err != nil {

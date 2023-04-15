@@ -59,7 +59,11 @@ const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
 const playerRef = ref<IVideoPlayer | undefined>()
-const overlayVisible = ref(true);
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const overlayVisible = ref(!navigator.userActivation?.hasBeenActive);
+
 const dataLoading = ref(false);
 const videoLoading = ref(false);
 const videoError = ref(false);
@@ -350,6 +354,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  downloadRequest?.abort();
+  if (lastObjectUrl) {
+    URL.revokeObjectURL(lastObjectUrl);
+    lastObjectUrl = undefined;
+  }
   ws?.close();
   clearInterval(reconnectInterval);
 })

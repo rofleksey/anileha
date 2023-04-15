@@ -1,6 +1,7 @@
 package service
 
 import (
+	"anileha/analyze"
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
@@ -18,6 +19,7 @@ import (
 type EpisodeService struct {
 	episodeRepo   *repo.EpisodeRepo
 	log           *zap.Logger
+	analyzer      *analyze.ProbeAnalyzer
 	fileService   *FileService
 	thumbService  *ThumbService
 	episodeFolder string
@@ -28,6 +30,7 @@ func NewEpisodeService(
 	episodeRepo *repo.EpisodeRepo,
 	fileService *FileService,
 	thumbService *ThumbService,
+	analyzer *analyze.ProbeAnalyzer,
 	log *zap.Logger,
 	config *config.Config,
 ) (*EpisodeService, error) {
@@ -42,6 +45,7 @@ func NewEpisodeService(
 	}
 	return &EpisodeService{
 		episodeRepo:   episodeRepo,
+		analyzer:      analyzer,
 		fileService:   fileService,
 		thumbService:  thumbService,
 		log:           log,
@@ -82,6 +86,53 @@ func (s *EpisodeService) CreateFromConversion(conversion *db.Conversion) (*db.Ep
 		Season:      conversion.SeasonString,
 		Length:      uint64(stat.Size()),
 		DurationSec: conversion.VideoDurationSec,
+		Path:        episodePath,
+		Thumb:       thumb,
+		Url:         url,
+	}
+
+	id, err := s.episodeRepo.Create(&episode)
+	if err != nil {
+		thumb.Delete()
+		return nil, rest.ErrInternal(err.Error())
+	}
+
+	episode.ID = id
+
+	return &episode, nil
+}
+
+func (s *EpisodeService) CreateManually(seriesId *uint, tempFilePath string, title string, episodeStr string, seasonStr string) (*db.Episode, error) {
+	// TODO: gen thumbnail
+	episodePath, err := s.fileService.GenFilePath(s.episodeFolder, tempFilePath)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Rename(tempFilePath, episodePath)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := os.Stat(episodePath)
+	if err != nil {
+		return nil, err
+	}
+	durationSec, err := s.analyzer.GetVideoDurationSec(episodePath)
+	if err != nil {
+		return nil, err
+	}
+	thumb, err := s.thumbService.CreateForVideo(episodePath, durationSec)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/%s", util.EpisodeRoute, filepath.Base(episodePath))
+
+	episode := db.Episode{
+		SeriesId:    seriesId,
+		Title:       title,
+		Episode:     episodeStr,
+		Season:      seasonStr,
+		Length:      uint64(stat.Size()),
+		DurationSec: durationSec,
 		Path:        episodePath,
 		Thumb:       thumb,
 		Url:         url,

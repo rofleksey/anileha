@@ -224,8 +224,8 @@ func (s *ConversionService) prepareConversion(
 
 	conversion := db.Conversion{
 		SeriesId:         torrent.SeriesId,
-		TorrentId:        torrent.ID,
-		TorrentFileId:    torrentFile.ID,
+		TorrentId:        &torrent.ID,
+		TorrentFileId:    &torrentFile.ID,
 		Name:             conversionName,
 		EpisodeName:      episodeName,
 		EpisodeString:    episode,
