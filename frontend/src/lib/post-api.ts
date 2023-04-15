@@ -6,6 +6,7 @@ console.log(`BASE_URL = ${BASE_URL}`)
 
 const LONG_TIMEOUT = 30000
 const SUPER_LONG_TIMEOUT = 120000
+const MAX_FILE_SIZE = 5368709120;
 
 export async function postLogin(user: string, pass: string): Promise<User> {
   const {data}: { data: User } = await axios.post(`${BASE_URL}/user/login`, {
@@ -28,8 +29,8 @@ export async function postNewSeries(title: string, thumb: File): Promise<void> {
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
     timeout: LONG_TIMEOUT,
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity
+    maxContentLength: MAX_FILE_SIZE,
+    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
@@ -55,8 +56,8 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
     withCredentials: true,
     onUploadProgress: progressCallback,
     timeout: 0,
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity
+    maxContentLength: MAX_FILE_SIZE,
+    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
@@ -71,8 +72,8 @@ export async function postNewTorrent(seriesId: number, file: File): Promise<void
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
     timeout: SUPER_LONG_TIMEOUT,
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity
+    maxContentLength: MAX_FILE_SIZE,
+    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
