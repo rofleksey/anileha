@@ -20,6 +20,7 @@ type Producer struct {
 func NewProducer(
 	log *zap.Logger,
 ) *Producer {
+	log.Info("cpu count", zap.Int("count", runtime.NumCPU()))
 	return &Producer{
 		log: log,
 	}
