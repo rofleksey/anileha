@@ -8,7 +8,9 @@ import (
 	"github.com/elliotchance/pie/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"runtime"
 	"sort"
+	"strconv"
 )
 
 type Producer struct {
@@ -147,6 +149,12 @@ func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *se
 
 func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPath string, probe *dao.AnalysisResult,
 	prefs Preferences) (*ffmpeg.Command, error) {
+	// free 2 virtual CPUs from ffmpeg workload
+	numThreads := runtime.NumCPU() - 2
+	if numThreads < 1 {
+		numThreads = 1
+	}
+
 	command := ffmpeg.NewCommand(inputFile, probe.Video.DurationSec, outputPath)
 	command.AddKeyValue("-acodec", "aac", ffmpeg.OptionOutput)
 	command.AddKeyValue("-b:a", "196k", ffmpeg.OptionOutput)
@@ -158,6 +166,7 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 	command.AddKeyValue("-preset", "slow", ffmpeg.OptionOutput)
 	command.AddKeyValue("-f", "mp4", ffmpeg.OptionOutput)
 	command.AddKeyValue("-movflags", "+faststart", ffmpeg.OptionPostOutput)
+	command.AddKeyValue("-threads", strconv.Itoa(numThreads), ffmpeg.OptionOutput)
 
 	audioPick := p.selectAudio(probe.Audio, prefs.Audio)
 	subPick := p.selectSub(probe.Sub, prefs.Sub)
