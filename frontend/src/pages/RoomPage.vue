@@ -43,6 +43,7 @@ import VideoPlayer from 'components/VideoPlayer.vue';
 import {useRoomStore} from 'stores/room-store';
 import InteractiveOverlay from 'components/InteractiveOverlay.vue';
 import formatDuration from 'format-duration';
+import {useWebSocket} from 'src/lib/ws';
 
 interface IVideoPlayer {
   seek: (time: number) => void
@@ -52,20 +53,14 @@ interface IVideoPlayer {
   screenshot: () => string | null
 }
 
-let ws: WebSocket | undefined = undefined;
 let downloadRequest: XMLHttpRequest | undefined = undefined;
 let lastObjectUrl: string | undefined = undefined;
-let reconnectInterval: NodeJS.Timeout | number | undefined = undefined;
 
 const route = useRoute();
-
 const roomStore = useRoomStore();
 
 const roomId = computed(() => route.query.id?.toString());
-console.log(roomId.value);
-
-const suggestedEpisodeId = computed(() => Number(route.query.episodeId));
-const episodeId = ref<number | null>(suggestedEpisodeId.value || null);
+const episodeId = computed(() => roomStore.episodeId);
 
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
@@ -80,6 +75,94 @@ const episodeData = ref<Episode | undefined>();
 const watchersState = ref<WatcherState[]>([]);
 const videoSrc = ref<Blob | string>('');
 
+const {sendWs} = useWebSocket({
+  url: `ws://${window.location.host}/room/ws/${roomId.value}`,
+  onConnect: () => {
+    if (episodeId.value) {
+      const selfWatcher = watchersState.value.find((it) => it.id === curUser.value?.id)
+      if (!selfWatcher) {
+        return
+      }
+
+      sendWs<WatcherStatePartial>('user-state', {
+        timestamp: selfWatcher.timestamp,
+        progress: selfWatcher.progress,
+        status: selfWatcher.status,
+      });
+    }
+  },
+  onMessage: (type, message) => {
+    if (type === 'full-state') {
+      console.log(message);
+      const {room, watchers} = message as FullStateMessage
+
+      playerRef.value?.setPlaying(false);
+      playerRef.value?.seek(room.timestamp)
+      if (room.episodeId) {
+        roomStore.setEpisodeId(room.episodeId);
+      }
+      watchersState.value = watchers;
+
+      sendWs<RoomState>('room-state', {
+        episodeId: episodeId.value,
+        timestamp: -1,
+        playing: false,
+      });
+    } else if (type === 'room-state') {
+      console.log(message);
+      const roomState = message as RoomState;
+      const localPlaying = playerRef.value?.getPlaying() ?? false;
+      const initiator = watchersState.value.find((it) => it.id === roomState.initiatorId);
+      if (initiator && initiator.id !== curUser.value?.id) {
+        if (localPlaying && !roomState.playing) {
+          showHint('Paused', `by ${initiator.name}`);
+        }
+        if (!localPlaying && roomState.playing) {
+          showHint('Resumed', `by ${initiator.name}`);
+        }
+      }
+      playerRef.value?.setPlaying(roomState.playing);
+      playerRef.value?.seek(roomState.timestamp)
+      if (roomState.episodeId) {
+        roomStore.setEpisodeId(roomState.episodeId);
+      }
+    } else if (type === 'user-state') {
+      const newState = message as WatcherState
+      const index = watchersState.value.findIndex((it) => it.id === newState.id);
+      if (index >= 0) {
+        const curWatcher = watchersState.value[index];
+        if (curWatcher.id !== curUser.value?.id) {
+          const lastStatus = curWatcher.status
+          if (lastStatus === 'loading' && newState.status === 'pause') {
+            showHint('User ready', curWatcher.name);
+          }
+        }
+        watchersState.value[index] = newState;
+      }
+    } else if (type === 'user-connect') {
+      const newState = message as WatcherState
+      const index = watchersState.value.findIndex((it) => it.id === newState.id);
+      if (index >= 0) {
+        watchersState.value.splice(index, 1);
+      }
+      playerRef.value?.setPlaying(false);
+      showHint('User connected', newState.name);
+      watchersState.value.push(newState);
+    } else if (type === 'user-disconnect') {
+      console.log(type, message);
+      const idMsg = message as IdMessage
+      const index = watchersState.value.findIndex((it) => it.id === idMsg.id);
+      if (index >= 0) {
+        showHint('User disconnected', watchersState.value[index].name);
+        watchersState.value.splice(index, 1);
+      }
+      playerRef.value?.setPlaying(false);
+    } else {
+      console.warn('invalid message type', type);
+    }
+  },
+})
+
 watch(episodeId, refreshData);
 
 watch(roomId, () => {
@@ -88,15 +171,9 @@ watch(roomId, () => {
   }
 });
 
-watch(suggestedEpisodeId, () => {
-  if (suggestedEpisodeId.value) {
-    episodeId.value = suggestedEpisodeId.value;
-  }
-});
-
 function watcherIconText(watcher: WatcherState) {
   if (watcher.status === 'loading') {
-    return Math.floor(watcher.progress * 100)
+    return `${Math.floor(watcher.progress * 100)} %`
   }
   if (watcher.status === 'play' || watcher.status === 'pause') {
     return formatDuration(watcher.timestamp * 1000);
@@ -121,35 +198,29 @@ function watcherIconColor(watcher: WatcherState) {
 }
 
 function onPlay() {
+  console.log('onPlay');
   updateSelfStatus((w) => {
     w.status = 'play';
   });
 
-  const message: WebSocketMessage<RoomState> = {
-    type: 'room-state',
-    message: {
-      episodeId: episodeId.value,
-      timestamp: playerRef.value?.getTimestamp() ?? 0,
-      playing: true,
-    }
-  }
-  ws?.send(JSON.stringify(message));
+  sendWs<RoomState>('room-state', {
+    episodeId: episodeId.value,
+    timestamp: playerRef.value?.getTimestamp() ?? 0,
+    playing: true,
+  });
 }
 
 function onPause() {
+  console.log('onPause');
   updateSelfStatus((w) => {
     w.status = 'pause';
   });
 
-  const message: WebSocketMessage<RoomState> = {
-    type: 'room-state',
-    message: {
-      episodeId: episodeId.value,
-      timestamp: playerRef.value?.getTimestamp() ?? 0,
-      playing: false,
-    }
-  }
-  ws?.send(JSON.stringify(message));
+  sendWs<RoomState>('room-state', {
+    episodeId: episodeId.value,
+    timestamp: playerRef.value?.getTimestamp() ?? 0,
+    playing: false,
+  });
 }
 
 function updateSelfStatus(callback: (watcher: WatcherState) => void) {
@@ -158,14 +229,13 @@ function updateSelfStatus(callback: (watcher: WatcherState) => void) {
     return
   }
   callback(selfWatcher)
-  const message: WebSocketMessage<WatcherState> = {
-    type: 'user-state',
-    message: selfWatcher
-  }
-  ws?.send(JSON.stringify(message));
+  sendWs<WatcherState>('user-state', selfWatcher);
 }
 
 function onTime(timestamp: number) {
+  if (videoLoading.value || videoError.value) {
+    return
+  }
   updateSelfStatus((w) => {
     w.status = playerRef.value?.getPlaying() ? 'play' : 'pause';
     w.timestamp = timestamp;
@@ -178,21 +248,11 @@ function onSeek(timestamp: number) {
     w.timestamp = timestamp;
   });
 
-  const roomMessage: WebSocketMessage<RoomState> = {
-    type: 'room-state',
-    message: {
-      episodeId: episodeId.value,
-      timestamp: timestamp,
-      playing: false,
-    }
-  }
-
-  ws?.send(JSON.stringify(roomMessage));
-}
-
-interface WebSocketMessage<T> {
-  type: string;
-  message: T;
+  sendWs<RoomState>('room-state', {
+    episodeId: episodeId.value,
+    timestamp: timestamp,
+    playing: false,
+  });
 }
 
 interface IdMessage {
@@ -254,116 +314,6 @@ function loadVideo(src: string) {
   downloadRequest.send();
 }
 
-function webSocketConnect() {
-  console.log('websocket reconnecting...');
-
-  try {
-    ws = new WebSocket(`ws://${window.location.host}/room/ws/${roomId.value}`);
-
-    ws.onopen = function () {
-      if (episodeId.value) {
-        let status = 'pause';
-        if (videoError.value) {
-          status = 'error';
-        }
-        if (videoLoading.value) {
-          status = 'loading';
-        }
-        const message: WebSocketMessage<WatcherStatePartial> = {
-          type: 'user-state',
-          message: {
-            timestamp: playerRef.value?.getTimestamp() ?? 0,
-            progress: videoProgress.value,
-            status: status,
-          }
-        }
-        ws?.send(JSON.stringify(message))
-      }
-      console.log('websocket connected');
-    }
-
-    ws.onmessage = function (e) {
-      const data = JSON.parse(e.data) as WebSocketMessage<never>;
-      if (data.type === 'full-state') {
-        console.log(data.message);
-        const {room, watchers} = data.message as FullStateMessage
-        playerRef.value?.setPlaying(false);
-        playerRef.value?.seek(room.timestamp)
-        if (!episodeId.value) {
-          episodeId.value = room.episodeId;
-        }
-        watchersState.value = watchers;
-      } else if (data.type === 'room-state') {
-        const roomState = data.message as RoomState;
-        console.log(roomState, watchersState);
-
-        const localPlaying = playerRef.value?.getPlaying() ?? false;
-        const initiator = watchersState.value.find((it) => it.id === roomState.initiatorId);
-        if (initiator && initiator.id !== curUser.value?.id) {
-          if (localPlaying && !roomState.playing) {
-            showHint('Paused', `by ${initiator.name}`);
-          }
-          if (!localPlaying && roomState.playing) {
-            showHint('Resumed', `by ${initiator.name}`);
-          }
-        }
-
-        playerRef.value?.setPlaying(roomState.playing);
-        playerRef.value?.seek(roomState.timestamp)
-        if (!episodeId.value) {
-          episodeId.value = roomState.episodeId;
-        }
-      } else if (data.type === 'user-state') {
-        const message = data.message as WatcherState
-        const index = watchersState.value.findIndex((it) => it.id === message.id);
-        if (index >= 0) {
-          const curWatcher = watchersState.value[index];
-          if (curWatcher.id !== curUser.value?.id) {
-            const lastStatus = curWatcher.status
-            if (lastStatus === 'loading' && message.status === 'pause') {
-              showHint('User ready', curWatcher.name);
-            }
-          }
-          watchersState.value[index] = message;
-        }
-      } else if (data.type === 'user-connect') {
-        const message = data.message as WatcherState
-        const index = watchersState.value.findIndex((it) => it.id === message.id);
-        if (index >= 0) {
-          watchersState.value.splice(index, 1);
-        }
-        playerRef.value?.setPlaying(false);
-        showHint('User connected', message.name);
-        watchersState.value.push(message);
-      } else if (data.type === 'user-disconnect') {
-        const message = data.message as IdMessage
-        const index = watchersState.value.findIndex((it) => it.id === message.id);
-        if (index >= 0) {
-          showHint('User disconnected', watchersState.value[index].name);
-          watchersState.value.splice(index, 1);
-        }
-        playerRef.value?.setPlaying(false);
-      } else {
-        console.warn('invalid message type', data);
-      }
-    };
-
-    ws.onclose = function (e) {
-      console.error('websocket closed', e)
-      ws?.close();
-      ws = undefined;
-    };
-
-    ws.onerror = function (err) {
-      console.error('websocket error', err)
-      ws?.close();
-      ws = undefined;
-    };
-  } catch (e) {
-    console.error('websocket error', e);
-  }
-}
-
 function refreshData() {
   if (!episodeId.value) {
     episodeData.value = undefined;
@@ -374,11 +324,19 @@ function refreshData() {
     .then((newEpisode) => {
       episodeData.value = newEpisode;
       loadVideo(`${BASE_URL}${newEpisode.link}`);
-      ws?.close();
-      webSocketConnect();
+
+      updateSelfStatus((w) => {
+        w.timestamp = 0;
+      });
+
+      sendWs<RoomState>('room-state', {
+        episodeId: episodeId.value,
+        timestamp: -1,
+        playing: false,
+      });
     })
     .catch((e) => {
-      showError('failed to fetch episode', e);
+      showError('Failed to fetch episode', e);
     })
     .finally(() => {
       dataLoading.value = false;
@@ -387,12 +345,7 @@ function refreshData() {
 
 onMounted(() => {
   refreshData();
-  reconnectInterval = setInterval(() => {
-    if (!ws) {
-      webSocketConnect();
-    }
-  }, 3000);
-})
+});
 
 onUnmounted(() => {
   downloadRequest?.abort();
@@ -400,8 +353,6 @@ onUnmounted(() => {
     URL.revokeObjectURL(lastObjectUrl);
     lastObjectUrl = undefined;
   }
-  ws?.close();
-  clearInterval(reconnectInterval);
 })
 </script>
 

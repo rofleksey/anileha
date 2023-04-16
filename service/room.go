@@ -73,7 +73,7 @@ type WatcherStatePartial struct {
 }
 
 type IdMessage struct {
-	Id uint `json:"uint"`
+	Id uint `json:"id"`
 }
 
 type FullState struct {
@@ -98,8 +98,20 @@ func (s *RoomService) handleRoomStateRequest(watcher *watcher, userRoom *room, b
 		return
 	}
 
+	s.log.Info("room state", zap.Any("state", req.Message))
+
 	userRoom.mutex.Lock()
 	defer userRoom.mutex.Unlock()
+
+	if req.Message.EpisodeId != nil {
+		userRoom.state.EpisodeId = req.Message.EpisodeId
+	} else {
+		req.Message.EpisodeId = userRoom.state.EpisodeId
+	}
+
+	if req.Message.Timestamp < 0 {
+		req.Message.Timestamp = userRoom.state.Timestamp
+	}
 
 	userRoom.state = req.Message
 	req.Message.InitiatorId = watcher.state.Id
@@ -150,7 +162,7 @@ func (s *RoomService) handleMessage(watcher *watcher, userRoom *room, bytes []by
 }
 
 func (s *RoomService) roomCleanupWorker(userRoom *room) {
-	time.Sleep(10 * time.Minute)
+	time.Sleep(1 * time.Minute)
 
 	userRoom.mutex.Lock()
 	defer userRoom.mutex.Unlock()

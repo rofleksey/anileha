@@ -77,6 +77,7 @@
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
 import {clamp, throttle} from 'lodash';
 import formatDuration from 'format-duration';
+import {useInterval} from 'src/lib/composables';
 
 interface Props {
   src: Blob | string;
@@ -94,7 +95,8 @@ const emit = defineEmits<{
 }>()
 
 let hideControlsTimer: NodeJS.Timeout | number | undefined = undefined;
-let updateTimeInterval: NodeJS.Timeout | number | undefined = undefined;
+
+useInterval(updateTime, 100)
 
 const canvasRef = ref<HTMLCanvasElement | undefined>()
 const playerRef = ref<HTMLDivElement | undefined>();
@@ -325,14 +327,6 @@ defineExpose({
     return canvas.toDataURL('image/jpeg');
   }
 })
-
-onMounted(() => {
-  updateTimeInterval = setInterval(updateTime, 100);
-});
-
-onUnmounted(() => {
-  clearInterval(updateTimeInterval);
-});
 </script>
 
 <style lang="sass" scoped>

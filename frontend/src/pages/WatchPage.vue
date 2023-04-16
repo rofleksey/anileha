@@ -68,13 +68,14 @@ const videoSrc = computed(() => {
 });
 
 function onGroupWatch() {
+  roomStore.setEpisodeId(episodeId.value);
+
   router.push({
     path: '/room',
     query: {
       id: roomId.value,
-      episodeId: episodeId.value
     }
-  })
+  });
 }
 
 function onRefreshThumbClick() {

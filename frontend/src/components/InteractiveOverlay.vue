@@ -1,16 +1,17 @@
 <template>
-  <div class="interactive-overlay" @click="stopInterval"
+  <div class="interactive-overlay" @click="onClick"
        :style="{display: overlayVisible ? undefined : 'none'}">
     <slot></slot>
   </div>
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref} from 'vue';
-
-let checkInterval: NodeJS.Timeout | number | undefined
+import {onUnmounted, ref} from 'vue';
+import {useInterval} from 'src/lib/composables';
 
 const overlayVisible = ref(checkInteractive());
+
+const stopInterval = useInterval(checkInteractive, 100);
 
 function checkInteractive() {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -18,14 +19,10 @@ function checkInteractive() {
   return navigator.userActivation?.hasBeenActive ?? false;
 }
 
-function stopInterval() {
+function onClick() {
   overlayVisible.value = false;
-  clearInterval(checkInterval);
+  stopInterval();
 }
-
-onMounted(() => {
-  checkInterval = setInterval(checkInteractive, 100);
-});
 
 onUnmounted(() => {
   stopInterval();

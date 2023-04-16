@@ -95,6 +95,7 @@ func (c *Client) write() {
 				err = c.Conn.WriteMessage(1, jsonBytes)
 				if err != nil {
 					c.log.Warn("failed to write message to websocket", zap.Error(err))
+					return
 				}
 			}
 		case <-ticker.C:
