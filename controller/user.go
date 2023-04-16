@@ -145,13 +145,6 @@ func registerUserController(
 			return
 		}
 
-		session := sessions.Default(c)
-		session.Set(rest.UserKey, nil)
-		if err := session.Save(); err != nil {
-			_ = c.Error(rest.ErrSessionSavingFailed)
-			return
-		}
-
 		c.String(http.StatusOK, "OK")
 	})
 
