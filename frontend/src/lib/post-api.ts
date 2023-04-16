@@ -1,5 +1,5 @@
 import axios, {AxiosProgressEvent} from 'axios';
-import {Analysis, StartConversionRequest, User} from 'src/lib/api-types';
+import {Analysis, AutoTorrent, StartConversionRequest, User} from 'src/lib/api-types';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL
 console.log(`BASE_URL = ${BASE_URL}`)
@@ -105,10 +105,13 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
   })
 }
 
-export async function postNewTorrent(seriesId: number, file: File): Promise<void> {
+export async function postNewTorrent(seriesId: number, file: File, auto?: AutoTorrent): Promise<void> {
   const formData = new FormData();
   formData.append('seriesId', seriesId.toString());
   formData.append('file', file);
+  if (auto) {
+    formData.append('auto', JSON.stringify(auto));
+  }
   await axios({
     method: 'post',
     url: `${BASE_URL}/admin/torrent`,
@@ -127,6 +130,7 @@ export async function postStartTorrent(torrentId: number, fileIndices: number[])
     fileIndices,
   }, {
     withCredentials: true,
+    timeout: LONG_TIMEOUT,
   });
 }
 
@@ -152,7 +156,7 @@ export async function postAnalyze(torrentId: number, fileIndex: number): Promise
 export async function postStartConversion(req: StartConversionRequest): Promise<void> {
   await axios.post(`${BASE_URL}/admin/convert/start`, req, {
     withCredentials: true,
-    timeout: SUPER_LONG_TIMEOUT,
+    timeout: 0,
   });
 }
 

@@ -139,3 +139,8 @@ export interface WatcherStatePartial {
   progress: number;
   status: string;
 }
+
+export interface AutoTorrent {
+  audioLang: string;
+  subLang: string;
+}

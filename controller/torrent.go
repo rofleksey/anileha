@@ -6,6 +6,7 @@ import (
 	"anileha/db"
 	"anileha/rest"
 	"anileha/service"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -175,6 +176,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
+
 		seriesIdStrArr := form.Value["seriesId"]
 		if seriesIdStrArr == nil || len(seriesIdStrArr) != 1 {
 			c.Error(rest.ErrBadRequest("error getting seriesId"))
@@ -185,6 +187,19 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest("failed to parse seriesId"))
 			return
 		}
+
+		var auto *db.AutoTorrent
+
+		autoArr := form.Value["auto"]
+		if autoArr != nil && len(autoArr) == 1 {
+			if err := json.Unmarshal([]byte(autoArr[0]), &auto); err == nil {
+				if auto.AudioLang == "" || auto.SubLang == "" {
+					c.Error(rest.ErrBadRequest("invalid auto JSON"))
+					return
+				}
+			}
+		}
+
 		files := form.File["file"]
 		if files == nil || len(files) == 0 {
 			c.Error(rest.ErrBadRequest("no files sent"))
@@ -202,7 +217,7 @@ func registerTorrentController(
 			c.Error(rest.ErrInternal(err.Error()))
 			return
 		}
-		err = torrentService.AddFromFile(uint(seriesId), tempDst)
+		err = torrentService.AddFromFile(uint(seriesId), tempDst, auto)
 		if err != nil {
 			c.Error(err)
 			return

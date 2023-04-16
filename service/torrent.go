@@ -1,6 +1,7 @@
 package service
 
 import (
+	"anileha/command"
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
@@ -10,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	torrentLib "github.com/anacrolix/torrent"
+	"github.com/rofleksey/roflmeta"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"gorm.io/datatypes"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,6 +30,7 @@ type TorrentService struct {
 	client          *torrentLib.Client
 	cTorrentMap     sync.Map // cTorrentMap Stores torrentLib.Client torrent entries [uint -> *torrentLib.Torrent]
 	fileService     *FileService
+	convertService  *ConversionService
 	log             *zap.Logger
 	infoFolder      string
 	downloadsFolder string
@@ -65,6 +69,7 @@ func NewTorrentService(
 	log *zap.Logger,
 	config *config.Config,
 	fileService *FileService,
+	convertService *ConversionService,
 ) (*TorrentService, error) {
 	if err := torrentRepo.ResetDownloadStatus(); err != nil {
 		return nil, fmt.Errorf("failed to reset download status: %w", err)
@@ -93,6 +98,7 @@ func NewTorrentService(
 		torrentRepo:     torrentRepo,
 		client:          client,
 		fileService:     fileService,
+		convertService:  convertService,
 		log:             log,
 		infoFolder:      infoFolder,
 		downloadsFolder: downloadsFolder,
@@ -295,9 +301,74 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 			zap.Error(err))
 		return
 	}
+
+	if torrent.Auto.Data() != nil {
+		go s.startAutoConvert(id)
+	}
+
 	s.log.Info("torrent finished",
 		zap.Uint("torrentId", torrent.ID),
 		zap.String("torrentName", torrent.Name))
+}
+
+func (s *TorrentService) startAutoDownload(id uint) {
+	torrent, err := s.torrentRepo.GetById(id, false)
+	if err != nil {
+		s.log.Error("failed to get torrent",
+			zap.Uint("torrentId", torrent.ID),
+			zap.Error(err))
+		return
+	}
+	fileIndices := make([]int, 0, len(torrent.Files))
+	for _, file := range torrent.Files {
+		fileIndices = append(fileIndices, file.ClientIndex)
+	}
+	err = s.Start(*torrent, fileIndices)
+	if err != nil {
+		s.log.Error("failed to autostart download",
+			zap.Uint("torrentId", torrent.ID),
+			zap.String("torrentName", torrent.Name),
+			zap.Error(err))
+	}
+}
+
+func (s *TorrentService) startAutoConvert(id uint) {
+	torrent, err := s.torrentRepo.GetById(id, true)
+	if err != nil {
+		s.log.Error("failed to get torrent",
+			zap.Uint("torrentId", torrent.ID),
+			zap.Error(err))
+		return
+	}
+
+	torrentFiles := make([]db.TorrentFile, 0, len(torrent.Files))
+	prefsArr := make([]command.Preferences, 0, len(torrent.Files))
+
+	for _, file := range torrent.Files {
+		if file.Status != db.TorrentFileReady || file.ReadyPath == nil {
+			continue
+		}
+		torrentFiles = append(torrentFiles, file)
+		metadata := roflmeta.ParseSingleEpisodeMetadata(file.TorrentPath)
+		prefsArr = append(prefsArr, command.Preferences{
+			Audio: command.PreferencesData{
+				Lang: torrent.Auto.Data().AudioLang,
+			},
+			Sub: command.PreferencesData{
+				Lang: torrent.Auto.Data().SubLang,
+			},
+			Episode: metadata.Episode,
+			Season:  metadata.Season,
+		})
+	}
+
+	err = s.convertService.StartConversion(*torrent, torrentFiles, prefsArr)
+	if err != nil {
+		s.log.Error("failed to autostart conversion",
+			zap.Uint("torrentId", torrent.ID),
+			zap.String("torrentName", torrent.Name),
+			zap.Error(err))
+	}
 }
 
 // torrentCompletionWatcher Polls for torrent's completion, calls onTorrentCompletion
@@ -402,13 +473,18 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 
 	cTorrent.Drop()
 	s.cTorrentMap.Delete(torrent.ID)
+
+	if torrent.Auto.Data() != nil {
+		go s.startAutoDownload(torrent.ID)
+	}
+
 	s.log.Info("torrent initialized",
 		zap.Uint("torrentId", torrent.ID),
 		zap.String("torrentName", torrent.Name))
 	return nil
 }
 
-func (s *TorrentService) AddFromFile(seriesId uint, tempPath string) error {
+func (s *TorrentService) AddFromFile(seriesId uint, tempPath string, auto *db.AutoTorrent) error {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
 		return rest.ErrInternal(err.Error())
@@ -420,6 +496,7 @@ func (s *TorrentService) AddFromFile(seriesId uint, tempPath string) error {
 	torrent := db.Torrent{
 		SeriesId: &seriesId,
 		FilePath: newPath,
+		Auto:     datatypes.NewJSONType(auto),
 	}
 	_, err = s.torrentRepo.Create(&torrent)
 	if err != nil {

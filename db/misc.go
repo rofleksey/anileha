@@ -22,3 +22,8 @@ type Thumb struct {
 func (t *Thumb) Delete() {
 	_ = os.Remove(t.Path)
 }
+
+type AutoTorrent struct {
+	AudioLang string `json:"audioLang"`
+	SubLang   string `json:"subLang"`
+}

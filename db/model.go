@@ -33,6 +33,7 @@ type Torrent struct {
 	SeriesId *uint
 	Series   *Series `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
+	Auto                datatypes.JSONType[*AutoTorrent]
 	FilePath            string // FilePath path to .torrent file
 	Name                string
 	BytesRead           uint

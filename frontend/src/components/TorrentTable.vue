@@ -5,6 +5,9 @@
     :title="props.title"
     :rows="props.data"
     :columns="columns"
+    :pagination="{
+      rowsPerPage: 25
+    }"
     row-key="id"
     :loading="props.loading">
     <template v-slot:body-cell-status="props">

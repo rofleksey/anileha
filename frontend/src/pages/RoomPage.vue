@@ -183,7 +183,7 @@ function watcherIconText(watcher: WatcherState) {
 
 function watcherIconColor(watcher: WatcherState) {
   if (watcher.status === 'loading') {
-    return 'yellow';
+    return 'purple';
   }
   if (watcher.status === 'error') {
     return 'red';
