@@ -28,6 +28,7 @@ import {useQuasar} from 'quasar';
 import CreateSeriesModal from 'components/modal/CreateSeriesModal.vue';
 import {useRouter} from 'vue-router';
 import {useUserStore} from 'stores/user-store';
+import {useInterval} from 'src/lib/composables';
 
 const quasar = useQuasar();
 const router = useRouter();
@@ -37,6 +38,8 @@ const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
 const dataLoading = ref(false);
 const data = ref<Series[]>([]);
+
+useInterval(refreshData, 10000);
 
 function refreshData() {
   dataLoading.value = true;

@@ -13,9 +13,12 @@ import {Torrent} from 'src/lib/api-types';
 import {fetchAllTorrents} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import TorrentTable from 'components/TorrentTable.vue';
+import {useInterval} from 'src/lib/composables';
 
 const dataLoading = ref(false);
 const data = ref<Torrent[]>([]);
+
+useInterval(refreshData, 10000);
 
 function refreshData() {
   dataLoading.value = true;

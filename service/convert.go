@@ -16,6 +16,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type ConversionService struct {
@@ -216,11 +218,22 @@ func (s *ConversionService) prepareConversion(
 	durationSec int,
 ) (*db.Conversion, error) {
 	conversionName := fmt.Sprintf("%s - %s", torrent.Name, torrentFile.TorrentPath)
-	episodeName := episode
+	episodeNameSlice := make([]string, 0, 3)
+
+	if torrent.Series != nil {
+		episodeNameSlice = append(episodeNameSlice, torrent.Series.Title)
+	}
 
 	if season != "" {
-		episodeName = fmt.Sprintf("%s - %s", season, episode)
+		if _, err := strconv.Atoi(season); err == nil {
+			episodeNameSlice = append(episodeNameSlice, "S"+season)
+		} else {
+			episodeNameSlice = append(episodeNameSlice, season)
+		}
 	}
+
+	episodeNameSlice = append(episodeNameSlice, episode)
+	episodeName := strings.Join(episodeNameSlice, " - ")
 
 	conversion := db.Conversion{
 		SeriesId:         torrent.SeriesId,

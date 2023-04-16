@@ -22,6 +22,7 @@ import {Episode} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import {useRoute, useRouter} from 'vue-router';
+import {useInterval} from 'src/lib/composables';
 
 const router = useRouter();
 const route = useRoute();
@@ -29,6 +30,8 @@ const seriesId = computed(() => Number(route.params.seriesId));
 
 const dataLoading = ref(false);
 const data = ref<Episode[]>([]);
+
+useInterval(refreshData, 10000);
 
 function refreshData() {
   dataLoading.value = true;

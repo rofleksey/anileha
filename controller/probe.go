@@ -32,7 +32,7 @@ func registerProbeController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.Id)
+		torrent, err := torrentService.GetById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return
@@ -65,7 +65,7 @@ func registerProbeController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.Id)
+		torrent, err := torrentService.GetById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return

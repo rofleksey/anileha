@@ -86,11 +86,15 @@ func (r *TorrentRepo) UpdateProgress(id uint, progress util.Progress, bytesRead 
 	return nil
 }
 
-func (r *TorrentRepo) GetById(id uint) (*db.Torrent, error) {
+func (r *TorrentRepo) GetById(id uint, preloadSeries bool) (*db.Torrent, error) {
 	var torrent db.Torrent
-	queryResult := r.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
+	builder := r.db.Preload("Files", func(db *gorm.DB) *gorm.DB {
 		return db.Order("torrent_files.client_index ASC")
-	}).First(&torrent, "id = ?", id)
+	})
+	if preloadSeries {
+		builder = builder.Preload("Series")
+	}
+	queryResult := builder.First(&torrent, "id = ?", id)
 	if queryResult.Error != nil {
 		return nil, queryResult.Error
 	}

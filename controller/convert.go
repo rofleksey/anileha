@@ -108,7 +108,7 @@ func registerConvertController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.TorrentId)
+		torrent, err := torrentService.GetByIdWithSeries(req.TorrentId)
 		if err != nil {
 			c.Error(err)
 			return

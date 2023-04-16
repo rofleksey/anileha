@@ -75,7 +75,7 @@ func registerTorrentController(
 	torrentGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 
 	torrentGroup.GET("", func(c *gin.Context) {
-		torrentsSlice, err := torrentService.GetAllTorrents()
+		torrentsSlice, err := torrentService.GetAll()
 		if err != nil {
 			c.Error(err)
 			return
@@ -89,7 +89,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(uint(id))
+		torrent, err := torrentService.GetById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -103,7 +103,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrents, err := torrentService.GetTorrentsBySeriesId(uint(id))
+		torrents, err := torrentService.GetBySeriesId(uint(id))
 		if err != nil {
 			log.Info("error occurred")
 			c.Error(err)
@@ -117,7 +117,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.Id)
+		torrent, err := torrentService.GetById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return
@@ -126,7 +126,7 @@ func registerTorrentController(
 			c.Error(rest.ErrAlreadyStarted)
 			return
 		}
-		err = torrentService.StartTorrent(*torrent, req.FileIndices)
+		err = torrentService.Start(*torrent, req.FileIndices)
 		if err != nil {
 			c.Error(err)
 			return
@@ -139,7 +139,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		torrent, err := torrentService.GetTorrentById(req.Id)
+		torrent, err := torrentService.GetById(req.Id)
 		if err != nil {
 			c.Error(err)
 			return
@@ -148,7 +148,7 @@ func registerTorrentController(
 			c.String(http.StatusOK, "Already stopped")
 			return
 		}
-		err = torrentService.StopTorrent(*torrent)
+		err = torrentService.Stop(*torrent)
 		if err != nil {
 			c.Error(err)
 			return
@@ -162,7 +162,7 @@ func registerTorrentController(
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
 		}
-		err = torrentService.DeleteTorrentById(uint(id))
+		err = torrentService.DeleteById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
@@ -202,7 +202,7 @@ func registerTorrentController(
 			c.Error(rest.ErrInternal(err.Error()))
 			return
 		}
-		err = torrentService.AddTorrentFromFile(uint(seriesId), tempDst)
+		err = torrentService.AddFromFile(uint(seriesId), tempDst)
 		if err != nil {
 			c.Error(err)
 			return

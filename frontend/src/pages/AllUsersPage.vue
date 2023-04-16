@@ -20,10 +20,13 @@ import {showError} from 'src/lib/util';
 import UserTable from 'components/UserTable.vue';
 import {useQuasar} from 'quasar';
 import NewUserModal from 'components/modal/NewUserModal.vue';
+import {useInterval} from 'src/lib/composables';
 
 const quasar = useQuasar();
 const dataLoading = ref(false);
 const data = ref<User[]>([]);
+
+useInterval(refreshData, 10000);
 
 function openNewUserModal() {
   quasar.dialog({

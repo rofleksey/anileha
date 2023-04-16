@@ -16,6 +16,7 @@ import {useQuasar} from 'quasar';
 import {useRoute} from 'vue-router';
 import NewTorrentModal from 'components/modal/NewTorrentModal.vue';
 import TorrentTable from 'components/TorrentTable.vue';
+import {useInterval} from 'src/lib/composables';
 
 const quasar = useQuasar();
 const route = useRoute();
@@ -23,6 +24,8 @@ const seriesId = computed(() => Number(route.params.seriesId));
 
 const dataLoading = ref(false);
 const data = ref<Torrent[]>([]);
+
+useInterval(refreshData, 10000);
 
 function refreshData() {
   dataLoading.value = true;

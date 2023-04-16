@@ -13,9 +13,12 @@ import {Conversion} from 'src/lib/api-types';
 import {fetchAllConversions, fetchAllTorrents} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import ConversionTable from 'components/ConversionTable.vue';
+import {useInterval} from 'src/lib/composables';
 
 const dataLoading = ref(false);
 const data = ref<Conversion[]>([]);
+
+useInterval(refreshData, 10000);
 
 function refreshData() {
   dataLoading.value = true;

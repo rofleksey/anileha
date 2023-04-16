@@ -41,6 +41,21 @@
       :done="step > 2"
       :header-nav="step > 2"
     >
+
+      <q-input
+        v-model="overrideSeason"
+        label="Override Season"/>
+
+      <q-input
+        v-model="overrideAudioLang"
+        label="Preferred audio language"/>
+
+      <q-input
+        v-model="overrideSubLang"
+        label="Preferred subtitle language"/>
+
+      <q-separator />
+
       <q-table
         style="width: 100%"
         :rows="analysisData"
@@ -156,6 +171,9 @@ const dataLoading = ref(false);
 const torrentData = ref<TorrentWithFiles | null>();
 const analysisData = ref<AnalysisWithPrefs[]>([]);
 const selectedForConversion = ref<TorrentFile[]>([]);
+const overrideSeason = ref('');
+const overrideAudioLang = ref('jpn');
+const overrideSubLang = ref('eng');
 
 const readyFiles = computed(() => {
   const torrent = torrentData.value;
@@ -182,6 +200,37 @@ watch(step, () => {
     startAnalysis();
   }
 })
+
+watch(overrideSeason, () => {
+  if (!overrideSeason.value) {
+    analysisData.value.map((it) => {
+      it.prefs.season = it.analysis.season;
+    });
+    return
+  }
+  analysisData.value.forEach((it) => {
+    it.prefs.season = overrideSeason.value;
+  });
+});
+
+watch(overrideAudioLang, () => {
+  if (!overrideAudioLang.value) {
+    return
+  }
+  analysisData.value.forEach((it) => {
+    it.prefs.audio = pickAudioStream(it.analysis.audio, overrideAudioLang.value);
+  });
+});
+
+watch(overrideSubLang, () => {
+  if (!overrideSubLang.value) {
+    return
+  }
+  analysisData.value.forEach((it) => {
+    it.prefs.sub = pickSubStream(it.analysis.sub, overrideSubLang.value);
+  });
+});
+
 
 function formatName(name: string) {
   if (name.trim().length === 0) {
@@ -246,8 +295,8 @@ async function loadAnalysis(): Promise<AnalysisWithPrefs[]> {
       fileType: getFileType(file.path),
       prefs: {
         index: file.clientIndex,
-        sub: pickSubStream(analysis.sub, 'eng'),
-        audio: pickAudioStream(analysis.audio, 'jpn'),
+        sub: pickSubStream(analysis.sub, overrideSubLang.value),
+        audio: pickAudioStream(analysis.audio, overrideAudioLang.value),
         season: analysis.season,
         episode: analysis.episode
       }
