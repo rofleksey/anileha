@@ -4,6 +4,9 @@
       <q-btn flat :label="`Room: ${episodeData?.title ?? ''}`"/>
       <q-btn flat :label="`${watchersState.length} viewers`"/>
     </q-toolbar>
+    <InteractiveOverlay>
+      Click to enable
+    </InteractiveOverlay>
     <VideoPlayer
       ref="playerRef"
       style="margin-top: 10px"
@@ -16,9 +19,6 @@
       @seek="onSeek"
     >
       <template #default="{playing}">
-        <InteractiveOverlay>
-          Click to enable
-        </InteractiveOverlay>
         <div :class="{RoomUsers: true, playing: playing}">
           <q-avatar rounded size="xl" v-for="watcher in watchersState" :key="watcher.id">
             <img :src="watcher.thumb" :alt="watcher.name"/>
