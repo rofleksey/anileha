@@ -47,7 +47,7 @@ func registerConvertController(
 	convertService *service.ConversionService,
 ) {
 	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(rest.AdminMiddleware(log, config))
+	convertGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 	convertGroup.GET("", func(c *gin.Context) {
 		conversions, err := convertService.GetAll()
 		if err != nil {

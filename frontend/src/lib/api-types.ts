@@ -1,7 +1,10 @@
 export interface User {
   id: number;
-  user: string;
-  isAdmin: boolean;
+  login: string;
+  name: string;
+  email: string;
+  roles: string[];
+  thumb: string;
 }
 
 export interface Series {
@@ -125,12 +128,10 @@ export interface RoomState {
   initiatorId?: number;
 }
 
-export interface WatcherState {
+export interface WatcherState extends WatcherStatePartial{
   id: number;
   name: string;
-  timestamp: number;
-  progress: number;
-  status: string;
+  thumb: string;
 }
 
 export interface WatcherStatePartial {

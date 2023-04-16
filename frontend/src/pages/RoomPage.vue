@@ -1,9 +1,5 @@
 <template>
   <q-page class="full-width" padding>
-    <div class="interactive-overlay" @click="overlayVisible = false"
-         :style="{display: overlayVisible ? undefined : 'none'}">
-      Click anywhere
-    </div>
     <q-toolbar class="bg-purple text-white shadow-2 rounded-borders">
       <q-btn flat :label="`Room: ${episodeData?.title ?? ''}`"/>
       <q-btn flat :label="`${watchersState.length} viewers`"/>
@@ -18,7 +14,21 @@
       @pause="onPause"
       @time="onTime"
       @seek="onSeek"
-    />
+    >
+      <template #default="{playing}">
+        <InteractiveOverlay>
+          Click to enable
+        </InteractiveOverlay>
+        <div :class="{RoomUsers: true, playing: playing}">
+          <q-avatar rounded size="xl" v-for="watcher in watchersState" :key="watcher.id">
+            <img :src="watcher.thumb" :alt="watcher.name"/>
+            <q-badge floating rounded :color="watcherIconColor(watcher)">
+              {{ watcherIconText(watcher) }}
+            </q-badge>
+          </q-avatar>
+        </div>
+      </template>
+    </VideoPlayer>
   </q-page>
 </template>
 
@@ -31,6 +41,8 @@ import {useRoute} from 'vue-router';
 import {useUserStore} from 'stores/user-store';
 import VideoPlayer from 'components/VideoPlayer.vue';
 import {useRoomStore} from 'stores/room-store';
+import InteractiveOverlay from 'components/InteractiveOverlay.vue';
+import formatDuration from 'format-duration';
 
 interface IVideoPlayer {
   seek: (time: number) => void
@@ -60,10 +72,6 @@ const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
 const playerRef = ref<IVideoPlayer | undefined>()
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-const overlayVisible = ref(!navigator.userActivation?.hasBeenActive);
-
 const dataLoading = ref(false);
 const videoLoading = ref(false);
 const videoError = ref(false);
@@ -75,7 +83,9 @@ const videoSrc = ref<Blob | string>('');
 watch(episodeId, refreshData);
 
 watch(roomId, () => {
-  roomStore.setRoomId(roomId.value ?? '');
+  if (roomId.value) {
+    roomStore.setRoomId(roomId.value);
+  }
 });
 
 watch(suggestedEpisodeId, () => {
@@ -83,6 +93,32 @@ watch(suggestedEpisodeId, () => {
     episodeId.value = suggestedEpisodeId.value;
   }
 });
+
+function watcherIconText(watcher: WatcherState) {
+  if (watcher.status === 'loading') {
+    return Math.floor(watcher.progress * 100)
+  }
+  if (watcher.status === 'play' || watcher.status === 'pause') {
+    return formatDuration(watcher.timestamp * 1000);
+  }
+  return watcher.status;
+}
+
+function watcherIconColor(watcher: WatcherState) {
+  if (watcher.status === 'loading') {
+    return 'yellow';
+  }
+  if (watcher.status === 'error') {
+    return 'red';
+  }
+  if (watcher.status === 'play') {
+    return 'green'
+  }
+  if (watcher.status === 'pause') {
+    return 'blue'
+  }
+  return 'gray'
+}
 
 function onPlay() {
   updateSelfStatus((w) => {
@@ -131,7 +167,7 @@ function updateSelfStatus(callback: (watcher: WatcherState) => void) {
 
 function onTime(timestamp: number) {
   updateSelfStatus((w) => {
-    w.status = 'play';
+    w.status = playerRef.value?.getPlaying() ? 'play' : 'pause';
     w.timestamp = timestamp;
   });
 }
@@ -221,106 +257,111 @@ function loadVideo(src: string) {
 function webSocketConnect() {
   console.log('websocket reconnecting...');
 
-  ws = new WebSocket(`ws://${window.location.host}/room/ws/${roomId.value}`);
+  try {
+    ws = new WebSocket(`ws://${window.location.host}/room/ws/${roomId.value}`);
 
-  ws.onopen = function () {
-    if (episodeId.value) {
-      let status = 'pause';
-      if (videoError.value) {
-        status = 'error';
-      }
-      if (videoLoading.value) {
-        status = 'loading';
-      }
-      const message: WebSocketMessage<WatcherStatePartial> = {
-        type: 'user-state',
-        message: {
-          timestamp: playerRef.value?.getTimestamp() ?? 0,
-          progress: videoProgress.value,
-          status: status,
+    ws.onopen = function () {
+      if (episodeId.value) {
+        let status = 'pause';
+        if (videoError.value) {
+          status = 'error';
         }
-      }
-      ws?.send(JSON.stringify(message))
-    }
-    console.log('websocket connected');
-  }
-
-  ws.onmessage = function (e) {
-    const data = JSON.parse(e.data) as WebSocketMessage<never>;
-    if (data.type === 'full-state') {
-      const {room, watchers} = data.message as FullStateMessage
-      playerRef.value?.setPlaying(false);
-      playerRef.value?.seek(room.timestamp)
-      if (!episodeId.value) {
-        episodeId.value = room.episodeId;
-      }
-      watchersState.value = watchers;
-    } else if (data.type === 'room-state') {
-      const roomState = data.message as RoomState;
-      console.log(roomState, watchersState);
-
-      const localPlaying = playerRef.value?.getPlaying() ?? false;
-      const initiator = watchersState.value.find((it) => it.id === roomState.initiatorId);
-      if (initiator && initiator.id !== curUser.value?.id) {
-        if (localPlaying && !roomState.playing) {
-          showHint('Paused', `by ${initiator.name}`);
+        if (videoLoading.value) {
+          status = 'loading';
         }
-        if (!localPlaying && roomState.playing) {
-          showHint('Resumed', `by ${initiator.name}`);
-        }
-      }
-
-      playerRef.value?.setPlaying(roomState.playing);
-      playerRef.value?.seek(roomState.timestamp)
-      if (!episodeId.value) {
-        episodeId.value = roomState.episodeId;
-      }
-    } else if (data.type === 'user-state') {
-      const message = data.message as WatcherState
-      const index = watchersState.value.findIndex((it) => it.id === message.id);
-      if (index >= 0) {
-        const curWatcher = watchersState.value[index];
-        if (curWatcher.id !== curUser.value?.id) {
-          const lastStatus = curWatcher.status
-          if (lastStatus === 'loading' && message.status === 'pause') {
-            showHint('User ready', curWatcher.name);
+        const message: WebSocketMessage<WatcherStatePartial> = {
+          type: 'user-state',
+          message: {
+            timestamp: playerRef.value?.getTimestamp() ?? 0,
+            progress: videoProgress.value,
+            status: status,
           }
         }
-        watchersState.value[index] = message;
+        ws?.send(JSON.stringify(message))
       }
-    } else if (data.type === 'user-connect') {
-      const message = data.message as WatcherState
-      const index = watchersState.value.findIndex((it) => it.id === message.id);
-      if (index >= 0) {
-        watchersState.value.splice(index, 1);
-      }
-      playerRef.value?.setPlaying(false);
-      showHint('User connected', message.name);
-      watchersState.value.push(message);
-    } else if (data.type === 'user-disconnect') {
-      const message = data.message as IdMessage
-      const index = watchersState.value.findIndex((it) => it.id === message.id);
-      if (index >= 0) {
-        showHint('User disconnected', watchersState.value[index].name);
-        watchersState.value.splice(index, 1);
-      }
-      playerRef.value?.setPlaying(false);
-    } else {
-      console.warn('invalid message type', data);
+      console.log('websocket connected');
     }
-  };
 
-  ws.onclose = function (e) {
-    console.error('websocket closed', e)
-    ws?.close();
-    ws = undefined;
-  };
+    ws.onmessage = function (e) {
+      const data = JSON.parse(e.data) as WebSocketMessage<never>;
+      if (data.type === 'full-state') {
+        console.log(data.message);
+        const {room, watchers} = data.message as FullStateMessage
+        playerRef.value?.setPlaying(false);
+        playerRef.value?.seek(room.timestamp)
+        if (!episodeId.value) {
+          episodeId.value = room.episodeId;
+        }
+        watchersState.value = watchers;
+      } else if (data.type === 'room-state') {
+        const roomState = data.message as RoomState;
+        console.log(roomState, watchersState);
 
-  ws.onerror = function (err) {
-    console.error('websocket error', err)
-    ws?.close();
-    ws = undefined;
-  };
+        const localPlaying = playerRef.value?.getPlaying() ?? false;
+        const initiator = watchersState.value.find((it) => it.id === roomState.initiatorId);
+        if (initiator && initiator.id !== curUser.value?.id) {
+          if (localPlaying && !roomState.playing) {
+            showHint('Paused', `by ${initiator.name}`);
+          }
+          if (!localPlaying && roomState.playing) {
+            showHint('Resumed', `by ${initiator.name}`);
+          }
+        }
+
+        playerRef.value?.setPlaying(roomState.playing);
+        playerRef.value?.seek(roomState.timestamp)
+        if (!episodeId.value) {
+          episodeId.value = roomState.episodeId;
+        }
+      } else if (data.type === 'user-state') {
+        const message = data.message as WatcherState
+        const index = watchersState.value.findIndex((it) => it.id === message.id);
+        if (index >= 0) {
+          const curWatcher = watchersState.value[index];
+          if (curWatcher.id !== curUser.value?.id) {
+            const lastStatus = curWatcher.status
+            if (lastStatus === 'loading' && message.status === 'pause') {
+              showHint('User ready', curWatcher.name);
+            }
+          }
+          watchersState.value[index] = message;
+        }
+      } else if (data.type === 'user-connect') {
+        const message = data.message as WatcherState
+        const index = watchersState.value.findIndex((it) => it.id === message.id);
+        if (index >= 0) {
+          watchersState.value.splice(index, 1);
+        }
+        playerRef.value?.setPlaying(false);
+        showHint('User connected', message.name);
+        watchersState.value.push(message);
+      } else if (data.type === 'user-disconnect') {
+        const message = data.message as IdMessage
+        const index = watchersState.value.findIndex((it) => it.id === message.id);
+        if (index >= 0) {
+          showHint('User disconnected', watchersState.value[index].name);
+          watchersState.value.splice(index, 1);
+        }
+        playerRef.value?.setPlaying(false);
+      } else {
+        console.warn('invalid message type', data);
+      }
+    };
+
+    ws.onclose = function (e) {
+      console.error('websocket closed', e)
+      ws?.close();
+      ws = undefined;
+    };
+
+    ws.onerror = function (err) {
+      console.error('websocket error', err)
+      ws?.close();
+      ws = undefined;
+    };
+  } catch (e) {
+    console.error('websocket error', e);
+  }
 }
 
 function refreshData() {
@@ -365,19 +406,19 @@ onUnmounted(() => {
 </script>
 
 <style lang="sass" scoped>
-.interactive-overlay
-  position: fixed
-  width: 100%
-  height: 100%
-  top: 0
+.RoomUsers
+  position: absolute
   left: 0
-  background: rgba(0, 0, 0, 0.5)
+  top: 0
+  margin: 10px
+  z-index: 100
   display: flex
-  align-items: center
+  flex-direction: column
+  align-items: start
   justify-content: center
-  text-align: center
-  color: white
-  font-family: monospace
-  font-size: 5em
-  z-index: 10000
+  gap: 20px
+  transition: opacity 0.3s ease
+
+  &.playing
+    opacity: 0.5
 </style>

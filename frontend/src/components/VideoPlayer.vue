@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="{player: true, immersed: !showControls}"
+    :class="{player: true, loading: props.loading, immersed: !showControls}"
     @mousemove="restartHideControlsTimer"
     @keydown="playerKeyboardListener"
     @click="togglePlayback"
@@ -31,6 +31,7 @@
         ref="videoRef"
         class="video"
         :src="props.src"/>
+      <slot :playing="playing"></slot>
       <div class="controls">
         <div>
           <button
@@ -340,6 +341,9 @@ onUnmounted(() => {
 .player
   user-select: none
   user-drag: none
+
+.loading
+  pointer-events: none
 
 .video-container
   position: relative

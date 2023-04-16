@@ -75,7 +75,7 @@ func registerEpisodeController(
 	})
 
 	adminEpisodeGroup := engine.Group("/admin/episodes")
-	adminEpisodeGroup.Use(rest.AdminMiddleware(log, config))
+	adminEpisodeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 
 	adminEpisodeGroup.POST("/", func(c *gin.Context) {
 		form, err := c.MultipartForm()

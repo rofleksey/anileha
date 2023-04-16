@@ -5,7 +5,6 @@ import (
 	"anileha/db"
 	"anileha/rest"
 	"anileha/service"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/fx"
@@ -17,6 +16,7 @@ func registerWebsocketController(
 	config *config.Config,
 	log *zap.Logger,
 	engine *gin.Engine,
+	userService *service.UserService,
 	roomService *service.RoomService,
 ) {
 	bufferSize := config.WebSocket.BufferSize
@@ -29,23 +29,25 @@ func registerWebsocketController(
 		},
 	}
 
-	engine.GET("/room", func(c *gin.Context) {
+	authGroup := engine.Group("/room")
+	authGroup.Use(rest.AuthorizedMiddleware(log))
+
+	authGroup.GET("", func(c *gin.Context) {
 		rooms := roomService.GetAll()
 		c.JSON(http.StatusOK, rooms)
 	})
 
-	engine.GET("/room/ws/:roomId", func(c *gin.Context) {
+	authGroup.GET("/ws/:roomId", func(c *gin.Context) {
 		roomIdString := c.Param("roomId")
 		if roomIdString == "" {
 			c.Error(rest.ErrBadRequest("blank room id"))
 			return
 		}
 
-		session := sessions.Default(c)
-
-		user := session.Get(rest.UserKey)
-		if user == nil {
-			c.Error(rest.ErrUnauthorizedInst)
+		authUser := c.MustGet(rest.UserKey).(*db.AuthUser)
+		user, err := userService.GetById(authUser.ID)
+		if err != nil {
+			c.Error(err)
 			return
 		}
 
@@ -55,9 +57,7 @@ func registerWebsocketController(
 			return
 		}
 
-		authUser := user.(*db.AuthUser)
-
-		roomService.HandleConnection(ws, authUser, roomIdString)
+		roomService.HandleConnection(ws, user, roomIdString)
 	})
 }
 

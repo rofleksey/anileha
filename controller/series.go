@@ -79,7 +79,7 @@ func registerSeriesController(
 	})
 
 	adminSeriesGroup := engine.Group("/admin/series")
-	adminSeriesGroup.Use(rest.AdminMiddleware(log, config))
+	adminSeriesGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 
 	adminSeriesGroup.DELETE("/:id", func(c *gin.Context) {
 		idString := c.Param("id")

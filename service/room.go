@@ -60,13 +60,14 @@ type watcher struct {
 type WatcherState struct {
 	Id        uint    `json:"id"`
 	Name      string  `json:"name"`
-	Timestamp float64 `json:"time"`
+	Thumb     string  `json:"thumb"`
+	Timestamp float64 `json:"timestamp"`
 	Progress  float64 `json:"progress"`
 	Status    string  `json:"status"`
 }
 
 type WatcherStatePartial struct {
-	Timestamp float64 `json:"time"`
+	Timestamp float64 `json:"timestamp"`
 	Progress  float64 `json:"progress"`
 	Status    string  `json:"status"`
 }
@@ -195,7 +196,7 @@ func (s *RoomService) GetAll() []RoomState {
 	return roomStates
 }
 
-func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.AuthUser, roomId string) {
+func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.User, roomId string) {
 	s.mutex.Lock()
 	userRoom, roomExists := s.rooms[roomId]
 	if !roomExists {
@@ -228,7 +229,8 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.AuthUser, 
 		client: client,
 		state: WatcherState{
 			Id:     user.ID,
-			Name:   user.Login,
+			Name:   user.Name,
+			Thumb:  user.Thumb.Url,
 			Status: "connected",
 		},
 	}
@@ -238,16 +240,16 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.AuthUser, 
 		Message: curWatcher.state,
 	})
 
-	watcherStates := make([]WatcherState, 0, len(userRoom.watchers))
-	for _, w := range userRoom.watchers {
-		watcherStates = append(watcherStates, w.state)
-	}
-
 	existingWatcher, watcherExists := userRoom.watchers[user.ID]
 	if watcherExists {
 		existingWatcher.client.Close(false)
 	}
 	userRoom.watchers[user.ID] = curWatcher
+
+	watcherStates := make([]WatcherState, 0, len(userRoom.watchers))
+	for _, w := range userRoom.watchers {
+		watcherStates = append(watcherStates, w.state)
+	}
 
 	client.Send(MessageStructure[FullState]{
 		Type: "full-state",

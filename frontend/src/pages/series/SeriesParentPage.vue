@@ -3,13 +3,13 @@
     <q-toolbar class="bg-purple text-white shadow-2 rounded-borders">
       <q-btn flat :label="title"/>
       <q-btn
-        v-if="curUser?.isAdmin"
+        v-if="curUser?.roles?.includes('admin')"
         flat
         round
         icon="delete"
         @click="onDeleteClick"/>
       <q-btn
-        v-if="curUser?.isAdmin && tabName === 'episodes'"
+        v-if="curUser?.roles?.includes('admin') && tabName === 'episodes'"
         flat
         round
         icon="upload"
@@ -17,8 +17,8 @@
       <q-space/>
       <q-tabs :model-value="tabName" @update:model-value="onTabChange" shrink>
         <q-tab name="episodes" label="Episodes"/>
-        <q-tab v-if="curUser?.isAdmin" name="torrents" label="Torrents"/>
-        <q-tab v-if="curUser?.isAdmin" name="conversions" label="Conversions"/>
+        <q-tab v-if="curUser?.roles?.includes('admin')" name="torrents" label="Torrents"/>
+        <q-tab v-if="curUser?.roles?.includes('admin')" name="conversions" label="Conversions"/>
       </q-tabs>
     </q-toolbar>
     <router-view></router-view>

@@ -3,16 +3,14 @@ package db
 import "os"
 
 type AuthUser struct {
-	ID    uint
-	Login string
-	Admin bool
+	ID    uint     `json:"id"`
+	Roles []string `json:"roles"`
 }
 
 func NewAuthUser(user User) AuthUser {
 	return AuthUser{
 		ID:    user.ID,
-		Login: user.Login,
-		Admin: user.Admin,
+		Roles: user.Roles,
 	}
 }
 

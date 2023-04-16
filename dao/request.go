@@ -44,6 +44,19 @@ type NewUserRequestDao struct {
 	Email string `json:"email" binding:"required"`
 }
 
+type OwnerCreateUserRequestDao struct {
+	Login string   `json:"login" binding:"required"`
+	Pass  string   `json:"pass" binding:"required"`
+	Email string   `json:"email" binding:"required"`
+	Roles []string `json:"roles"`
+}
+
+type ModifyUserRequestDao struct {
+	Name  string `json:"name"`
+	Pass  string `json:"pass"`
+	Email string `json:"email"`
+}
+
 type AuthRequestDao struct {
 	User string `json:"user" binding:"required"`
 	Pass string `json:"pass" binding:"required"`

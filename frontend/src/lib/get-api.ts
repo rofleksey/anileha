@@ -35,6 +35,17 @@ export async function fetchAllTorrents(): Promise<Torrent[]> {
   return data;
 }
 
+export async function fetchAllUsers(): Promise<User[]> {
+  const {data}: { data: User[] } = await axios.get(
+    `${BASE_URL}/owner/user`,
+    {
+      withCredentials: true,
+    }
+  );
+  return data;
+}
+
+
 export async function fetchAllConversions(): Promise<Conversion[]> {
   const {data}: { data: Conversion[] } = await axios.get(
     `${BASE_URL}/admin/convert`,

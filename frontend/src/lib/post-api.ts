@@ -18,6 +18,50 @@ export async function postLogin(user: string, pass: string): Promise<User> {
   return data;
 }
 
+export async function postLogout(): Promise<void> {
+  await axios.post(`${BASE_URL}/user/logout`, {}, {
+    withCredentials: true,
+  });
+}
+
+export async function postModifyAccount(name: string, pass: string, email: string): Promise<User> {
+  const {data}: { data: User } = await axios.post(`${BASE_URL}/user/modify`, {
+    name,
+    pass,
+    email,
+  }, {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function postNewUser(login: string, pass: string, email: string, roles: string[]): Promise<void> {
+  await axios.post(`${BASE_URL}/owner/user`, {
+    login,
+    pass,
+    email,
+    roles,
+  }, {
+    withCredentials: true,
+  });
+}
+
+export async function postAccountAvatar(image: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', image);
+  const {data}: { data: string } = await axios({
+    method: 'post',
+    url: `${BASE_URL}/user/avatar`,
+    data: formData,
+    headers: {'Content-Type': 'multipart/form-data'},
+    withCredentials: true,
+    timeout: LONG_TIMEOUT,
+    maxContentLength: MAX_FILE_SIZE,
+    maxBodyLength: MAX_FILE_SIZE
+  });
+  return data;
+}
+
 export async function postNewSeries(title: string, thumb: File): Promise<void> {
   const formData = new FormData();
   formData.append('title', title);

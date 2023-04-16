@@ -14,13 +14,13 @@
         icon="group"
         @click="onGroupWatch"/>
       <q-btn
-        v-if="curUser?.isAdmin"
+        v-if="curUser?.roles?.includes('admin')"
         flat
         round
         icon="image"
         @click="onRefreshThumbClick"/>
       <q-btn
-        v-if="curUser?.isAdmin"
+        v-if="curUser?.roles?.includes('admin')"
         flat
         round
         icon="delete"

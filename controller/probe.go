@@ -25,7 +25,7 @@ func registerProbeController(
 	analyzer *analyze.ProbeAnalyzer,
 ) {
 	probeGroup := engine.Group("/admin/probe")
-	probeGroup.Use(rest.AdminMiddleware(log, config))
+	probeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 	probeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,7 +58,7 @@ func registerProbeController(
 	})
 
 	analyzeGroup := engine.Group("/admin/analyze")
-	analyzeGroup.Use(rest.AdminMiddleware(log, config))
+	analyzeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 	analyzeGroup.POST("/", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {

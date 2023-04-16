@@ -72,7 +72,7 @@ func registerTorrentController(
 	torrentService *service.TorrentService,
 ) {
 	torrentGroup := engine.Group("/admin/torrent")
-	torrentGroup.Use(rest.AdminMiddleware(log, config))
+	torrentGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
 
 	torrentGroup.GET("", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAllTorrents()

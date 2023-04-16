@@ -3,7 +3,6 @@
     <q-card
       class="series-card"
       v-for="series in data"
-
       :key="series.id"
       @click="router.push(`/series/${series.id}/episodes`)">
       <q-img
@@ -14,7 +13,7 @@
         <div class="text-subtitle2 ellipsis">{{ series.title }}</div>
       </q-card-section>
     </q-card>
-    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="curUser?.isAdmin">
+    <q-page-sticky position="bottom-right" :offset="[18, 18]" v-if="curUser?.roles?.includes('admin')">
       <q-btn fab icon="add" color="accent" @click="openCreateSeriesModal"/>
     </q-page-sticky>
   </q-page>

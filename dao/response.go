@@ -74,6 +74,15 @@ type EpisodeResponseDao struct {
 	Url          string    `json:"link"`
 }
 
+type UserResponseDao struct {
+	ID    uint     `json:"id"`
+	Login string   `json:"login"`
+	Name  string   `json:"name"`
+	Email string   `json:"email"`
+	Roles []string `json:"roles"`
+	Thumb string   `json:"thumb"`
+}
+
 type SubsType string
 
 const (

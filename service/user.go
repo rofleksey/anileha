@@ -154,6 +154,14 @@ func (s *UserService) GetById(id uint) (*db.User, error) {
 	return user, nil
 }
 
+func (s *UserService) GetAll() ([]db.User, error) {
+	userArr, err := s.userRepo.GetAll()
+	if err != nil {
+		return nil, rest.ErrInternal(err.Error())
+	}
+	return userArr, nil
+}
+
 func (s *UserService) GetByLogin(login string) (*db.User, error) {
 	user, err := s.userRepo.GetByLogin(login)
 	if err != nil {
@@ -185,16 +193,44 @@ func (s *UserService) CheckExists(login string, email string) error {
 	return nil
 }
 
-func (s *UserService) CreateManually(username string, password string, email string) error {
+func (s *UserService) CreateManually(username string, password string, email string, roles []string) error {
 	hash, _ := util.HashPassword(password, s.config.User.Salt)
 	user := db.User{
 		Login: username,
+		Name:  username,
 		Hash:  hash,
-		Admin: false,
+		Roles: roles,
 		Email: email,
 	}
 	if _, err := s.userRepo.Create(&user); err != nil {
 		return rest.ErrBadRequest(err.Error())
+	}
+	return nil
+}
+
+func (s *UserService) Modify(id uint, name string, pass string, email string) error {
+	var hash string
+
+	if pass != "" {
+		hash, _ = util.HashPassword(pass, s.config.User.Salt)
+	}
+
+	err := s.userRepo.Modify(id, &db.User{
+		Name:  name,
+		Hash:  hash,
+		Email: email,
+	})
+
+	if err != nil {
+		return rest.ErrInternal(err.Error())
+	}
+	return nil
+}
+
+func (s *UserService) SetThumb(id uint, thumb db.Thumb) error {
+	err := s.userRepo.SetThumb(id, thumb)
+	if err != nil {
+		return rest.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -208,8 +244,9 @@ func createAdminUser(userRepo *repo.UserRepo, config *config.Config) error {
 	hash, _ := util.HashPassword(config.Admin.Password, config.User.Salt)
 	user := db.User{
 		Login: username,
+		Name:  username,
 		Hash:  hash,
-		Admin: true,
+		Roles: []string{"owner", "admin"},
 	}
 	_, err = userRepo.Create(&user)
 	if err != nil {

@@ -24,7 +24,7 @@ type Client struct {
 
 func NewClient(id uint, conn *websocket.Conn, onReceive func(client *Client, bytes []byte),
 	onDisconnect func(client *Client), config *config.Config, log *zap.Logger) *Client {
-	return &Client{
+	client := &Client{
 		ID:           id,
 		Conn:         conn,
 		config:       config,
@@ -33,6 +33,10 @@ func NewClient(id uint, conn *websocket.Conn, onReceive func(client *Client, byt
 		onReceive:    onReceive,
 		onDisconnect: onDisconnect,
 	}
+
+	client.NotifyClose.Store(true)
+
+	return client
 }
 
 // Client goroutine to read messages from client

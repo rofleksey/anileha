@@ -2,6 +2,7 @@ package db
 
 import (
 	"anileha/util"
+	"gorm.io/datatypes"
 	"time"
 )
 
@@ -132,7 +133,9 @@ type User struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Login     string `gorm:"uniqueIndex"`
+	Name      string
 	Hash      string
 	Email     string `gorm:"uniqueIndex"`
-	Admin     bool
+	Roles     datatypes.JSONSlice[string]
+	Thumb     Thumb `gorm:"embedded"`
 }

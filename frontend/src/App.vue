@@ -33,7 +33,10 @@
           <q-btn round dense flat color="grey-13" icon="notifications">
             <q-tooltip>Notifications</q-tooltip>
           </q-btn>
-          <q-btn round flat @click="openLoginModal" :icon="curUser ? 'person_off' : 'person'">
+          <q-avatar style="cursor: pointer" v-if="curUser" @click="openAccountSettingsModal">
+            <img :src="curUser?.thumb || '/face.jpg'" alt="avatar" />
+          </q-avatar>
+          <q-btn v-else round flat @click="openLoginModal" icon="person">
             <q-tooltip>Account</q-tooltip>
           </q-btn>
         </div>
@@ -63,11 +66,29 @@
             </q-item-section>
           </q-item>
 
-          <template v-if="curUser?.isAdmin">
+          <template v-if="curUser?.roles?.includes('admin')">
             <q-separator class="q-my-md"/>
 
             <q-item
               v-for="link in adminLinks"
+              :key="link.text"
+              @click="router.push(link.page)"
+              v-ripple
+              clickable>
+              <q-item-section avatar>
+                <q-icon color="gray-12" :name="link.icon"/>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ link.text }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+
+          <template v-if="curUser?.roles?.includes('owner')">
+            <q-separator class="q-my-md"/>
+
+            <q-item
+              v-for="link in ownerLinks"
               :key="link.text"
               @click="router.push(link.page)"
               v-ripple
@@ -125,6 +146,7 @@ import LoginModal from 'components/modal/LoginModal.vue';
 import {useQuasar} from 'quasar';
 import {User} from 'src/lib/api-types';
 import Logo from './assets/logo.jpg'
+import AccountSettingsModal from 'components/modal/AccountSettingsModal.vue';
 
 const quasar = useQuasar();
 const router = useRouter();
@@ -151,6 +173,10 @@ const adminLinks = ref<LinkItem[]>([
   {icon: 'settings_backup_restore', text: 'Conversions', page: '/conversions'},
 ]);
 
+const ownerLinks = ref<LinkItem[]>([
+  {icon: 'person', text: 'Users', page: '/users'},
+]);
+
 const buttons1 = ref<ButtonItem[]>([
   {text: 'About'},
 ]);
@@ -167,6 +193,12 @@ function openLoginModal() {
     component: LoginModal,
   }).onOk(() => {
     console.log('login success');
+  });
+}
+
+function openAccountSettingsModal() {
+  quasar.dialog({
+    component: AccountSettingsModal,
   });
 }
 

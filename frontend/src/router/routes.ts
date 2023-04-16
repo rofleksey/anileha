@@ -22,6 +22,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('pages/AllConversionsPage.vue'),
   },
   {
+    path: '/users',
+    name: 'all-users',
+    component: () => import('pages/AllUsersPage.vue'),
+  },
+  {
     path: '/series/:seriesId',
     name: 'series-parent',
     component: () => import('pages/series/SeriesParentPage.vue'),
