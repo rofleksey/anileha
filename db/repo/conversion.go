@@ -34,7 +34,7 @@ func (r *ConversionRepo) GetById(id uint) (*db.Conversion, error) {
 
 func (r *ConversionRepo) ResetProcessing() error {
 	return r.db.Model(&db.Conversion{}).
-		Where("status = ? OR status = ?", db.ConversionProcessing, db.ConversionCreated).
+		Where("status = ? OR status = ? OR status = ?", "", db.ConversionProcessing, db.ConversionCreated).
 		Updates(db.Conversion{Status: db.ConversionError}).Error
 }
 

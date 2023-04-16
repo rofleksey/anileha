@@ -247,6 +247,7 @@ func (s *ConversionService) prepareConversion(
 		VideoPath:        videoPath,
 		LogPath:          logsPath,
 		Command:          command.String(),
+		Status:           db.ConversionCreated,
 		VideoDurationSec: durationSec,
 	}
 	_, err := s.conversionRepo.Create(&conversion)
