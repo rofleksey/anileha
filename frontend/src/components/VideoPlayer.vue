@@ -13,17 +13,15 @@
       :height="videoHeight"></canvas>
     <div class="video-container">
       <q-inner-loading :showing="props.loading">
-        <slot>
-          <q-circular-progress
-            show-value
-            style="margin: 0"
-            class="text-light-blue q-ma-md"
-            :value="Math.floor(100 * props.progress)"
-            track-color="grey-9"
-            size="xl"
-            color="light-blue"
-          />
-        </slot>
+        <q-circular-progress
+          show-value
+          style="margin: 0"
+          class="text-light-blue q-ma-md"
+          :value="Math.floor(100 * props.progress)"
+          track-color="grey-9"
+          size="xl"
+          color="light-blue"
+        />
       </q-inner-loading>
       <video
         preload
