@@ -52,7 +52,7 @@ export function showHint(title: string, message?: string) {
   })
 }
 
-export type FileType = 'video' | 'audio' | 'subtitle' | 'unknown'
+export type FileType = 'video' | 'audio' | 'subtitle' | 'font' | 'unknown'
 
 export function getFileType(path: string): FileType {
   const lowerCase = path.toLowerCase();
@@ -65,6 +65,9 @@ export function getFileType(path: string): FileType {
   }
   if (SUBTITLE_EXTENSIONS.includes(ext)) {
     return 'subtitle';
+  }
+  if (FONT_EXTENSIONS.includes(ext)) {
+    return 'font';
   }
   return 'unknown';
 }
@@ -102,4 +105,8 @@ const AUDIO_EXTENSIONS = [
 
 const SUBTITLE_EXTENSIONS = [
   'srt', 'ssa', 'ass'
+]
+
+const FONT_EXTENSIONS = [
+  'ttc', 'otf', 'ttf', 'woff', 'woff2'
 ]
