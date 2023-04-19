@@ -28,6 +28,7 @@
         draggable="false"
         ref="videoRef"
         class="video"
+        :poster="props.poster"
         :src="props.src"/>
       <slot :playing="playing"></slot>
       <div class="controls">
@@ -81,6 +82,7 @@ import {useInterval} from 'src/lib/composables';
 
 interface Props {
   src: Blob | string;
+  poster: string;
   loading?: boolean;
   progress?: number;
 }

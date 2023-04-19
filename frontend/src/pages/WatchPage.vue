@@ -26,7 +26,11 @@
         icon="delete"
         @click="onDeleteClick"/>
     </q-toolbar>
-    <VideoPlayer style="margin-top: 10px" :src="videoSrc"/>
+    <VideoPlayer
+      style="margin-top: 10px"
+      :src="videoSrc"
+      :poster="posterSrc"
+    />
   </q-page>
 </template>
 
@@ -65,6 +69,14 @@ const videoSrc = computed(() => {
     return '';
   }
   return `${BASE_URL}${episode.link}`
+});
+
+const posterSrc = computed(() => {
+  const episode = data.value;
+  if (!episode) {
+    return '';
+  }
+  return `${BASE_URL}${episode.thumb}`
 });
 
 function onGroupWatch() {

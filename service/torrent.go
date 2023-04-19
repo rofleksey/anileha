@@ -249,9 +249,8 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 
 		var oldPath string
 
-		if len(torrent.Files) > 1 {
-			oldPath = path.Join(s.downloadsFolder, torrent.Name, torrent.Files[i].TorrentPath)
-		} else {
+		oldPath = path.Join(s.downloadsFolder, torrent.Name, torrent.Files[i].TorrentPath)
+		if _, err := os.Stat(oldPath); err != nil {
 			oldPath = path.Join(s.downloadsFolder, torrent.Files[i].TorrentPath)
 		}
 
@@ -473,6 +472,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 
 	cTorrent.Drop()
 	s.cTorrentMap.Delete(torrent.ID)
+	<-cTorrent.Closed()
 
 	if torrent.Auto.Data() != nil {
 		go s.startAutoDownload(torrent.ID)
