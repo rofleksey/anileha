@@ -18,11 +18,14 @@ func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileR
 	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
 		res = append(res, dao.TorrentFileResponseDao{
-			Path:        f.TorrentPath,
-			Status:      f.Status,
-			Selected:    f.Selected,
-			Length:      f.Length,
-			ClientIndex: f.ClientIndex,
+			Path:              f.TorrentPath,
+			Status:            f.Status,
+			Selected:          f.Selected,
+			Length:            f.Length,
+			ClientIndex:       f.ClientIndex,
+			Type:              f.Type,
+			SuggestedMetadata: f.SuggestedMetadata.Data(),
+			Analysis:          f.Analysis.Data(),
 		})
 	}
 	return res
@@ -123,7 +126,7 @@ func registerTorrentController(
 			c.Error(err)
 			return
 		}
-		if torrent.Status == db.TorrentDownloading {
+		if torrent.Status == db.TorrentDownload || torrent.Status == db.TorrentAnalysis {
 			c.Error(rest.ErrAlreadyStarted)
 			return
 		}
@@ -145,7 +148,7 @@ func registerTorrentController(
 			c.Error(err)
 			return
 		}
-		if torrent.Status != db.TorrentDownloading {
+		if torrent.Status != db.TorrentDownload {
 			c.String(http.StatusOK, "Already stopped")
 			return
 		}

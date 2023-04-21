@@ -70,7 +70,51 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
-	config := Config{}
+	config := Config{
+		Db: DbConfig{
+			Host:     "localhost",
+			Port:     5432,
+			DbName:   "anileha",
+			Username: "postgres",
+			Password: "postgres",
+		},
+		Rest: RestConfig{
+			Port:    7891,
+			BaseUrl: "http://127.0.0.1:7891",
+		},
+		WebSocket: WebSocketConfig{
+			WriteTimeoutMs:        10000,
+			PingTimeoutMs:         30000,
+			PingIntervalMs:        20000,
+			MaxMessageSize:        1024,
+			BufferSize:            1024,
+			MessageChanBufferSize: 256,
+		},
+		Data: DataConfig{
+			Dir: "data",
+		},
+		Thumb: ThumbConfig{
+			Attempts: 5,
+		},
+		User: UserConfig{
+			Salt:             "salt",
+			CookieHashKey:    "qwertyuiopasdfghjkl;'zxcvbnm,.qw",
+			CookieEncryptKey: "qwertyuiopasdfgh",
+		},
+		Admin: AdminConfig{
+			Username: "admin",
+			Password: "admin",
+		},
+		Mail: MailConfig{
+			Server:               "your.smtp.server",
+			Port:                 1337,
+			From:                 "your@email.com",
+			Username:             "user",
+			Password:             "pass",
+			Subject:              "AniLeha registration",
+			RegisterTemplatePath: "register.tmpl",
+		},
+	}
 
 	configBytes, err := os.ReadFile("config.yaml")
 	if err != nil {

@@ -22,7 +22,7 @@ export interface Progress {
   speed: number;
 }
 
-export type TorrentStatus = 'idle' | 'download' | 'error' | 'ready'
+export type TorrentStatus = 'idle' | 'download' | 'analysis' | 'error' | 'ready'
 
 export interface Torrent {
   id: number;
@@ -39,12 +39,22 @@ export interface TorrentWithFiles extends Torrent {
   files: TorrentFile[];
 }
 
+export interface FileMetadata {
+  episode: string;
+  season: string;
+}
+
+export type FileType = 'video' | 'audio' | 'subtitle' | 'font' | 'archive' | 'unknown'
+
 export interface TorrentFile {
   clientIndex: number;
   selected: boolean;
   path: string;
   status: TorrentStatus;
   length: number;
+  type: FileType;
+  suggestedMetadata: FileMetadata;
+  analysis: Analysis | null;
 }
 
 export type ConversionStatus = 'created' | 'processing' | 'error' | 'cancelled' | 'ready'
@@ -98,8 +108,6 @@ export interface Analysis {
   video: VideoStream;
   audio: BaseStream[];
   sub: SubStream[];
-  season: string;
-  episode: string;
 }
 
 export interface ConversionPreference {
@@ -128,7 +136,7 @@ export interface RoomState {
   initiatorId?: number;
 }
 
-export interface WatcherState extends WatcherStatePartial{
+export interface WatcherState extends WatcherStatePartial {
   id: number;
   name: string;
   thumb: string;

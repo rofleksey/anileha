@@ -13,6 +13,7 @@
       :src="videoSrc"
       :loading="videoLoading"
       :progress="videoProgress"
+      pause-on-seek
       @play="onPlay"
       @pause="onPause"
       @time="onTime"
@@ -358,6 +359,7 @@ onUnmounted(() => {
 
 <style lang="sass" scoped>
 .RoomUsers
+  pointer-events: none
   position: absolute
   left: 0
   top: 0

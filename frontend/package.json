@@ -20,6 +20,7 @@
     "cors-backdoor": "^1.0.6",
     "format-duration": "^3.0.2",
     "lodash": "^4.17.21",
+    "mobile-detect": "^1.4.5",
     "nanoid": "^4.0.2",
     "pinia": "^2.0.11",
     "pretty-bytes": "^6.1.0",

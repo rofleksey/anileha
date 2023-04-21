@@ -39,11 +39,14 @@ type TorrentResponseWithoutFilesDao struct {
 }
 
 type TorrentFileResponseDao struct {
-	Path        string               `json:"path"`
-	Status      db.TorrentFileStatus `json:"status"`
-	Selected    bool                 `json:"selected"`
-	Length      uint                 `json:"length"`
-	ClientIndex int                  `json:"clientIndex"`
+	Path              string               `json:"path"`
+	Status            db.TorrentFileStatus `json:"status"`
+	Selected          bool                 `json:"selected"`
+	Length            uint                 `json:"length"`
+	ClientIndex       int                  `json:"clientIndex"`
+	Type              util.FileType        `json:"type"`
+	SuggestedMetadata db.EpisodeMetadata   `json:"suggestedMetadata"`
+	Analysis          *db.AnalysisResult   `json:"analysis"`
 }
 
 type ConversionResponseDao struct {
@@ -81,52 +84,4 @@ type UserResponseDao struct {
 	Email string   `json:"email"`
 	Roles []string `json:"roles"`
 	Thumb string   `json:"thumb"`
-}
-
-type SubsType string
-
-const (
-	SubsText    SubsType = "text"
-	SubsPicture SubsType = "picture"
-	SubsUnknown SubsType = "unknown"
-)
-
-type BaseStream struct {
-	RelativeIndex int    `json:"index"`
-	Name          string `json:"name"`
-	Size          uint64 `json:"size"`
-	Lang          string `json:"lang"`
-}
-
-type VideoStream struct {
-	BaseStream
-	Width       int `json:"width"`
-	Height      int `json:"height"`
-	DurationSec int `json:"durationSec"`
-}
-
-type AudioStream struct {
-	BaseStream
-}
-
-type SubStream struct {
-	BaseStream
-	Type       SubsType `json:"type"`
-	TextLength int      `json:"textLength"`
-}
-
-type AnalysisResult struct {
-	Video VideoStream   `json:"video"`
-	Audio []AudioStream `json:"audio"`
-	Sub   []SubStream   `json:"sub"`
-}
-
-type EpisodeMetadata struct {
-	Episode string `json:"episode"`
-	Season  string `json:"season"`
-}
-
-type AnalysisResponseDao struct {
-	*AnalysisResult
-	EpisodeMetadata
 }

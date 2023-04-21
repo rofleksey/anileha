@@ -80,8 +80,6 @@ func (o *option) getStrings() []string {
 }
 
 func NewCommand(inputFile string, videoDurationSec int, outputFile string) *Command {
-	// frame=  524 fps= 79 q=-1.0 Lsize=    8014kB time=00:00:22.66 bitrate=2896.6kbits/s speed=3.43x
-	// need to parse time here
 	command := Command{
 		opts:             make([]option, 0, 32),
 		videoDurationSec: videoDurationSec,
@@ -97,6 +95,8 @@ func NewCommand(inputFile string, videoDurationSec int, outputFile string) *Comm
 }
 
 func (c *Command) parseTime(line string) uint64 {
+	// frame=  524 fps= 79 q=-1.0 Lsize=    8014kB time=00:00:22.66 bitrate=2896.6kbits/s speed=3.43x
+	// need to parse time here
 	matchResult := timeRegex.FindStringSubmatch(line)
 	if matchResult != nil {
 		hours, _ := strconv.Atoi(matchResult[1])

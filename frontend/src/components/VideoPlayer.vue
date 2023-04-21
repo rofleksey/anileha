@@ -1,10 +1,6 @@
 <template>
   <div
     :class="{player: true, loading: props.loading, immersed: !showControls}"
-    @mousemove="restartHideControlsTimer"
-    @keydown="playerKeyboardListener"
-    @click="togglePlayback"
-    tabIndex="-1"
     ref="playerRef">
     <canvas
       ref="canvasRef"
@@ -29,19 +25,31 @@
         ref="videoRef"
         class="video"
         :poster="props.poster"
-        :src="props.src"/>
+        :src="props.src"
+        @mousemove.self="onVideoMove"
+        @touchmove.self="onVideoTouchMove"
+        @keydown.self="playerKeyboardListener"
+        @touchstart.self="onVideoTouchDown"
+        @mousedown.self="onVideoPress"
+        @touchend.self="onVideoTouchUp"
+        @dblclick.self="isMobile && togglePlayback"
+        @canplay="emit('canplay')"
+        tabIndex="-1"/>
       <slot :playing="playing"></slot>
+      <div class="centerTextContainer">
+        <div :class="{centerText: true, visible: centerTextVisible}">{{ centerText }}</div>
+      </div>
       <div class="controls">
         <div>
           <button
             :class="{'play-pause-btn': true, play: playing, pause: !playing}"
-            @click="togglePlayback"/>
+            @mousedown.stop="onPlayPress"/>
           <div>{{ videoTimestampStr }}</div>
           <div
             class="slider seeker"
-            @mousemove="onPreviewHover"
-            @mousedown="seekToPreview"
-            @click="(e)=> { e.stopPropagation() }"
+            @mousemove.stop="onPreviewHover"
+            @touchmove.stop="seekPreview"
+            @mousedown.stop="seekPreview"
             ref="sliderRef">
             <div class="preview"
                  :style="{left: `${previewLeft * 100}%`}">
@@ -53,14 +61,14 @@
           <div class="duration">{{ totalDurationStr }}</div>
           <div
             class="slider volume"
-            @mousemove="onVolumeHover"
-            @mousedown="seekToVolume"
-            @click="(e) => { e.stopPropagation() }"
+            @mousemove.stop="onVolumeHover"
+            @touchmove.stop="seekVolume"
+            @mousedown.stop="seekVolume"
             ref="volumeSliderRef">
             <div class="handle"
                  :style="{width: `${volume * 100}%`}"/>
           </div>
-          <button @click="toggleFullscreen">
+          <button @mousedown.stop="toggleFullscreen">
             <svg class="icon">
               <g>
                 <polygon points="8,2 14,2 14,8 12,8 12,4 8,4"/>
@@ -75,16 +83,17 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, ref, watch} from 'vue';
 import {clamp, throttle} from 'lodash';
 import formatDuration from 'format-duration';
-import {useInterval} from 'src/lib/composables';
+import {useInterval, useMobileDetect} from 'src/lib/composables';
 
 interface Props {
   src: Blob | string;
   poster: string;
   loading?: boolean;
   progress?: number;
+  pauseOnSeek?: boolean;
 }
 
 const props = defineProps<Props>()
@@ -94,11 +103,13 @@ const emit = defineEmits<{
   (e: 'seek', timestamp: number): void
   (e: 'play'): void
   (e: 'pause'): void
+  (e: 'canplay'): void
 }>()
 
 let hideControlsTimer: NodeJS.Timeout | number | undefined = undefined;
+let centerTextTimeout: NodeJS.Timeout | number | undefined = undefined;
 
-useInterval(updateTime, 100)
+useInterval(updateTime, 100);
 
 const canvasRef = ref<HTMLCanvasElement | undefined>()
 const playerRef = ref<HTMLDivElement | undefined>();
@@ -114,6 +125,9 @@ const totalDuration = ref(1);
 const previewLeft = ref(0);
 const volume = ref(1);
 const showControls = ref(true);
+const centerText = ref('');
+const centerTextVisible = ref(false);
+const isMobile = useMobileDetect().mobile();
 
 const totalDurationStr = computed(() => formatDuration(totalDuration.value * 1000));
 const previewTimestampStr = computed(() => formatDuration(previewTimestamp.value * 1000));
@@ -136,7 +150,7 @@ watch(videoRef, () => {
 watch(playing, () => {
   if (playing.value) {
     videoRef.value?.play();
-    restartHideControlsTimer()
+    restartHideControlsTimer();
   } else {
     videoRef.value?.pause();
     stopHideControlsTimer();
@@ -152,13 +166,11 @@ watch(volume, () => {
 })
 
 function stopHideControlsTimer() {
-  if (hideControlsTimer !== undefined) {
-    clearTimeout(hideControlsTimer);
-  }
+  clearTimeout(hideControlsTimer);
 }
 
 function restartHideControlsTimer() {
-  if (!showControls.value) {
+  if (!showControls.value && !isMobile) {
     showControls.value = true;
   }
   if (!playing.value) {
@@ -200,21 +212,157 @@ function playerKeyboardListener(e: KeyboardEvent) {
   }
 }
 
-function togglePlayback(e?: MouseEvent) {
+function hideCenterText() {
+  centerTextVisible.value = false;
+}
+
+function showCenterText(text: string, timeout?: number) {
+  if (!isMobile) {
+    return
+  }
+
+  centerText.value = text;
+  centerTextVisible.value = true;
+
+  clearTimeout(centerTextTimeout);
+
+  if (timeout) {
+    centerTextTimeout = setTimeout(hideCenterText, timeout);
+  }
+}
+
+let videoPressTimeout: NodeJS.Timeout | number | undefined;
+let videoSeeking = false;
+let videoPressTimestamp = 0;
+let curTimestampDiff = 0;
+let previousTouch: Touch | undefined;
+
+function onVideoTouchDown() {
+  if (!isMobile) {
+    return
+  }
+  if (!videoSeeking) {
+    videoPressTimestamp = videoRef.value?.currentTime ?? 0;
+    curTimestampDiff = 0;
+    videoSeeking = true;
+  }
+}
+
+function onVideoTouchUp() {
+  if (!isMobile && !videoSeeking) {
+    return
+  }
+  hideCenterText();
+  videoSeeking = false;
+  previousTouch = undefined;
+}
+
+function onVideoTouchMove(e: TouchEvent) {
+  if (!isMobile || !videoSeeking) {
+    return;
+  }
+  const curTouch = e.touches[0];
+  if (!previousTouch) {
+    previousTouch = curTouch;
+    return;
+  }
+
+  const moveX = curTouch.pageX - previousTouch.pageX;
+  const moveY = curTouch.pageY - previousTouch.pageY;
+  previousTouch = curTouch;
+
+  if (Math.abs(moveY) > Math.abs(moveX)) {
+    return;
+  }
+
+  const moveDiff = Math.pow(Math.abs(moveX), 1.5) * Math.sign(moveX) / 20;
+
+  curTimestampDiff += moveDiff;
+  if (Math.abs(curTimestampDiff) > 0) {
+    const sign = curTimestampDiff >= 0 ? '+' : '-';
+    const units = playing.value ? 's' : 'frames';
+    showCenterText(`${sign}${Math.round(Math.abs(curTimestampDiff))} ${units}`);
+    const actualDiff = playing.value ? curTimestampDiff : curTimestampDiff / 24;
+    const newTimestamp = clamp(videoPressTimestamp + actualDiff, 0, totalDuration.value);
+    seekThrottle(newTimestamp);
+  }
+}
+
+function onVideoMove(e: MouseEvent) {
+  if (isMobile) {
+    return
+  }
+  restartHideControlsTimer();
+}
+
+function onVideoPress(e: MouseEvent) {
+  if (isMobile) {
+    // on double tap
+    if (videoPressTimeout) {
+      clearTimeout(videoPressTimeout);
+      videoPressTimeout = undefined;
+
+      const bounds = (e.target as HTMLDivElement).getBoundingClientRect();
+      const clickX = e.clientX - bounds.left;
+      const curTime = videoRef.value?.currentTime ?? 0;
+      const timeDiff = playing.value ? 10 : (1 / 24);
+      const timeDiffStr = playing.value ? '10' : '1';
+      const units = playing.value ? 's' : 'frames';
+
+      if (clickX <= bounds.width / 3) {
+        seekTo(clamp(curTime - timeDiff, 0, totalDuration.value), false, false);
+        showCenterText(`-${timeDiffStr} ${units}`, 300);
+        return;
+      }
+
+      if (clickX >= 2 * bounds.width / 3) {
+        seekTo(clamp(curTime + timeDiff, 0, totalDuration.value), false, false);
+        showCenterText(`+${timeDiffStr} ${units}`, 300);
+        return;
+      }
+
+      togglePlayback();
+      return;
+    }
+    // on single tap
+    videoPressTimeout = setTimeout(() => {
+      showControls.value = !showControls.value;
+      if (showControls.value) {
+        restartHideControlsTimer();
+      }
+      videoPressTimeout = undefined;
+    }, 250);
+    return;
+  }
+  togglePlayback();
+}
+
+function onPlayPress(e?: MouseEvent) {
+  togglePlayback();
+}
+
+function togglePlayback() {
   const newValue = !playing.value
   playing.value = newValue;
   if (newValue) {
-    emit('play')
+    emit('play');
+    showCenterText('>', 300);
   } else {
-    emit('pause')
+    emit('pause');
+    showCenterText('||', 300);
   }
-  e?.stopPropagation();
 }
 
-function movePreview(e: MouseEvent) {
+function movePreview(e: MouseEvent | TouchEvent) {
   const bounds = (e.target as HTMLDivElement).getBoundingClientRect();
   const maxDx = (sliderRef.value as HTMLDivElement).clientWidth;
-  const dx = clamp(e.clientX - bounds.left, 0, maxDx);
+  let clientX: number
+  if ((e as any).clientX) {
+    clientX = (e as MouseEvent).clientX;
+  } else {
+    clientX = (e as TouchEvent).touches[0].clientX;
+  }
+  const dx = clamp(clientX - bounds.left, 0, maxDx);
   previewTimestamp.value = totalDuration.value * dx / maxDx;
   previewLeft.value = dx / maxDx;
   restartHideControlsTimer();
@@ -246,7 +394,7 @@ function seekTo(newTime: number, throttle: boolean, remote?: boolean) {
   }
 
   videoTimestamp.value = video.currentTime;
-  if (!remote) {
+  if (!remote && props.pauseOnSeek) {
     playing.value = false;
   }
 
@@ -255,30 +403,36 @@ function seekTo(newTime: number, throttle: boolean, remote?: boolean) {
 
 function onPreviewHover(e: MouseEvent) {
   if (e.buttons === 1 || e.buttons === 3) {
-    seekToPreview(e);
+    seekPreview(e);
   } else {
     movePreview(e);
   }
 }
 
-function seekToPreview(e: MouseEvent) {
+function seekPreview(e: MouseEvent | TouchEvent) {
   const newProgress = movePreview(e);
   const newTime = newProgress * totalDuration.value;
   seekTo(newTime, true);
 }
 
-function onVolumeHover(e: MouseEvent) {
-  if (e.buttons === 1 || e.buttons === 3) {
-    seekToVolume(e);
-  }
-}
-
-function seekToVolume(e: MouseEvent) {
+function seekVolume(e: MouseEvent | TouchEvent) {
   const bounds = (e.target as HTMLDivElement).getBoundingClientRect();
   const maxDx = (volumeSliderRef.value as HTMLDivElement).clientWidth;
-  const dx = clamp(e.clientX - bounds.left, 0, maxDx);
+  let clientX: number
+  if ((e as any).clientX) {
+    clientX = (e as MouseEvent).clientX;
+  } else {
+    clientX = (e as TouchEvent).touches[0].clientX;
+  }
+  const dx = clamp(clientX - bounds.left, 0, maxDx);
   volume.value = dx / maxDx;
   restartHideControlsTimer();
+}
+
+function onVolumeHover(e: MouseEvent) {
+  if (e.buttons === 1 || e.buttons === 3) {
+    seekVolume(e);
+  }
 }
 
 function toggleFullscreen(e?: MouseEvent) {
@@ -302,7 +456,6 @@ function toggleFullscreen(e?: MouseEvent) {
 defineExpose({
   seek: (time: number) => seekTo(time, false, true),
   setPlaying: (value: boolean) => {
-    console.log(`video player - set playing - ${value}`)
     playing.value = value;
   },
   getTimestamp: () => {
@@ -507,15 +660,29 @@ button > svg
   &.immersed .userList
     opacity: 0.5
 
-  .userList
-    transform: scale(1)
+.centerTextContainer
+  pointer-events: none
+  display: flex
+  align-items: center
+  justify-content: center
+  position: absolute
+  left: 0
+  right: 0
+  bottom: 0
+  top: 0
+  z-index: 200
+
+.centerText
+  pointer-events: none
+  opacity: 0
+  transition: opacity 0.2s ease
+  font-size: 3rem
+  font-family: monospace
+  color: white
+  background-color: rgba(0, 0, 0, 0.2)
+  padding: 10px
+
+  &.visible
     opacity: 1
 
-.dots
-  white-space: nowrap
-  overflow: hidden
-  -o-text-overflow: ellipsis
-  text-overflow: ellipsis
-  max-width: 100%
-  display: inline-block
 </style>

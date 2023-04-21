@@ -11,7 +11,7 @@
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
       <q-btn
         v-if="data?.status !== 'download'"
-        :disable="dataLoading || ticked.length === 0"
+        :disable="dataLoading || ticked.length === 0 || data?.status === 'analysis'"
         fab
         icon="play_arrow"
         color="accent"
@@ -67,7 +67,7 @@ const nodes = computed(() => {
         const newNode = {
           id: (index === pathSplit.length - 1) ? file.clientIndex : miscCounter--,
           label: pathItem,
-          disabled: torrent.status === 'download',
+          disabled: torrent.status === 'download' || torrent.status === 'analysis',
           children: [],
         }
         curNodeArray.push(newNode);

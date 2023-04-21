@@ -54,11 +54,11 @@
         v-model="overrideSubLang"
         label="Preferred subtitle language"/>
 
-      <q-separator />
+      <q-separator/>
 
       <q-table
         style="width: 100%"
-        :rows="analysisData"
+        :rows="prefsData"
         :columns="analysisColumns"
         row-key="id"
         :loading="dataLoading">
@@ -81,6 +81,13 @@
               color="orange"
               size="sm"
               icon="settings"/>
+            <q-btn
+              @click="openSubtitlePreviewModal(props.row.clientIndex, props.value.stream)"
+              flat
+              round
+              color="green"
+              size="sm"
+              icon="visibility"/>
           </q-td>
         </template>
         <template v-slot:body-cell-audio="props">
@@ -143,72 +150,84 @@ import {
   StartConversionFileData,
   SubStream,
   TorrentFile,
-  TorrentWithFiles
 } from 'src/lib/api-types';
 import {fetchTorrentById} from 'src/lib/get-api';
-import {FileType, getFileType, QuasarColumnType, showError, showSuccess} from 'src/lib/util';
+import {QuasarColumnType, showError, showSuccess} from 'src/lib/util';
 import {useRoute} from 'vue-router';
 import {useQuasar} from 'quasar';
-import {postAnalyze, postStartConversion} from 'src/lib/post-api';
+import {postStartConversion} from 'src/lib/post-api';
 import PickAudioStreamModal from 'components/modal/PickAudioStreamModal.vue';
 import ChangeMetadataModal from 'components/modal/ChangeMetadataModal.vue';
 import PickSubtitleStreamModal from 'components/modal/PickSubtitleStreamModal.vue';
+import SubtitlePreviewModal from 'components/modal/SubtitlePreviewModal.vue';
 
 const quasar = useQuasar();
 const route = useRoute();
 const torrentId = computed(() => Number(route.params.torrentId));
 
-interface AnalysisWithPrefs {
-  path: string;
-  clientIndex: number;
+interface TorrentFileWithPrefs extends TorrentFile {
   analysis: Analysis;
-  fileType: FileType;
   prefs: StartConversionFileData;
 }
 
 const step = ref(1);
 const dataLoading = ref(false);
-const torrentData = ref<TorrentWithFiles | null>();
-const analysisData = ref<AnalysisWithPrefs[]>([]);
+const fileData = ref<TorrentFile[]>([]);
 const selectedForConversion = ref<TorrentFile[]>([]);
+const prefsData = ref<TorrentFileWithPrefs[]>([]);
 const overrideSeason = ref('');
 const overrideAudioLang = ref('jpn');
 const overrideSubLang = ref('eng');
 
 const readyFiles = computed(() => {
-  const torrent = torrentData.value;
-  if (!torrent) {
+  const files = fileData.value;
+  if (!files) {
     return [];
   }
-  return torrent.files.filter((file) => file.status === 'ready');
+  return files.filter((file) => file.status === 'ready');
 });
 
 const readyVideoFiles = computed(() => {
   return readyFiles.value
-    .filter((file) => getFileType(file.path) === 'video');
+    .filter((file) => file.type === 'video');
 });
 
 const externalSubtitleFiles = computed(() => {
   return readyFiles.value
-    .filter((file) => getFileType(file.path) === 'subtitle')
+    .filter((file) => file.type === 'subtitle')
     .map((file) => file.path);
 });
 
 watch(step, () => {
   const curStep = step.value;
   if (curStep === 2) {
-    startAnalysis();
+    const files = selectedForConversion.value;
+    prefsData.value = files.map((file) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const analysis = file.analysis!;
+      return {
+        ...file,
+        analysis: analysis,
+        prefs: {
+          index: file.clientIndex,
+          sub: pickSubStream(analysis.sub, overrideSubLang.value),
+          audio: pickAudioStream(analysis.audio, overrideAudioLang.value),
+          season: file.suggestedMetadata.season,
+          episode: file.suggestedMetadata.episode,
+        }
+      }
+    })
   }
 })
 
 watch(overrideSeason, () => {
   if (!overrideSeason.value) {
-    analysisData.value.map((it) => {
-      it.prefs.season = it.analysis.season;
+    prefsData.value.map((it) => {
+      it.prefs.season = it.suggestedMetadata.season;
     });
     return
   }
-  analysisData.value.forEach((it) => {
+  prefsData.value.forEach((it) => {
     it.prefs.season = overrideSeason.value;
   });
 });
@@ -217,7 +236,7 @@ watch(overrideAudioLang, () => {
   if (!overrideAudioLang.value) {
     return
   }
-  analysisData.value.forEach((it) => {
+  prefsData.value.forEach((it) => {
     it.prefs.audio = pickAudioStream(it.analysis.audio, overrideAudioLang.value);
   });
 });
@@ -226,7 +245,7 @@ watch(overrideSubLang, () => {
   if (!overrideSubLang.value) {
     return
   }
-  analysisData.value.forEach((it) => {
+  prefsData.value.forEach((it) => {
     it.prefs.sub = pickSubStream(it.analysis.sub, overrideSubLang.value);
   });
 });
@@ -283,51 +302,11 @@ function pickAudioStream(streams: BaseStream[], langPref: string | null): Conver
   };
 }
 
-async function loadAnalysis(): Promise<AnalysisWithPrefs[]> {
-  const files = selectedForConversion.value;
-  const result: AnalysisWithPrefs[] = [];
-  for (const file of files) {
-    const analysis = await postAnalyze(torrentId.value, file.clientIndex);
-    result.push({
-      path: file.path,
-      clientIndex: file.clientIndex,
-      analysis: analysis,
-      fileType: getFileType(file.path),
-      prefs: {
-        index: file.clientIndex,
-        sub: pickSubStream(analysis.sub, overrideSubLang.value),
-        audio: pickAudioStream(analysis.audio, overrideAudioLang.value),
-        season: analysis.season,
-        episode: analysis.episode
-      }
-    });
-  }
-  return result;
-}
-
-function startAnalysis() {
-  dataLoading.value = true;
-  quasar.loading.show({
-    delay: 100,
-  });
-  loadAnalysis()
-    .then((newData) => {
-      analysisData.value = newData;
-    })
-    .catch((e) => {
-      showError('failed to process files', e);
-    })
-    .finally(() => {
-      dataLoading.value = false;
-      quasar.loading.hide();
-    });
-}
-
 function startConversion() {
   dataLoading.value = true;
   postStartConversion({
     torrentId: torrentId.value,
-    files: analysisData.value.map((it) => it.prefs),
+    files: prefsData.value.map((it) => it.prefs),
   })
     .then(() => {
       showSuccess('Conversion started')
@@ -361,19 +340,19 @@ const analysisColumns: QuasarColumnType[] = [
   {
     name: 'audio',
     label: 'Audio',
-    field: (obj: AnalysisWithPrefs) => obj.prefs.audio,
+    field: (obj: TorrentFileWithPrefs) => obj.prefs.audio,
     align: 'left',
   },
   {
     name: 'sub',
     label: 'Subtitles',
-    field: (obj: AnalysisWithPrefs) => obj.prefs.sub,
+    field: (obj: TorrentFileWithPrefs) => obj.prefs.sub,
     align: 'left',
   },
   {
     name: 'meta',
     label: 'Meta',
-    field: (obj: AnalysisWithPrefs) => `E: ${obj.prefs.episode}, S: ${obj.prefs.season}`,
+    field: (obj: TorrentFileWithPrefs) => `E: ${obj.prefs.episode}, S: ${obj.prefs.season}`,
     align: 'left',
   },
 ]
@@ -386,7 +365,7 @@ function openAudioStreamPickModal(fileIndex: number, streams: BaseStream[], curI
       curIndex,
     }
   }).onOk(({stream, file}: { stream: number | undefined, file: string | undefined }) => {
-    const analysisForFile = analysisData.value.find((it) => it.clientIndex === fileIndex);
+    const analysisForFile = prefsData.value.find((it) => it.clientIndex === fileIndex);
     if (!analysisForFile) {
       return
     }
@@ -407,7 +386,7 @@ function openSubStreamPickModal(fileIndex: number, streams: SubStream[], curInde
       curFile
     }
   }).onOk(({stream, file}: { stream: number | undefined, file: string | undefined }) => {
-    const analysisForFile = analysisData.value.find((it) => it.clientIndex === fileIndex);
+    const analysisForFile = prefsData.value.find((it) => it.clientIndex === fileIndex);
     if (!analysisForFile) {
       return
     }
@@ -429,7 +408,7 @@ function openChangeMetadataModal(fileIndex: number, curEpisode: string, curSeaso
       curSeason,
     }
   }).onOk(({episode, season}: { episode: string, season: string }) => {
-    const analysisForFile = analysisData.value.find((it) => it.clientIndex === fileIndex);
+    const analysisForFile = prefsData.value.find((it) => it.clientIndex === fileIndex);
     if (!analysisForFile) {
       return
     }
@@ -438,14 +417,25 @@ function openChangeMetadataModal(fileIndex: number, curEpisode: string, curSeaso
   });
 }
 
+function openSubtitlePreviewModal(fileIndex: number, stream: number) {
+  quasar.dialog({
+    component: SubtitlePreviewModal,
+    componentProps: {
+      torrentId: torrentId.value,
+      fileIndex,
+      stream,
+    },
+  });
+}
+
 function refreshData() {
   dataLoading.value = true;
   fetchTorrentById(torrentId.value)
     .then((newTorrent) => {
-      torrentData.value = newTorrent;
+      fileData.value = newTorrent.files;
     })
     .catch((e) => {
-      showError('failed to fetch torrent', e);
+      showError('Failed to fetch torrent', e);
     })
     .finally(() => {
       dataLoading.value = false;

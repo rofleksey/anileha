@@ -53,6 +53,17 @@ func (c *EtaCalculator) Start() {
 	c.lastTime = c.startTime
 }
 
+func (c *EtaCalculator) ContinueWithNewValues(startValue float64, endValue float64) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.approxSpeed = 0
+	c.startValue = startValue
+	c.endValue = endValue
+	c.lastValue = startValue
+	c.lastTime = time.Now()
+}
+
 func (c *EtaCalculator) Update(newValue float64) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

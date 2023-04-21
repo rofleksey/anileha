@@ -9,7 +9,6 @@ import (
 	"anileha/service"
 	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/rofleksey/roflmeta"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gopkg.in/vansante/go-ffprobe.v2"
@@ -24,9 +23,10 @@ func registerProbeController(
 	torrentService *service.TorrentService,
 	analyzer *analyze.ProbeAnalyzer,
 ) {
-	probeGroup := engine.Group("/admin/probe")
+	probeGroup := engine.Group("/admin")
 	probeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
-	probeGroup.POST("/", func(c *gin.Context) {
+
+	probeGroup.POST("/probe", func(c *gin.Context) {
 		var req dao.TorrentWithFileIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
@@ -57,10 +57,8 @@ func registerProbeController(
 		c.JSON(http.StatusOK, probe)
 	})
 
-	analyzeGroup := engine.Group("/admin/analyze")
-	analyzeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
-	analyzeGroup.POST("/", func(c *gin.Context) {
-		var req dao.TorrentWithFileIndexRequestDao
+	probeGroup.POST("/subText", func(c *gin.Context) {
+		var req dao.TorrentWithFileAndStreamIndexRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(rest.ErrBadRequest(err.Error()))
 			return
@@ -79,19 +77,12 @@ func registerProbeController(
 			c.Error(rest.ErrReadyFileNotFound)
 			return
 		}
-		result, err := analyzer.Probe(*file.ReadyPath)
+		result, err := analyzer.ExtractSubText(*file.ReadyPath, req.Stream)
 		if err != nil {
 			c.Error(err)
 			return
 		}
-		metadata := roflmeta.ParseSingleEpisodeMetadata(file.TorrentPath)
-		c.JSON(http.StatusOK, dao.AnalysisResponseDao{
-			AnalysisResult: result,
-			EpisodeMetadata: dao.EpisodeMetadata{
-				Season:  metadata.Season,
-				Episode: metadata.Episode,
-			},
-		})
+		c.String(http.StatusOK, result)
 	})
 }
 

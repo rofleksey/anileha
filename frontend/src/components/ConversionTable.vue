@@ -58,6 +58,10 @@
 import durationFormat from 'format-duration';
 import {Conversion} from 'src/lib/api-types';
 import {QuasarColumnType} from 'src/lib/util';
+import {useQuasar} from 'quasar';
+import LogsPreviewModal from 'components/modal/LogsPreviewModal.vue';
+
+const quasar = useQuasar();
 
 interface Props {
   title?: string;
@@ -97,7 +101,12 @@ const columns: QuasarColumnType[] = [
 ]
 
 function onRowClick(e: any, conversion: Conversion) {
-  console.log(conversion.id);
+  quasar.dialog({
+    component: LogsPreviewModal,
+    componentProps: {
+      conversionId: conversion.id,
+    },
+  });
 }
 </script>
 

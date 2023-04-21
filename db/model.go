@@ -18,11 +18,12 @@ type Series struct {
 type TorrentStatus string
 
 const (
-	TorrentCreating    TorrentStatus = "creating"
-	TorrentIdle        TorrentStatus = "idle"
-	TorrentDownloading TorrentStatus = "download"
-	TorrentError       TorrentStatus = "error"
-	TorrentReady       TorrentStatus = "ready"
+	TorrentCreating TorrentStatus = "creating"
+	TorrentIdle     TorrentStatus = "idle"
+	TorrentDownload TorrentStatus = "download"
+	TorrentAnalysis TorrentStatus = "analysis"
+	TorrentError    TorrentStatus = "error"
+	TorrentReady    TorrentStatus = "ready"
 )
 
 type Torrent struct {
@@ -48,10 +49,11 @@ type Torrent struct {
 type TorrentFileStatus string
 
 const (
-	TorrentFileIdle        TorrentFileStatus = "idle"
-	TorrentFileDownloading TorrentFileStatus = "download"
-	TorrentFileError       TorrentFileStatus = "error"
-	TorrentFileReady       TorrentFileStatus = "ready"
+	TorrentFileIdle     TorrentFileStatus = "idle"
+	TorrentFileDownload TorrentFileStatus = "download"
+	TorrentFileAnalysis TorrentFileStatus = "analysis"
+	TorrentFileError    TorrentFileStatus = "error"
+	TorrentFileReady    TorrentFileStatus = "ready"
 )
 
 // TorrentFile Represents info about a single torrent file
@@ -63,13 +65,16 @@ type TorrentFile struct {
 	TorrentId uint
 	Torrent   Torrent `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 
-	TorrentIndex int     // TorrentIndex file index according to .torrent file system
-	TorrentPath  string  // TorrentPath file path according to .torrent file system
-	ClientIndex  int     // ClientIndex sorted by name
-	ReadyPath    *string // ReadyPath file location after successful download
-	Length       uint    // Length in bytes
-	Selected     bool
-	Status       TorrentFileStatus
+	TorrentIndex      int     // TorrentIndex file index according to .torrent file system
+	TorrentPath       string  // TorrentPath file path according to .torrent file system
+	ClientIndex       int     // ClientIndex sorted by name
+	ReadyPath         *string // ReadyPath file location after successful download
+	Length            uint    // Length in bytes
+	Selected          bool
+	Status            TorrentFileStatus
+	Type              util.FileType
+	SuggestedMetadata datatypes.JSONType[EpisodeMetadata]
+	Analysis          datatypes.JSONType[*AnalysisResult]
 }
 
 type ConversionStatus string

@@ -33,8 +33,3 @@ mail:
   password: pass
   subject: AniLeha registration
   registerTemplatePath: register.tmpl
-conversion:
-  parallelism: 1
-  prefAudioLang: jpn
-  prefSubLang: eng
-  wordsPath: words.txt

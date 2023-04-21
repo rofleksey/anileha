@@ -142,10 +142,11 @@ export async function postStopTorrent(torrentId: number): Promise<void> {
   });
 }
 
-export async function postAnalyze(torrentId: number, fileIndex: number): Promise<Analysis> {
-  const {data}: { data: Analysis } = await axios.post(`${BASE_URL}/admin/analyze`, {
+export async function postSubText(torrentId: number, fileIndex: number, stream: number): Promise<string> {
+  const {data}: { data: string } = await axios.post(`${BASE_URL}/admin/subText`, {
     id: torrentId,
     fileIndex,
+    stream,
   }, {
     withCredentials: true,
     timeout: SUPER_LONG_TIMEOUT,

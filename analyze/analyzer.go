@@ -1,7 +1,7 @@
 package analyze
 
 import (
-	"anileha/dao"
+	"anileha/db"
 	"anileha/ffmpeg"
 	"anileha/util"
 	"context"
@@ -151,20 +151,20 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	return string(content), nil
 }
 
-func (p *ProbeAnalyzer) getSubsType(stream *ffprobe.Stream) dao.SubsType {
+func (p *ProbeAnalyzer) getSubsType(stream *ffprobe.Stream) db.SubsType {
 	switch stream.CodecName {
 	case "hdmv_pgs_subtitle":
-		return dao.SubsPicture
+		return db.SubsPicture
 	case "dvd_subtitle":
-		return dao.SubsPicture
+		return db.SubsPicture
 	case "ass":
-		return dao.SubsText
+		return db.SubsText
 	case "subrip":
-		return dao.SubsText
+		return db.SubsText
 	case "srt":
-		return dao.SubsText
+		return db.SubsText
 	default:
-		return dao.SubsUnknown
+		return db.SubsUnknown
 	}
 }
 
@@ -178,7 +178,7 @@ func (p *ProbeAnalyzer) getName(stream *ffprobe.Stream) string {
 	return title
 }
 
-func (p *ProbeAnalyzer) Probe(inputFile string) (*dao.AnalysisResult, error) {
+func (p *ProbeAnalyzer) Probe(inputFile string) (*db.AnalysisResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -223,16 +223,16 @@ func (p *ProbeAnalyzer) Probe(inputFile string) (*dao.AnalysisResult, error) {
 		return nil, util.ErrVideoStreamNotFound
 	}
 
-	audioStreams := make([]dao.AudioStream, 0, len(audioIndices))
-	subStreams := make([]dao.SubStream, 0, len(subIndices))
+	audioStreams := make([]db.AudioStream, 0, len(audioIndices))
+	subStreams := make([]db.SubStream, 0, len(subIndices))
 
 	for _, audioIndex := range audioIndices {
 		size, err := p.GetStreamSize(inputFile, StreamAudio, audioIndex.RelativeIndex)
 		if err != nil {
 			continue
 		}
-		audioStreams = append(audioStreams, dao.AudioStream{
-			BaseStream: dao.BaseStream{
+		audioStreams = append(audioStreams, db.AudioStream{
+			BaseStream: db.BaseStream{
 				RelativeIndex: audioIndex.RelativeIndex,
 				Name:          p.getName(audioIndex.Stream),
 				Size:          size,
@@ -254,8 +254,8 @@ func (p *ProbeAnalyzer) Probe(inputFile string) (*dao.AnalysisResult, error) {
 			p.log.Warn("failed to get subtitle stream size", zap.Int("relativeIndex", subIndex.RelativeIndex), zap.Error(err))
 		}
 
-		subStreams = append(subStreams, dao.SubStream{
-			BaseStream: dao.BaseStream{
+		subStreams = append(subStreams, db.SubStream{
+			BaseStream: db.BaseStream{
 				RelativeIndex: subIndex.RelativeIndex,
 				Name:          p.getName(subIndex.Stream),
 				Size:          size,
@@ -271,15 +271,15 @@ func (p *ProbeAnalyzer) Probe(inputFile string) (*dao.AnalysisResult, error) {
 		p.log.Warn("failed to get video duration", zap.String("inputFile", inputFile), zap.Error(err))
 	}
 
-	videoStream := dao.VideoStream{
-		BaseStream: dao.BaseStream{
+	videoStream := db.VideoStream{
+		BaseStream: db.BaseStream{
 			RelativeIndex: videoIndex.RelativeIndex,
 			Name:          p.getName(videoIndex.Stream),
 		},
 		DurationSec: durationSec,
 	}
 
-	return &dao.AnalysisResult{
+	return &db.AnalysisResult{
 		Video: videoStream,
 		Audio: audioStreams,
 		Sub:   subStreams,

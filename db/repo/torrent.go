@@ -6,6 +6,7 @@ import (
 	"anileha/util"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -24,12 +25,12 @@ func NewTorrentRepo(db *gorm.DB, log *zap.Logger) *TorrentRepo {
 func (r *TorrentRepo) ResetDownloadStatus() error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&db.Torrent{}).
-			Where("status = ? or status = ?", db.TorrentDownloading, db.TorrentCreating).
+			Where("status = ? or status = ? or status = ?", db.TorrentDownload, db.TorrentCreating, db.TorrentAnalysis).
 			Updates(db.Torrent{Status: db.TorrentError}).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&db.TorrentFile{}).
-			Where("status = ?", db.TorrentFileDownloading).
+			Where("status = ?", db.TorrentFileDownload).
 			Updates(map[string]interface{}{"status": db.TorrentFileError, "selected": false}).Error; err != nil {
 			return err
 		}
@@ -53,19 +54,19 @@ func (r *TorrentRepo) DeleteById(id uint) error {
 	})
 }
 
-func (r *TorrentRepo) SetReady(torrent db.Torrent) error {
+func (r *TorrentRepo) SetPreAnalysis(torrent db.Torrent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// update torrent status
-		if err := tx.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TorrentReady}).Error; err != nil {
+		if err := tx.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TorrentAnalysis}).Error; err != nil {
 			return err
 		}
 
 		// update downloaded files' statuses
 		for _, file := range torrent.Files {
-			if file.Selected && file.Status != db.TorrentFileReady {
+			if file.Selected && file.Status != db.TorrentFileAnalysis && file.Status != db.TorrentFileReady {
 				if err := tx.Model(&db.TorrentFile{}).
 					Where("id = ?", file.ID).
-					Updates(db.TorrentFile{Status: db.TorrentFileReady, ReadyPath: file.ReadyPath}).Error; err != nil {
+					Updates(db.TorrentFile{Status: db.TorrentFileAnalysis, ReadyPath: file.ReadyPath}).Error; err != nil {
 					return err
 				}
 			}
@@ -76,9 +77,50 @@ func (r *TorrentRepo) SetReady(torrent db.Torrent) error {
 	})
 }
 
-func (r *TorrentRepo) UpdateProgress(id uint, progress util.Progress, bytesRead uint) error {
+func (r *TorrentRepo) SetReady(torrent db.Torrent) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// update torrent status
+		if err := tx.Model(&db.Torrent{}).Where("id = ?", torrent.ID).Updates(db.Torrent{Status: db.TorrentReady}).Error; err != nil {
+			return err
+		}
+
+		// update downloaded files' statuses
+		for _, file := range torrent.Files {
+			if file.Status == db.TorrentFileAnalysis {
+				if err := tx.Model(&db.TorrentFile{}).
+					Where("id = ?", file.ID).
+					Updates(db.TorrentFile{Status: db.TorrentFileReady}).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		// apply transaction
+		return nil
+	})
+}
+
+func (r *TorrentRepo) SetFileAnalysis(id uint, analysis db.AnalysisResult) error {
+	return r.db.Model(&db.TorrentFile{}).
+		Where("id = ?", id).
+		Updates(db.TorrentFile{Analysis: datatypes.NewJSONType(&analysis)}).Error
+}
+
+func (r *TorrentRepo) UpdateProgress(id uint, progress util.Progress) error {
 	if err := r.db.Model(&db.Torrent{}).
 		Where("id = ?", id).
+		Select("progress", "eta", "speed", "elapsed").
+		Updates(db.Torrent{Progress: progress}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *TorrentRepo) UpdateProgressAndBytesRead(id uint, progress util.Progress, bytesRead uint) error {
+	if err := r.db.Model(&db.Torrent{}).
+		Where("id = ?", id).
+		Select("progress", "eta", "speed", "elapsed", "bytes_read").
 		Updates(db.Torrent{Progress: progress, BytesRead: bytesRead}).Error; err != nil {
 		return err
 	}
@@ -150,7 +192,7 @@ func (r *TorrentRepo) StartTorrent(id uint, unselectedIds []uint, selectedIds []
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		err := tx.Model(&db.Torrent{}).
 			Where("id = ?", id).
-			Updates(db.Torrent{Status: db.TorrentDownloading, TotalDownloadLength: downloadLength}).Error
+			Updates(db.Torrent{Status: db.TorrentDownload, TotalDownloadLength: downloadLength}).Error
 		if err != nil {
 			return err
 		}
@@ -165,7 +207,7 @@ func (r *TorrentRepo) StartTorrent(id uint, unselectedIds []uint, selectedIds []
 		for _, id := range selectedIds {
 			err = tx.Model(&db.TorrentFile{}).
 				Where("id = ?", id).
-				Updates(map[string]interface{}{"status": db.TorrentFileDownloading, "selected": true}).Error
+				Updates(map[string]interface{}{"status": db.TorrentFileDownload, "selected": true}).Error
 			if err != nil {
 				return err
 			}

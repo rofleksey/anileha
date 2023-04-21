@@ -1,7 +1,8 @@
 package command
 
 import (
-	"anileha/dao"
+	"anileha/config"
+	"anileha/db"
 	"anileha/ffmpeg"
 	"anileha/util"
 	"fmt"
@@ -14,19 +15,22 @@ import (
 )
 
 type Producer struct {
-	log *zap.Logger
+	log    *zap.Logger
+	config *config.Config
 }
 
 func NewProducer(
 	log *zap.Logger,
+	config *config.Config,
 ) *Producer {
 	log.Info("cpu count", zap.Int("count", runtime.NumCPU()))
 	return &Producer{
-		log: log,
+		log:    log,
+		config: config,
 	}
 }
 
-func (p *Producer) selectAudio(streams []dao.AudioStream, prefs PreferencesData) *selectedAudioStream {
+func (p *Producer) selectAudio(streams []db.AudioStream, prefs PreferencesData) *selectedAudioStream {
 	if len(streams) == 0 {
 		return nil
 	}
@@ -48,7 +52,7 @@ func (p *Producer) selectAudio(streams []dao.AudioStream, prefs PreferencesData)
 	}
 
 	if prefs.Lang != "" {
-		newStreams := pie.Filter(streams, func(stream dao.AudioStream) bool {
+		newStreams := pie.Filter(streams, func(stream db.AudioStream) bool {
 			return stream.Lang == prefs.Lang
 		})
 		if len(newStreams) > 0 {
@@ -67,7 +71,7 @@ func (p *Producer) selectAudio(streams []dao.AudioStream, prefs PreferencesData)
 	}
 }
 
-func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *selectedSubStream {
+func (p *Producer) selectSub(streams []db.SubStream, prefs PreferencesData) *selectedSubStream {
 	if len(streams) == 0 {
 		return nil
 	}
@@ -84,14 +88,14 @@ func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *se
 	}
 
 	if prefs.StreamIndex != nil {
-		index := pie.FindFirstUsing(streams, func(stream dao.SubStream) bool {
+		index := pie.FindFirstUsing(streams, func(stream db.SubStream) bool {
 			return stream.RelativeIndex == *prefs.StreamIndex
 		})
 		subsType := streams[index].Type
 
 		var filter subFilter
 
-		if subsType == dao.SubsPicture {
+		if subsType == db.SubsPicture {
 			filter = overlaySubFilter
 		} else {
 			filter = subtitlesSubFilter
@@ -104,7 +108,7 @@ func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *se
 	}
 
 	if prefs.Lang != "" {
-		newStreams := pie.Filter(streams, func(stream dao.SubStream) bool {
+		newStreams := pie.Filter(streams, func(stream db.SubStream) bool {
 			return stream.Lang == prefs.Lang
 		})
 		if len(newStreams) > 0 {
@@ -112,10 +116,10 @@ func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *se
 		}
 	}
 
-	pictureSubs := pie.Filter(streams, func(stream dao.SubStream) bool {
+	pictureSubs := pie.Filter(streams, func(stream db.SubStream) bool {
 		return stream.TextLength < 32
 	})
-	textSubs := pie.Filter(streams, func(stream dao.SubStream) bool {
+	textSubs := pie.Filter(streams, func(stream db.SubStream) bool {
 		return stream.TextLength >= 32
 	})
 
@@ -148,12 +152,17 @@ func (p *Producer) selectSub(streams []dao.SubStream, prefs PreferencesData) *se
 	}
 }
 
-func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPath string, probe *dao.AnalysisResult,
+func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPath string, probe *db.AnalysisResult,
 	prefs Preferences) (*ffmpeg.Command, error) {
 	// free 2 virtual CPUs from ffmpeg workload
 	numThreads := runtime.NumCPU() - 2
 	if numThreads < 1 {
 		numThreads = 1
+	}
+
+	// ffmpeg doesn't recommend settings this above 16
+	if numThreads > 16 {
+		numThreads = 16
 	}
 
 	command := ffmpeg.NewCommand(inputFile, probe.Video.DurationSec, outputPath)

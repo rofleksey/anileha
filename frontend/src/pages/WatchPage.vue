@@ -27,15 +27,17 @@
         @click="onDeleteClick"/>
     </q-toolbar>
     <VideoPlayer
+      ref="playerRef"
       style="margin-top: 10px"
       :src="videoSrc"
       :poster="posterSrc"
+      @canplay.once="onCanPlay"
     />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import {computed, ComputedRef, onMounted, ref, watch} from 'vue';
+import {computed, ComputedRef, onMounted, ref} from 'vue';
 import {Episode, User} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodeById} from 'src/lib/get-api';
 import sanitize from 'sanitize-filename';
@@ -46,12 +48,15 @@ import VideoPlayer from 'components/VideoPlayer.vue';
 import {deleteEpisode} from 'src/lib/delete-api';
 import {useQuasar} from 'quasar';
 import {refreshEpisodeThumb} from 'src/lib/post-api';
-import {nanoid} from 'nanoid';
 import {useRoomStore} from 'stores/room-store';
+import {useInterval} from 'src/lib/composables';
 
 const quasar = useQuasar();
 const router = useRouter();
 const route = useRoute();
+
+const playerRef = ref<any>();
+
 const episodeId = computed(() => Number(route.params.episodeId));
 
 const userStore = useUserStore();
@@ -89,6 +94,23 @@ function onGroupWatch() {
     }
   });
 }
+
+function onCanPlay() {
+  console.log('on can play');
+  const storedTimeStr = localStorage.getItem(`episode-timestamp-${episodeId.value}`);
+  if (storedTimeStr) {
+    playerRef.value?.seek(Number(storedTimeStr));
+  }
+}
+
+function serializeTimestamp() {
+  if (!episodeId.value) {
+    return
+  }
+  localStorage.setItem(`episode-timestamp-${episodeId.value}`, playerRef.value?.getTimestamp());
+}
+
+useInterval(serializeTimestamp, 5000);
 
 function onRefreshThumbClick() {
   quasar.dialog({

@@ -115,3 +115,13 @@ export async function fetchSeriesById(id: number): Promise<Series> {
   );
   return data;
 }
+
+export async function fetchConversionLogs(id: number): Promise<string> {
+  const {data}: { data: string } = await axios.get(
+    `${BASE_URL}/admin/convert/${id}/logs`,
+    {
+      withCredentials: true,
+    }
+  );
+  return data;
+}

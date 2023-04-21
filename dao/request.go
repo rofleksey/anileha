@@ -34,6 +34,12 @@ type TorrentWithFileIndexRequestDao struct {
 	FileIndex int  `json:"fileIndex"`
 }
 
+type TorrentWithFileAndStreamIndexRequestDao struct {
+	Id        uint `json:"id" binding:"required"`
+	FileIndex int  `json:"fileIndex"`
+	Stream    int  `json:"stream"`
+}
+
 type IdRequestDao struct {
 	Id uint `json:"id" binding:"required"`
 }

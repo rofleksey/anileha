@@ -1,6 +1,7 @@
 package service
 
 import (
+	"anileha/analyze"
 	"anileha/command"
 	"anileha/config"
 	"anileha/db"
@@ -30,6 +31,7 @@ type TorrentService struct {
 	client          *torrentLib.Client
 	cTorrentMap     sync.Map // cTorrentMap Stores torrentLib.Client torrent entries [uint -> *torrentLib.Torrent]
 	fileService     *FileService
+	analyzer        *analyze.ProbeAnalyzer
 	convertService  *ConversionService
 	log             *zap.Logger
 	infoFolder      string
@@ -69,6 +71,7 @@ func NewTorrentService(
 	log *zap.Logger,
 	config *config.Config,
 	fileService *FileService,
+	analyzer *analyze.ProbeAnalyzer,
 	convertService *ConversionService,
 ) (*TorrentService, error) {
 	if err := torrentRepo.ResetDownloadStatus(); err != nil {
@@ -98,6 +101,7 @@ func NewTorrentService(
 		torrentRepo:     torrentRepo,
 		client:          client,
 		fileService:     fileService,
+		analyzer:        analyzer,
 		convertService:  convertService,
 		log:             log,
 		infoFolder:      infoFolder,
@@ -193,7 +197,7 @@ func (s *TorrentService) DeleteById(id uint) error {
 	if torrent == nil {
 		return rest.ErrNotFoundInst
 	}
-	if torrent.Status == db.TorrentDownloading {
+	if torrent.Status == db.TorrentDownload {
 		err := s.Stop(*torrent)
 		if err != nil {
 			return rest.ErrInternal(err.Error())
@@ -222,8 +226,8 @@ func (s *TorrentService) onFailedImport(torrent db.Torrent, err error) {
 	s.cleanUpTorrent(torrent)
 }
 
-// onTorrentCompletion Creates READY folder, moves torrent files into it, updates DB entries
-func (s *TorrentService) onTorrentCompletion(id uint) {
+// prepareForAnalysis Creates READY folder, moves torrent files into it, updates DB entries
+func (s *TorrentService) prepareForAnalysis(id uint) {
 	torrent, err := s.torrentRepo.GetById(id, false)
 	if err != nil {
 		s.log.Error("failed to complete torrent",
@@ -286,10 +290,104 @@ func (s *TorrentService) onTorrentCompletion(id uint) {
 			s.log.Error("failed to move ready torrent file",
 				zap.Uint("torrentId", torrent.ID),
 				zap.String("torrentName", torrent.Name),
+				zap.String("from", oldPath),
+				zap.String("to", newPath),
 				zap.Error(err))
 			return
 		}
 		torrent.Files[i].ReadyPath = &newPath
+	}
+
+	err = s.torrentRepo.SetPreAnalysis(*torrent)
+	if err != nil {
+		s.log.Error("transaction on torrent completion failed",
+			zap.Uint("torrentId", torrent.ID),
+			zap.String("torrentName", torrent.Name),
+			zap.Error(err))
+		return
+	}
+
+	s.log.Info("torrent prepared for analysis",
+		zap.Uint("torrentId", torrent.ID),
+		zap.String("torrentName", torrent.Name))
+}
+
+func (s *TorrentService) performAnalysis(id uint, etaCalc *util.EtaCalculator) {
+	torrent, err := s.torrentRepo.GetById(id, false)
+	if err != nil {
+		s.log.Error("failed to complete torrent",
+			zap.Uint("torrentId", torrent.ID),
+			zap.Error(err))
+		return
+	}
+	if torrent == nil {
+		s.log.Error("failed to complete torrent",
+			zap.Uint("torrentId", torrent.ID),
+			zap.Error(errors.New("torrent not found")))
+		return
+	}
+
+	filesToAnalyze := 0
+
+	for i := range torrent.Files {
+		// ignore already analyzed files
+		if torrent.Files[i].Status != db.TorrentFileAnalysis {
+			continue
+		}
+		filesToAnalyze++
+	}
+
+	// doesn't reset elapsed this way
+	etaCalc.ContinueWithNewValues(0, float64(filesToAnalyze))
+
+	err = s.torrentRepo.UpdateProgress(id, etaCalc.GetProgress())
+	if err != nil {
+		s.log.Error("failed to update torrent progress",
+			zap.Uint("torrentId", torrent.ID),
+			zap.String("torrentName", torrent.Name),
+			zap.Error(err))
+		return
+	}
+
+	filesAnalyzed := 0
+	for i := range torrent.Files {
+		// ignore already analyzed files
+		if torrent.Files[i].Status != db.TorrentFileAnalysis {
+			continue
+		}
+
+		result, err := s.analyzer.Probe(*torrent.Files[i].ReadyPath)
+		if err != nil {
+			s.log.Error("failed to analyze torrent file",
+				zap.Uint("torrentId", torrent.ID),
+				zap.Uint("fileId", torrent.Files[i].ID),
+				zap.String("torrentName", torrent.Name),
+				zap.Error(err))
+			return
+		}
+
+		err = s.torrentRepo.SetFileAnalysis(torrent.Files[i].ID, *result)
+		if err != nil {
+			s.log.Error("failed to set torrent file analysis",
+				zap.Uint("torrentId", torrent.ID),
+				zap.Uint("fileId", torrent.Files[i].ID),
+				zap.String("torrentName", torrent.Name),
+				zap.Error(err))
+			return
+		}
+
+		filesAnalyzed++
+		etaCalc.Update(float64(filesAnalyzed))
+		progress := etaCalc.GetProgress()
+		progress.Speed = 0
+		err = s.torrentRepo.UpdateProgress(id, progress)
+		if err != nil {
+			s.log.Error("failed to update torrent progress",
+				zap.Uint("torrentId", torrent.ID),
+				zap.String("torrentName", torrent.Name),
+				zap.Error(err))
+			return
+		}
 	}
 
 	err = s.torrentRepo.SetReady(*torrent)
@@ -348,7 +446,6 @@ func (s *TorrentService) startAutoConvert(id uint) {
 			continue
 		}
 		torrentFiles = append(torrentFiles, file)
-		metadata := roflmeta.ParseSingleEpisodeMetadata(file.TorrentPath)
 		prefsArr = append(prefsArr, command.Preferences{
 			Audio: command.PreferencesData{
 				Lang: torrent.Auto.Data().AudioLang,
@@ -356,8 +453,8 @@ func (s *TorrentService) startAutoConvert(id uint) {
 			Sub: command.PreferencesData{
 				Lang: torrent.Auto.Data().SubLang,
 			},
-			Episode: metadata.Episode,
-			Season:  metadata.Season,
+			Episode: file.SuggestedMetadata.Data().Episode,
+			Season:  file.SuggestedMetadata.Data().Season,
 		})
 	}
 
@@ -370,7 +467,7 @@ func (s *TorrentService) startAutoConvert(id uint) {
 	}
 }
 
-// torrentCompletionWatcher Polls for torrent's completion, calls onTorrentCompletion
+// torrentCompletionWatcher Polls for torrent's completion, calls prepareForAnalysis
 func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []db.TorrentFile,
 	totalDownloadLength uint, cTorrent *torrentLib.Torrent) {
 	ticker := time.NewTicker(3 * time.Second)
@@ -397,7 +494,7 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 			etaCalc.Update(float64(bytesRead))
 			progress := etaCalc.GetProgress()
 			go func() {
-				if err := s.torrentRepo.UpdateProgress(id, progress, bytesRead); err != nil {
+				if err := s.torrentRepo.UpdateProgressAndBytesRead(id, progress, bytesRead); err != nil {
 					s.log.Error("failed to update db on torrent progress",
 						zap.Uint("torrentId", id),
 						zap.String("torrentName", name),
@@ -412,7 +509,8 @@ func (s *TorrentService) torrentCompletionWatcher(id uint, name string, files []
 			s.cTorrentMap.Delete(id)
 			<-cTorrent.Closed()
 
-			s.onTorrentCompletion(id)
+			s.prepareForAnalysis(id)
+			s.performAnalysis(id, etaCalc)
 			return
 		}
 	}
@@ -439,11 +537,19 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	files := make([]db.TorrentFile, 0, len(info.Files))
 	filenames := make([]string, 0, len(info.Files))
 	for i, torrentFile := range cTorrent.Files() {
+		torrentPath := torrentFile.DisplayPath()
+		roflMeta := roflmeta.ParseSingleEpisodeMetadata(torrentPath)
+		meta := db.EpisodeMetadata{
+			Episode: roflMeta.Episode,
+			Season:  roflMeta.Season,
+		}
 		file := db.TorrentFile{
-			TorrentId:    torrent.ID,
-			TorrentIndex: i,
-			TorrentPath:  torrentFile.DisplayPath(),
-			Length:       uint(torrentFile.Length()),
+			TorrentId:         torrent.ID,
+			TorrentIndex:      i,
+			TorrentPath:       torrentPath,
+			Length:            uint(torrentFile.Length()),
+			Type:              util.GetFileType(torrentPath),
+			SuggestedMetadata: datatypes.NewJSONType(meta),
 		}
 		files = append(files, file)
 		filenames = append(filenames, file.TorrentPath)
@@ -546,7 +652,7 @@ func (s *TorrentService) Start(torrent db.Torrent, fileIndices []int) error {
 			cFile.SetPriority(torrentLib.PiecePriorityNormal)
 			downloadLength += uint(cFile.Length())
 			torrent.Files[i].Selected = true
-			torrent.Files[i].Status = db.TorrentFileDownloading
+			torrent.Files[i].Status = db.TorrentFileDownload
 			selectedFiles = append(selectedFiles, torrent.Files[i].ID)
 		} else {
 			unselectedFiles = append(unselectedFiles, torrent.Files[i].ID)

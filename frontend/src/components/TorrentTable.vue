@@ -16,6 +16,16 @@
         <q-icon v-else-if="props.value === 'error'" class="text-red" name="error" size="2rem"/>
         <q-icon v-else-if="props.value === 'ready'" class="text-green" name="done" size="2rem"/>
         <q-circular-progress
+          v-else-if="props.value === 'analysis'"
+          show-value
+          style="margin: 0"
+          class="text-orange q-ma-md"
+          :value="props.row.progress.progress"
+          track-color="grey-9"
+          size="lg"
+          color="orange"
+        />
+        <q-circular-progress
           v-else
           show-value
           style="margin: 0"
@@ -28,7 +38,7 @@
       </q-td>
     </template>
     <template v-slot:body-cell-size="props">
-      <q-td :props="props" v-if="props.row.status === 'download'">
+      <q-td :props="props" v-if="props.row.status === 'download' || props.row.status === 'analysis'">
         {{ prettyBytes(props.value) }} / {{ prettyBytes(props.row.totalDownloadLength) }}
         ({{ prettyBytes(props.row.totalLength) }})
       </q-td>
@@ -37,7 +47,7 @@
       </q-td>
     </template>
     <template v-slot:body-cell-eta="props">
-      <q-td :props="props" v-if="props.row.status === 'download'">
+      <q-td :props="props" v-if="props.row.status === 'download' || props.row.status === 'analysis'">
         {{ durationFormat(props.row.progress.eta * 1000) }} ({{ durationFormat(props.row.progress.elapsed * 1000) }}
         elapsed)
       </q-td>
@@ -52,7 +62,7 @@
       <q-td :props="props" v-if="props.row.status === 'download'">
         {{ prettyBytes(props.row.progress.speed) }}ps
       </q-td>
-      <q-td :props="props" v-else-if="props.row.status === 'idle'">
+      <q-td :props="props" v-else-if="props.row.status === 'idle' || props.row.status === 'analysis'">
         -
       </q-td>
       <q-td :props="props" v-else>
