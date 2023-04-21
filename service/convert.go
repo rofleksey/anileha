@@ -82,7 +82,10 @@ func (s *ConversionService) cleanUpConversion(conversion db.Conversion) {
 	_ = os.Remove(conversion.VideoPath)
 	_ = os.Remove(conversion.LogPath)
 	if err := os.RemoveAll(conversion.OutputDir); err != nil {
-		s.log.Error("failed to remove conversion output dir", zap.Uint("conversionId", conversion.ID), zap.String("file", conversion.OutputDir), zap.Error(err))
+		s.log.Error("failed to remove conversion output dir",
+			zap.Uint("conversionId", conversion.ID),
+			zap.String("file", conversion.OutputDir),
+			zap.Error(err))
 	}
 }
 
@@ -160,14 +163,18 @@ func (s *ConversionService) queueWorker() {
 		switch msg := update.Msg.(type) {
 		case ffmpeg.QueueSignalStarted:
 			if err := s.conversionRepo.SetStatus(update.ID, db.ConversionProcessing); err != nil {
-				s.log.Error("failed to update db on conversion start", zap.Uint("conversionId", update.ID), zap.Error(err))
+				s.log.Error("failed to update db on conversion start",
+					zap.Uint("conversionId", update.ID),
+					zap.Error(err))
 				continue
 			}
 		case string:
 			s.log.Info(msg, zap.Uint("conversionId", update.ID))
 		case util.Progress:
 			if err := s.conversionRepo.SetProgress(update.ID, msg); err != nil {
-				s.log.Error("failed to update db on conversion progress", zap.Uint("conversionId", update.ID), zap.Error(err))
+				s.log.Error("failed to update db on conversion progress",
+					zap.Uint("conversionId", update.ID),
+					zap.Error(err))
 				continue
 			}
 			//s.log.Info("conversion progress", zap.Uint("conversionId", update.ID), zap.Float64("progress", msg.Progress), zap.Float64("eta", msg.Eta), zap.Float64("elapsed", msg.Elapsed))
@@ -177,16 +184,22 @@ func (s *ConversionService) queueWorker() {
 				go func() {
 					conversion, err := s.GetById(finishedConversionId)
 					if err != nil {
-						s.log.Error("failed to get conversion by id", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
+						s.log.Error("failed to get conversion by id",
+							zap.Uint("conversionId", finishedConversionId),
+							zap.Error(err))
 						return
 					}
 					episode, err := s.episodeService.CreateFromConversion(conversion)
 					if err != nil {
-						s.log.Error("failed to create episode", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
+						s.log.Error("failed to create episode",
+							zap.Uint("conversionId", finishedConversionId),
+							zap.Error(err))
 						return
 					}
 					if err := s.conversionRepo.SetFinish(finishedConversionId, episode.ID); err != nil {
-						s.log.Error("failed to update db on conversion finish", zap.Uint("conversionId", finishedConversionId), zap.Error(err))
+						s.log.Error("failed to update db on conversion finish",
+							zap.Uint("conversionId", finishedConversionId),
+							zap.Error(err))
 						return
 					}
 				}()
@@ -198,7 +211,9 @@ func (s *ConversionService) queueWorker() {
 					newStatus = db.ConversionError
 				}
 				if err := s.conversionRepo.SetStatus(update.ID, newStatus); err != nil {
-					s.log.Error("failed to update db on conversion error", zap.Uint("conversionId", update.ID), zap.Error(err))
+					s.log.Error("failed to update db on conversion error",
+						zap.Uint("conversionId", update.ID),
+						zap.Error(err))
 					continue
 				}
 			}
@@ -257,7 +272,8 @@ func (s *ConversionService) prepareConversion(
 	return &conversion, nil
 }
 
-func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []db.TorrentFile, prefsArr []command.Preferences) error {
+func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []db.TorrentFile,
+	prefsArr []command.Preferences) error {
 	for i := range torrentFiles {
 		folder, err := s.fileService.GenFolderPath(s.conversionFolder)
 		if err != nil {
@@ -282,24 +298,29 @@ func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []d
 			prefs.Audio.ExternalFile = *torrent.Files[index].ReadyPath
 		}
 
-		probe, err := s.probeAnalyzer.Probe(*torrentFiles[i].ReadyPath)
-		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf("probe of file %s failed: %s", *torrentFiles[i].ReadyPath, err.Error()))
+		probe := torrentFiles[i].Analysis.Data()
+		if probe == nil {
+			return rest.ErrInternal(fmt.Sprintf(
+				"no analysis found for file %s", *torrentFiles[i].ReadyPath))
 		}
 
 		ffmpegCmd, err := s.cmdProducer.GetFFmpegCommand(*torrentFiles[i].ReadyPath, videoPath, logsPath, probe, prefs)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf("failed to get ffmpeg command for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
+			return rest.ErrInternal(fmt.Sprintf(
+				"failed to get ffmpeg command for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
-		conversion, err := s.prepareConversion(torrent, torrentFiles[i], prefs.Episode, prefs.Season, folder, videoPath, logsPath, ffmpegCmd, probe.Video.DurationSec)
+		conversion, err := s.prepareConversion(torrent, torrentFiles[i], prefs.Episode, prefs.Season, folder, videoPath,
+			logsPath, ffmpegCmd, probe.Video.DurationSec)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf("failed to prepare conversion for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
+			return rest.ErrInternal(fmt.Sprintf("failed to prepare conversion for file %s: %s",
+				*torrentFiles[i].ReadyPath, err.Error()))
 		}
 
 		err = os.MkdirAll(folder, os.ModePerm)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf("failed to create folder for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
+			return rest.ErrInternal(fmt.Sprintf(
+				"failed to create folder for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
 		s.queue.Enqueue(conversion.ID, ffmpegCmd)
