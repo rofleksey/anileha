@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/service"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -71,12 +71,12 @@ func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.Torrent
 func registerTorrentController(
 	log *zap.Logger,
 	config *config.Config,
-	engine *gin.Engine,
+	ginEngine *gin.Engine,
 	fileService *service.FileService,
 	torrentService *service.TorrentService,
 ) {
-	torrentGroup := engine.Group("/admin/torrent")
-	torrentGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
+	torrentGroup := ginEngine.Group("/admin/torrent")
+	torrentGroup.Use(engine.RoleMiddleware(log, []string{"admin"}))
 
 	torrentGroup.GET("", func(c *gin.Context) {
 		torrentsSlice, err := torrentService.GetAll()
@@ -90,7 +90,7 @@ func registerTorrentController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetById(uint(id))
@@ -104,7 +104,7 @@ func registerTorrentController(
 		seriesIdString := c.Param("id")
 		id, err := strconv.ParseUint(seriesIdString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		torrents, err := torrentService.GetBySeriesId(uint(id))
@@ -118,7 +118,7 @@ func registerTorrentController(
 	torrentGroup.POST("start", func(c *gin.Context) {
 		var req dao.StartTorrentRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetById(req.Id)
@@ -127,7 +127,7 @@ func registerTorrentController(
 			return
 		}
 		if torrent.Status == db.TorrentDownload || torrent.Status == db.TorrentAnalysis {
-			c.Error(rest.ErrAlreadyStarted)
+			c.Error(engine.ErrAlreadyStarted)
 			return
 		}
 		err = torrentService.Start(*torrent, req.FileIndices)
@@ -140,7 +140,7 @@ func registerTorrentController(
 	torrentGroup.POST("stop", func(c *gin.Context) {
 		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetById(req.Id)
@@ -163,7 +163,7 @@ func registerTorrentController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		err = torrentService.DeleteById(uint(id))
@@ -176,18 +176,18 @@ func registerTorrentController(
 	torrentGroup.POST("", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 
 		seriesIdStrArr := form.Value["seriesId"]
 		if seriesIdStrArr == nil || len(seriesIdStrArr) != 1 {
-			c.Error(rest.ErrBadRequest("error getting seriesId"))
+			c.Error(engine.ErrBadRequest("error getting seriesId"))
 			return
 		}
 		seriesId, err := strconv.ParseUint(seriesIdStrArr[0], 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest("failed to parse seriesId"))
+			c.Error(engine.ErrBadRequest("failed to parse seriesId"))
 			return
 		}
 
@@ -197,7 +197,7 @@ func registerTorrentController(
 		if autoArr != nil && len(autoArr) == 1 {
 			if err := json.Unmarshal([]byte(autoArr[0]), &auto); err == nil {
 				if auto.AudioLang == "" || auto.SubLang == "" {
-					c.Error(rest.ErrBadRequest("invalid auto JSON"))
+					c.Error(engine.ErrBadRequest("invalid auto JSON"))
 					return
 				}
 			}
@@ -205,19 +205,19 @@ func registerTorrentController(
 
 		files := form.File["file"]
 		if files == nil || len(files) == 0 {
-			c.Error(rest.ErrBadRequest("no files sent"))
+			c.Error(engine.ErrBadRequest("no files sent"))
 			return
 		}
 		file := files[0]
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 		defer fileService.DeleteTempFileAsync(file.Filename)
 		err = c.SaveUploadedFile(file, tempDst)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 		err = torrentService.AddFromFile(uint(seriesId), tempDst, auto)
@@ -229,4 +229,4 @@ func registerTorrentController(
 	})
 }
 
-var TorrentControllerExport = fx.Options(fx.Invoke(registerTorrentController))
+var TorrentExport = fx.Options(fx.Invoke(registerTorrentController))

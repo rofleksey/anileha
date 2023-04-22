@@ -69,4 +69,4 @@ func (s *FileService) DeleteTempFileAsync(tempDst string) {
 	}()
 }
 
-var FileServiceExport = fx.Options(fx.Provide(NewFileService))
+var FileExport = fx.Options(fx.Provide(NewFileService))

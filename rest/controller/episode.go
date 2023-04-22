@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -40,11 +40,11 @@ func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao 
 func registerEpisodeController(
 	log *zap.Logger,
 	config *config.Config,
-	engine *gin.Engine,
+	ginEngine *gin.Engine,
 	fileService *service.FileService,
 	episodeService *service.EpisodeService,
 ) {
-	engine.GET("/episodes/series/:seriesId", func(c *gin.Context) {
+	ginEngine.GET("/episodes/series/:seriesId", func(c *gin.Context) {
 		idString := c.Param("seriesId")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -59,7 +59,7 @@ func registerEpisodeController(
 		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
 	})
 
-	engine.GET("/episodes/:id", func(c *gin.Context) {
+	ginEngine.GET("/episodes/:id", func(c *gin.Context) {
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
@@ -74,13 +74,13 @@ func registerEpisodeController(
 		c.JSON(http.StatusOK, mapEpisodeToResponse(*episode))
 	})
 
-	adminEpisodeGroup := engine.Group("/admin/episodes")
-	adminEpisodeGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
+	adminEpisodeGroup := ginEngine.Group("/admin/episodes")
+	adminEpisodeGroup.Use(engine.RoleMiddleware(log, []string{"admin"}))
 
 	adminEpisodeGroup.POST("/", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 
@@ -104,12 +104,12 @@ func registerEpisodeController(
 
 		titles := form.Value["title"]
 		if titles == nil || len(titles) != 1 {
-			c.Error(rest.ErrBadRequest("error getting title"))
+			c.Error(engine.ErrBadRequest("error getting title"))
 			return
 		}
 		title := strings.TrimSpace(titles[0])
 		if len(title) == 0 {
-			c.Error(rest.ErrBadRequest("title is blank"))
+			c.Error(engine.ErrBadRequest("title is blank"))
 			return
 		}
 
@@ -125,21 +125,21 @@ func registerEpisodeController(
 
 		files := form.File["file"]
 		if files == nil || len(files) != 1 {
-			c.Error(rest.ErrBadRequest("invalid number of files sent"))
+			c.Error(engine.ErrBadRequest("invalid number of files sent"))
 			return
 		}
 		file := files[0]
 
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 
 		defer fileService.DeleteTempFileAsync(file.Filename)
 		err = c.SaveUploadedFile(file, tempDst)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 
@@ -154,7 +154,7 @@ func registerEpisodeController(
 	adminEpisodeGroup.POST("refreshThumb", func(c *gin.Context) {
 		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		err := episodeService.RefreshThumb(req.Id)
@@ -181,4 +181,4 @@ func registerEpisodeController(
 	})
 }
 
-var EpisodeControllerExport = fx.Options(fx.Invoke(registerEpisodeController))
+var EpisodeExport = fx.Options(fx.Invoke(registerEpisodeController))

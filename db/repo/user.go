@@ -2,7 +2,7 @@ package repo
 
 import (
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -73,7 +73,7 @@ func (r *UserRepo) Create(user *db.User) (uint, error) {
 		return 0, queryResult.Error
 	}
 	if queryResult.RowsAffected == 0 {
-		return 0, rest.ErrCreationFailed
+		return 0, engine.ErrCreationFailed
 	}
 	return user.ID, nil
 }
@@ -92,4 +92,4 @@ func (r *UserRepo) SetThumb(id uint, thumb db.Thumb) error {
 		}).Error
 }
 
-var UserRepoExport = fx.Options(fx.Provide(NewUserRepo))
+var UserExport = fx.Options(fx.Provide(NewUserRepo))

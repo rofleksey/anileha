@@ -274,4 +274,4 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.User, room
 	client.Start()
 }
 
-var RoomServiceExport = fx.Options(fx.Provide(NewRoomService))
+var RoomExport = fx.Options(fx.Provide(NewRoomService))

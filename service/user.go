@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/util"
 	"bytes"
 	"fmt"
@@ -135,7 +135,7 @@ func (s *UserService) RequestRegistration(name, pass, email string) (string, err
 func (s *UserService) ConfirmRegistration(confirmId string) error {
 	entry, exists := s.registerMap.LoadAndDelete(confirmId)
 	if !exists {
-		return rest.ErrLinkExpired
+		return engine.ErrLinkExpired
 	}
 	channel := entry.(chan struct{})
 	// this will trigger confirmWorker
@@ -146,10 +146,10 @@ func (s *UserService) ConfirmRegistration(confirmId string) error {
 func (s *UserService) GetById(id uint) (*db.User, error) {
 	user, err := s.userRepo.GetById(id)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if user == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return user, nil
 }
@@ -157,7 +157,7 @@ func (s *UserService) GetById(id uint) (*db.User, error) {
 func (s *UserService) GetAll() ([]db.User, error) {
 	userArr, err := s.userRepo.GetAll()
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return userArr, nil
 }
@@ -165,10 +165,10 @@ func (s *UserService) GetAll() ([]db.User, error) {
 func (s *UserService) GetByLogin(login string) (*db.User, error) {
 	user, err := s.userRepo.GetByLogin(login)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if user == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return user, nil
 }
@@ -176,18 +176,18 @@ func (s *UserService) GetByLogin(login string) (*db.User, error) {
 func (s *UserService) CheckExists(login string, email string) error {
 	user, err := s.userRepo.GetByLogin(login)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if user != nil {
-		return rest.ErrUserWithThisLoginAlreadyExists
+		return engine.ErrUserWithThisLoginAlreadyExists
 	}
 
 	user, err = s.userRepo.GetByEmail(email)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if user != nil {
-		return rest.ErrUserWithThisEmailAlreadyExists
+		return engine.ErrUserWithThisEmailAlreadyExists
 	}
 
 	return nil
@@ -203,7 +203,7 @@ func (s *UserService) CreateManually(username string, password string, email str
 		Email: email,
 	}
 	if _, err := s.userRepo.Create(&user); err != nil {
-		return rest.ErrBadRequest(err.Error())
+		return engine.ErrBadRequest(err.Error())
 	}
 	return nil
 }
@@ -222,7 +222,7 @@ func (s *UserService) Modify(id uint, name string, pass string, email string) er
 	})
 
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -230,7 +230,7 @@ func (s *UserService) Modify(id uint, name string, pass string, email string) er
 func (s *UserService) SetThumb(id uint, thumb db.Thumb) error {
 	err := s.userRepo.SetThumb(id, thumb)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	return nil
 }
@@ -255,4 +255,4 @@ func createAdminUser(userRepo *repo.UserRepo, config *config.Config) error {
 	return nil
 }
 
-var UserServiceExport = fx.Options(fx.Provide(NewUserService), fx.Invoke(createAdminUser))
+var UserExport = fx.Options(fx.Provide(NewUserService), fx.Invoke(createAdminUser))

@@ -7,7 +7,7 @@ import (
 	"anileha/db"
 	"anileha/db/repo"
 	"anileha/ffmpeg"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/util"
 	"fmt"
 	"github.com/elliotchance/pie/v2"
@@ -92,10 +92,10 @@ func (s *ConversionService) cleanUpConversion(conversion db.Conversion) {
 func (s *ConversionService) GetById(id uint) (*db.Conversion, error) {
 	conversion, err := s.conversionRepo.GetById(id)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if conversion == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return conversion, nil
 }
@@ -103,7 +103,7 @@ func (s *ConversionService) GetById(id uint) (*db.Conversion, error) {
 func (s *ConversionService) GetAll() ([]db.Conversion, error) {
 	conversions, err := s.conversionRepo.GetAll()
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
@@ -111,10 +111,10 @@ func (s *ConversionService) GetAll() ([]db.Conversion, error) {
 func (s *ConversionService) GetLogsById(id uint) ([]byte, error) {
 	conversion, err := s.conversionRepo.GetById(id)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if conversion == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	logBytes, err := os.ReadFile(conversion.LogPath)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *ConversionService) GetLogsById(id uint) ([]byte, error) {
 func (s *ConversionService) GetBySeriesId(seriesId uint) ([]db.Conversion, error) {
 	conversions, err := s.conversionRepo.GetBySeriesId(seriesId)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
@@ -134,7 +134,7 @@ func (s *ConversionService) GetBySeriesId(seriesId uint) ([]db.Conversion, error
 func (s *ConversionService) GetByTorrentId(torrentId uint) ([]db.Conversion, error) {
 	conversions, err := s.conversionRepo.GetByTorrentId(torrentId)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return conversions, nil
 }
@@ -142,17 +142,17 @@ func (s *ConversionService) GetByTorrentId(torrentId uint) ([]db.Conversion, err
 func (s *ConversionService) DeleteConversionById(id uint) error {
 	conversion, err := s.conversionRepo.GetById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if conversion == nil {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 	count, err := s.conversionRepo.DeleteById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if count == 0 {
-		return rest.ErrDeletionFailed
+		return engine.ErrDeletionFailed
 	}
 	go s.cleanUpConversion(*conversion)
 	return nil
@@ -300,26 +300,26 @@ func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []d
 
 		probe := torrentFiles[i].Analysis.Data()
 		if probe == nil {
-			return rest.ErrInternal(fmt.Sprintf(
+			return engine.ErrInternal(fmt.Sprintf(
 				"no analysis found for file %s", *torrentFiles[i].ReadyPath))
 		}
 
 		ffmpegCmd, err := s.cmdProducer.GetFFmpegCommand(*torrentFiles[i].ReadyPath, videoPath, logsPath, probe, prefs)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf(
+			return engine.ErrInternal(fmt.Sprintf(
 				"failed to get ffmpeg command for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
 		conversion, err := s.prepareConversion(torrent, torrentFiles[i], prefs.Episode, prefs.Season, folder, videoPath,
 			logsPath, ffmpegCmd, probe.Video.DurationSec)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf("failed to prepare conversion for file %s: %s",
+			return engine.ErrInternal(fmt.Sprintf("failed to prepare conversion for file %s: %s",
 				*torrentFiles[i].ReadyPath, err.Error()))
 		}
 
 		err = os.MkdirAll(folder, os.ModePerm)
 		if err != nil {
-			return rest.ErrInternal(fmt.Sprintf(
+			return engine.ErrInternal(fmt.Sprintf(
 				"failed to create folder for file %s: %s", *torrentFiles[i].ReadyPath, err.Error()))
 		}
 
@@ -338,4 +338,4 @@ func startQueueWorker(service *ConversionService) {
 	go service.queueWorker()
 }
 
-var ConversionServiceExport = fx.Options(fx.Provide(NewConversionService), fx.Invoke(startQueueWorker))
+var ConversionExport = fx.Options(fx.Provide(NewConversionService), fx.Invoke(startQueueWorker))

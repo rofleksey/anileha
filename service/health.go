@@ -12,4 +12,4 @@ func NewHealthService() *HealthService {
 	return &HealthService{}
 }
 
-var HealthServiceExport = fx.Options(fx.Provide(NewHealthService))
+var HealthExport = fx.Options(fx.Provide(NewHealthService))

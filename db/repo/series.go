@@ -69,4 +69,4 @@ func (r *SeriesRepo) Create(series *db.Series) (uint, error) {
 	return series.ID, nil
 }
 
-var SeriesRepoExport = fx.Options(fx.Provide(NewSeriesRepo))
+var SeriesExport = fx.Options(fx.Provide(NewSeriesRepo))

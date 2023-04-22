@@ -4,11 +4,11 @@ import (
 	"anileha/analyze"
 	"anileha/command"
 	"anileha/config"
-	"anileha/controller"
 	"anileha/db"
 	"anileha/db/repo"
 	"anileha/logger"
-	"anileha/rest"
+	"anileha/rest/controller"
+	"anileha/rest/engine"
 	"anileha/search/nyaa"
 	"anileha/service"
 	"go.uber.org/fx"
@@ -30,39 +30,39 @@ func main() {
 		// main components
 		logger.Export,
 		config.Export,
-		rest.Export,
+		engine.Export,
 		db.ServiceExport,
 
 		// repositories
-		repo.SeriesRepoExport,
-		repo.UserRepoExport,
-		repo.TorrentRepoExport,
-		repo.ConversionRepoExport,
-		repo.EpisodeRepoExport,
+		repo.SeriesExport,
+		repo.UserExport,
+		repo.TorrentExport,
+		repo.ConversionExport,
+		repo.EpisodeExport,
 
 		// search
 		nyaa.Export,
 
 		// services
-		service.FileServiceExport,
-		service.HealthServiceExport,
-		service.SeriesServiceExport,
-		service.ThumbServiceExport,
-		service.TorrentServiceExport,
-		service.ConversionServiceExport,
-		service.EpisodeServiceExport,
-		service.UserServiceExport,
-		service.RoomServiceExport,
+		service.FileExport,
+		service.HealthExport,
+		service.SeriesExport,
+		service.ThumbExport,
+		service.TorrentExport,
+		service.ConversionExport,
+		service.EpisodeExport,
+		service.UserExport,
+		service.RoomExport,
 
 		// rest controllers
-		controller.HealthControllerExport,
-		controller.SeriesControllerExport,
-		controller.TorrentControllerExport,
-		controller.ConvertControllerExport,
-		controller.ProbeControllerExport,
-		controller.EpisodeControllerExport,
-		controller.UserControllerExport,
-		controller.WebsocketControllerExport,
+		controller.HealthExport,
+		controller.SeriesExport,
+		controller.TorrentExport,
+		controller.ConvertExport,
+		controller.ProbeExport,
+		controller.EpisodeExport,
+		controller.UserExport,
+		controller.WebsocketExport,
 
 		// misc
 		analyze.ProbeAnalyzerExport,

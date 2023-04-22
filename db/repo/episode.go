@@ -64,4 +64,4 @@ func (r *EpisodeRepo) Create(episode *db.Episode) (uint, error) {
 	return episode.ID, nil
 }
 
-var EpisodeRepoExport = fx.Options(fx.Provide(NewEpisodeRepo))
+var EpisodeExport = fx.Options(fx.Provide(NewEpisodeRepo))

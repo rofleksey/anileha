@@ -2,7 +2,7 @@ package repo
 
 import (
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/util"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -48,7 +48,7 @@ func (r *TorrentRepo) DeleteById(id uint) error {
 			return queryResult.Error
 		}
 		if queryResult.RowsAffected == 0 {
-			return rest.ErrNotFoundInst
+			return engine.ErrNotFoundInst
 		}
 		return nil
 	})
@@ -222,13 +222,13 @@ func (r *TorrentRepo) StopTorrent(id uint) error {
 			Where("id = ?", id).
 			Updates(map[string]interface{}{"status": db.TorrentIdle, "total_download_length": 0}).Error
 		if err != nil {
-			return rest.ErrInternal(err.Error())
+			return engine.ErrInternal(err.Error())
 		}
 		err = tx.Model(&db.TorrentFile{}).
 			Where("torrent_id = ?", id).
 			Updates(map[string]interface{}{"status": db.TorrentFileIdle, "selected": false}).Error
 		if err != nil {
-			return rest.ErrInternal(err.Error())
+			return engine.ErrInternal(err.Error())
 		}
 		return nil
 	})
@@ -242,4 +242,4 @@ func (r *TorrentRepo) Create(torrent *db.Torrent) (uint, error) {
 	return torrent.ID, nil
 }
 
-var TorrentRepoExport = fx.Options(fx.Provide(NewTorrentRepo))
+var TorrentExport = fx.Options(fx.Provide(NewTorrentRepo))

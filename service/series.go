@@ -3,7 +3,7 @@ package service
 import (
 	"anileha/db"
 	"anileha/db/repo"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -22,10 +22,10 @@ func NewSeriesService(seriesRepo *repo.SeriesRepo, log *zap.Logger) *SeriesServi
 func (s *SeriesService) GetById(id uint) (*db.Series, error) {
 	series, err := s.seriesRepo.GetById(id)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if series == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return series, nil
 }
@@ -33,7 +33,7 @@ func (s *SeriesService) GetById(id uint) (*db.Series, error) {
 func (s *SeriesService) GetAll() ([]db.Series, error) {
 	seriesArr, err := s.seriesRepo.GetAll()
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return seriesArr, nil
 }
@@ -41,7 +41,7 @@ func (s *SeriesService) GetAll() ([]db.Series, error) {
 func (s *SeriesService) Search(query string) ([]db.Series, error) {
 	seriesArr, err := s.seriesRepo.Search(query)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return seriesArr, nil
 }
@@ -49,17 +49,17 @@ func (s *SeriesService) Search(query string) ([]db.Series, error) {
 func (s *SeriesService) DeleteById(id uint) error {
 	series, err := s.seriesRepo.GetById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if series == nil {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 	rows, err := s.seriesRepo.DeleteById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if rows == 0 {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 	series.Thumb.Delete()
 	return nil
@@ -72,10 +72,10 @@ func (s *SeriesService) AddSeries(name string, thumb db.Thumb) (uint, error) {
 	}
 	id, err := s.seriesRepo.Create(&series)
 	if err != nil {
-		return 0, rest.ErrInternal(err.Error())
+		return 0, engine.ErrInternal(err.Error())
 	}
 	s.log.Info("created series", zap.Uint("seriesId", id), zap.String("seriesName", name))
 	return id, nil
 }
 
-var SeriesServiceExport = fx.Options(fx.Provide(NewSeriesService))
+var SeriesExport = fx.Options(fx.Provide(NewSeriesService))

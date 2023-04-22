@@ -109,4 +109,4 @@ func (r *ConversionRepo) Create(conversion *db.Conversion) (uint, error) {
 	return conversion.ID, nil
 }
 
-var ConversionRepoExport = fx.Options(fx.Provide(NewConversionRepo))
+var ConversionExport = fx.Options(fx.Provide(NewConversionRepo))

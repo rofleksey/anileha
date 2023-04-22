@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/service"
 	"anileha/util"
 	"github.com/gin-contrib/sessions"
@@ -34,14 +34,14 @@ func mapUsersToResponseSlice(users []db.User) []dao.UserResponseDao {
 }
 
 func registerUserController(
-	engine *gin.Engine,
+	ginEngine *gin.Engine,
 	log *zap.Logger,
 	config *config.Config,
 	fileService *service.FileService,
 	thumbService *service.ThumbService,
 	userService *service.UserService,
 ) {
-	userGroup := engine.Group("/user")
+	userGroup := ginEngine.Group("/user")
 	userGroup.POST("/register", func(c *gin.Context) {
 		var req dao.NewUserRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,9 +78,9 @@ func registerUserController(
 	})
 	userGroup.GET("/me", func(c *gin.Context) {
 		session := sessions.Default(c)
-		sessionUser := session.Get(rest.UserKey)
+		sessionUser := session.Get(engine.UserKey)
 		if sessionUser == nil {
-			c.Error(rest.ErrUnauthorizedInst)
+			c.Error(engine.ErrUnauthorizedInst)
 			return
 		}
 		authUser := sessionUser.(*db.AuthUser)
@@ -94,7 +94,7 @@ func registerUserController(
 	userGroup.POST("/login", func(c *gin.Context) {
 		var req dao.AuthRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			_ = c.Error(rest.ErrBadRequest(err.Error()))
+			_ = c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		user, err := userService.GetByLogin(req.User)
@@ -103,7 +103,7 @@ func registerUserController(
 			return
 		}
 		if !util.CheckPasswordHash(req.Pass, config.User.Salt, user.Hash) {
-			_ = c.Error(rest.ErrInvalidPassword)
+			_ = c.Error(engine.ErrInvalidPassword)
 			return
 		}
 		session := sessions.Default(c)
@@ -112,25 +112,25 @@ func registerUserController(
 			//SameSite: http.SameSiteNoneMode,
 			//Secure:   true,
 		})
-		session.Set(rest.UserKey, db.NewAuthUser(*user))
+		session.Set(engine.UserKey, db.NewAuthUser(*user))
 		if err := session.Save(); err != nil {
-			_ = c.Error(rest.ErrSessionSavingFailed)
+			_ = c.Error(engine.ErrSessionSavingFailed)
 			return
 		}
 		c.JSON(http.StatusOK, mapUserToResponse(*user))
 	})
 	userGroup.POST("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)
-		session.Set(rest.UserKey, nil)
+		session.Set(engine.UserKey, nil)
 		if err := session.Save(); err != nil {
-			_ = c.Error(rest.ErrSessionSavingFailed)
+			_ = c.Error(engine.ErrSessionSavingFailed)
 			return
 		}
 		c.String(http.StatusOK, "OK")
 	})
 
-	authGroup := engine.Group("/user")
-	authGroup.Use(rest.AuthorizedMiddleware(log))
+	authGroup := ginEngine.Group("/user")
+	authGroup.Use(engine.AuthorizedMiddleware(log))
 	authGroup.POST("/modify", func(c *gin.Context) {
 		var req dao.ModifyUserRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -138,7 +138,7 @@ func registerUserController(
 			return
 		}
 
-		authUser := c.MustGet(rest.UserKey).(*db.AuthUser)
+		authUser := c.MustGet(engine.UserKey).(*db.AuthUser)
 
 		if err := userService.Modify(authUser.ID, req.Name, req.Pass, req.Email); err != nil {
 			c.Error(err)
@@ -151,13 +151,13 @@ func registerUserController(
 	authGroup.POST("/avatar", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 
 		files := form.File["image"]
 		if files == nil || len(files) != 1 {
-			c.Error(rest.ErrBadRequest("invalid number of images sent"))
+			c.Error(engine.ErrBadRequest("invalid number of images sent"))
 			return
 		}
 
@@ -165,7 +165,7 @@ func registerUserController(
 
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 
@@ -173,7 +173,7 @@ func registerUserController(
 
 		err = c.SaveUploadedFile(file, tempDst)
 		if err != nil {
-			c.Error(rest.ErrInternal(err.Error()))
+			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
 
@@ -183,7 +183,7 @@ func registerUserController(
 			return
 		}
 
-		authUser := c.MustGet(rest.UserKey).(*db.AuthUser)
+		authUser := c.MustGet(engine.UserKey).(*db.AuthUser)
 		err = userService.SetThumb(authUser.ID, thumb)
 		if err != nil {
 			c.Error(err)
@@ -193,8 +193,8 @@ func registerUserController(
 		c.String(http.StatusOK, thumb.Url)
 	})
 
-	ownerUserGroup := engine.Group("/owner/user")
-	ownerUserGroup.Use(rest.RoleMiddleware(log, []string{"owner"}))
+	ownerUserGroup := ginEngine.Group("/owner/user")
+	ownerUserGroup.Use(engine.RoleMiddleware(log, []string{"owner"}))
 	ownerUserGroup.GET("", func(c *gin.Context) {
 		userSlice, err := userService.GetAll()
 		if err != nil {
@@ -220,4 +220,4 @@ func registerUserController(
 	})
 }
 
-var UserControllerExport = fx.Options(fx.Invoke(registerUserController))
+var UserExport = fx.Options(fx.Invoke(registerUserController))

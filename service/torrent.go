@@ -7,7 +7,7 @@ import (
 	"anileha/db"
 	"anileha/db/repo"
 	"anileha/meta"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/util"
 	"context"
 	"errors"
@@ -154,10 +154,10 @@ func (s *TorrentService) cleanUpTorrent(torrent db.Torrent) {
 func (s *TorrentService) GetById(id uint) (*db.Torrent, error) {
 	torrent, err := s.torrentRepo.GetById(id, false)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if torrent == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return torrent, nil
 }
@@ -165,10 +165,10 @@ func (s *TorrentService) GetById(id uint) (*db.Torrent, error) {
 func (s *TorrentService) GetByIdWithSeries(id uint) (*db.Torrent, error) {
 	torrent, err := s.torrentRepo.GetById(id, true)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if torrent == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return torrent, nil
 }
@@ -176,7 +176,7 @@ func (s *TorrentService) GetByIdWithSeries(id uint) (*db.Torrent, error) {
 func (s *TorrentService) GetAll() ([]db.Torrent, error) {
 	torrentArr, err := s.torrentRepo.GetAll()
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return torrentArr, nil
 }
@@ -184,7 +184,7 @@ func (s *TorrentService) GetAll() ([]db.Torrent, error) {
 func (s *TorrentService) GetBySeriesId(seriesId uint) ([]db.Torrent, error) {
 	torrentArr, err := s.torrentRepo.GetBySeriesId(seriesId)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return torrentArr, nil
 }
@@ -192,20 +192,20 @@ func (s *TorrentService) GetBySeriesId(seriesId uint) ([]db.Torrent, error) {
 func (s *TorrentService) DeleteById(id uint) error {
 	torrent, err := s.torrentRepo.GetById(id, false)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if torrent == nil {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 	if torrent.Status == db.TorrentDownload {
 		err := s.Stop(*torrent)
 		if err != nil {
-			return rest.ErrInternal(err.Error())
+			return engine.ErrInternal(err.Error())
 		}
 	}
 	err = s.torrentRepo.DeleteById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	go s.cleanUpTorrent(*torrent)
 	return nil
@@ -568,7 +568,7 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 
 	err = s.torrentRepo.InitFiles(torrent, files)
 	if err != nil {
-		s.onFailedImport(torrent, rest.ErrNotFoundInst)
+		s.onFailedImport(torrent, engine.ErrNotFoundInst)
 		return err
 	}
 
@@ -589,11 +589,11 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 func (s *TorrentService) AddFromFile(seriesId uint, tempPath string, auto *db.AutoTorrent) error {
 	newPath, err := s.fileService.GenFilePath(s.infoFolder, tempPath)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	err = os.Rename(tempPath, newPath)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	torrent := db.Torrent{
 		SeriesId: &seriesId,
@@ -606,7 +606,7 @@ func (s *TorrentService) AddFromFile(seriesId uint, tempPath string, auto *db.Au
 		if deleteErr != nil {
 			s.log.Warn("error deleting torrent on add error", zap.Error(deleteErr))
 		}
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	s.log.Info("adding new torrent in the background",
 		zap.Uint("seriesId", seriesId),
@@ -629,7 +629,7 @@ func (s *TorrentService) Start(torrent db.Torrent, fileIndices []int) error {
 	}
 	cTorrent, err := s.client.AddTorrentFromFile(torrent.FilePath)
 	if err != nil {
-		return rest.ErrInternal(fmt.Sprintf("failed to add torrent from file: %s", err.Error()))
+		return engine.ErrInternal(fmt.Sprintf("failed to add torrent from file: %s", err.Error()))
 	}
 	s.cTorrentMap.Store(torrent.ID, cTorrent)
 	<-cTorrent.GotInfo()
@@ -656,7 +656,7 @@ func (s *TorrentService) Start(torrent db.Torrent, fileIndices []int) error {
 	}
 	err = s.torrentRepo.StartTorrent(torrent.ID, unselectedFiles, selectedFiles, downloadLength)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	go s.torrentCompletionWatcher(torrent.ID, torrent.Name, torrent.Files, downloadLength, cTorrent)
 	return nil
@@ -665,7 +665,7 @@ func (s *TorrentService) Start(torrent db.Torrent, fileIndices []int) error {
 func (s *TorrentService) Stop(torrent db.Torrent) error {
 	mapEntry, exists := s.cTorrentMap.Load(torrent.ID)
 	if !exists {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 	cTorrent := mapEntry.(*torrentLib.Torrent)
 	for i := range torrent.Files {
@@ -681,4 +681,4 @@ func (s *TorrentService) Stop(torrent db.Torrent) error {
 	return nil
 }
 
-var TorrentServiceExport = fx.Options(fx.Provide(NewTorrentService))
+var TorrentExport = fx.Options(fx.Provide(NewTorrentService))

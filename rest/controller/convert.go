@@ -5,7 +5,7 @@ import (
 	"anileha/config"
 	"anileha/dao"
 	"anileha/db"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -42,12 +42,12 @@ func mapConversionsToResponseSlice(conversions []db.Conversion) []dao.Conversion
 func registerConvertController(
 	log *zap.Logger,
 	config *config.Config,
-	engine *gin.Engine,
+	ginEngine *gin.Engine,
 	torrentService *service.TorrentService,
 	convertService *service.ConversionService,
 ) {
-	convertGroup := engine.Group("/admin/convert")
-	convertGroup.Use(rest.RoleMiddleware(log, []string{"admin"}))
+	convertGroup := ginEngine.Group("/admin/convert")
+	convertGroup.Use(engine.RoleMiddleware(log, []string{"admin"}))
 	convertGroup.GET("", func(c *gin.Context) {
 		conversions, err := convertService.GetAll()
 		if err != nil {
@@ -60,7 +60,7 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest("failed to parse id"))
+			c.Error(engine.ErrBadRequest("failed to parse id"))
 			return
 		}
 		conversion, err := convertService.GetById(uint(id))
@@ -74,7 +74,7 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest("failed to parse id"))
+			c.Error(engine.ErrBadRequest("failed to parse id"))
 			return
 		}
 		logs, err := convertService.GetLogsById(uint(id))
@@ -83,7 +83,7 @@ func registerConvertController(
 			return
 		}
 		if logs == nil {
-			c.Error(rest.ErrInternal("logs are nil"))
+			c.Error(engine.ErrInternal("logs are nil"))
 			return
 		}
 		c.String(http.StatusOK, string(logs))
@@ -92,7 +92,7 @@ func registerConvertController(
 		idString := c.Param("id")
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
-			c.Error(rest.ErrBadRequest("failed to parse id"))
+			c.Error(engine.ErrBadRequest("failed to parse id"))
 			return
 		}
 		conversions, err := convertService.GetBySeriesId(uint(id))
@@ -105,7 +105,7 @@ func registerConvertController(
 	convertGroup.POST("/start", func(c *gin.Context) {
 		var req dao.StartConversionRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		torrent, err := torrentService.GetByIdWithSeries(req.TorrentId)
@@ -122,11 +122,11 @@ func registerConvertController(
 			if reqIndex >= 0 {
 				reqFile := req.Files[reqIndex]
 				if file.Status != db.TorrentFileReady {
-					c.Error(rest.ErrFileIsNotReadyToBeConverted)
+					c.Error(engine.ErrFileIsNotReadyToBeConverted)
 					return
 				}
 				if file.ReadyPath == nil {
-					c.Error(rest.ErrReadyFileNotFound)
+					c.Error(engine.ErrReadyFileNotFound)
 					return
 				}
 				torrentFiles = append(torrentFiles, file)
@@ -158,7 +158,7 @@ func registerConvertController(
 	convertGroup.POST("/stop", func(c *gin.Context) {
 		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(rest.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
 		conversion, err := convertService.GetById(req.Id)
@@ -167,7 +167,7 @@ func registerConvertController(
 			return
 		}
 		if conversion.Status == db.ConversionError || conversion.Status == db.ConversionCancelled || conversion.Status == db.ConversionReady {
-			c.Error(rest.ErrAlreadyStopped)
+			c.Error(engine.ErrAlreadyStopped)
 			return
 		}
 		err = convertService.StopConversion(req.Id)
@@ -179,4 +179,4 @@ func registerConvertController(
 	})
 }
 
-var ConvertControllerExport = fx.Options(fx.Invoke(registerConvertController))
+var ConvertExport = fx.Options(fx.Invoke(registerConvertController))

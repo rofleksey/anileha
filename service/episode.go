@@ -5,7 +5,7 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
-	"anileha/rest"
+	"anileha/rest/engine"
 	"anileha/util"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -94,7 +94,7 @@ func (s *EpisodeService) CreateFromConversion(conversion *db.Conversion) (*db.Ep
 	id, err := s.episodeRepo.Create(&episode)
 	if err != nil {
 		thumb.Delete()
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 
 	episode.ID = id
@@ -141,7 +141,7 @@ func (s *EpisodeService) CreateManually(seriesId *uint, tempFilePath string, tit
 	id, err := s.episodeRepo.Create(&episode)
 	if err != nil {
 		thumb.Delete()
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 
 	episode.ID = id
@@ -152,10 +152,10 @@ func (s *EpisodeService) CreateManually(seriesId *uint, tempFilePath string, tit
 func (s *EpisodeService) GetById(id uint) (*db.Episode, error) {
 	episode, err := s.episodeRepo.GetById(id)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	if episode == nil {
-		return nil, rest.ErrNotFoundInst
+		return nil, engine.ErrNotFoundInst
 	}
 	return episode, nil
 }
@@ -163,7 +163,7 @@ func (s *EpisodeService) GetById(id uint) (*db.Episode, error) {
 func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	episodes, err := s.episodeRepo.GetBySeriesId(seriesId)
 	if err != nil {
-		return nil, rest.ErrInternal(err.Error())
+		return nil, engine.ErrInternal(err.Error())
 	}
 	return episodes, nil
 }
@@ -171,21 +171,21 @@ func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 func (s *EpisodeService) RefreshThumb(id uint) error {
 	episode, err := s.episodeRepo.GetById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if episode == nil {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 
 	oldThumb := episode.Thumb
 
 	newThumb, err := s.thumbService.CreateForVideo(episode.Path, episode.DurationSec)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 
 	if err := s.episodeRepo.SetThumb(id, newThumb); err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 
 	oldThumb.Delete()
@@ -196,18 +196,18 @@ func (s *EpisodeService) RefreshThumb(id uint) error {
 func (s *EpisodeService) DeleteById(id uint) error {
 	episode, err := s.episodeRepo.GetById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if episode == nil {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 
 	rows, err := s.episodeRepo.DeleteById(id)
 	if err != nil {
-		return rest.ErrInternal(err.Error())
+		return engine.ErrInternal(err.Error())
 	}
 	if rows == 0 {
-		return rest.ErrNotFoundInst
+		return engine.ErrNotFoundInst
 	}
 
 	go s.cleanUpEpisode(*episode)
@@ -218,4 +218,4 @@ func registerStaticEpisodes(engine *gin.Engine, config *config.Config) {
 	engine.Static(util.EpisodeRoute, path.Join(config.Data.Dir, util.EpisodeSubDir))
 }
 
-var EpisodeServiceExport = fx.Options(fx.Provide(NewEpisodeService), fx.Invoke(registerStaticEpisodes))
+var EpisodeExport = fx.Options(fx.Provide(NewEpisodeService), fx.Invoke(registerStaticEpisodes))

@@ -160,4 +160,4 @@ func registerStaticThumbs(engine *gin.Engine, config *config.Config) {
 	engine.Static(util.ThumbRoute, path.Join(config.Data.Dir, util.ThumbSubDir))
 }
 
-var ThumbServiceExport = fx.Options(fx.Provide(NewThumbService), fx.Invoke(registerStaticThumbs))
+var ThumbExport = fx.Options(fx.Provide(NewThumbService), fx.Invoke(registerStaticThumbs))

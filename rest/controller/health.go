@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func registerHealthController(engine *gin.Engine, healthService *service.HealthService) {
-	engine.GET("/health", func(c *gin.Context) {
+func registerHealthController(ginEngine *gin.Engine, healthService *service.HealthService) {
+	ginEngine.GET("/health", func(c *gin.Context) {
 		health := healthService.GetHealth()
 		if health {
 			c.JSON(http.StatusOK, gin.H{"health": "green"})
@@ -18,4 +18,4 @@ func registerHealthController(engine *gin.Engine, healthService *service.HealthS
 	})
 }
 
-var HealthControllerExport = fx.Options(fx.Invoke(registerHealthController))
+var HealthExport = fx.Options(fx.Invoke(registerHealthController))
