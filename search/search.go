@@ -1,4 +1,4 @@
-package core
+package search
 
 import (
 	"anileha/config"

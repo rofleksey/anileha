@@ -2,8 +2,8 @@ package controller
 
 import (
 	"anileha/config"
-	"anileha/dao"
 	"anileha/db"
+	dao2 "anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
-	return dao.EpisodeResponseDao{
+func mapEpisodeToResponse(episode db.Episode) dao2.EpisodeResponseDao {
+	return dao2.EpisodeResponseDao{
 		ID:          episode.ID,
 		SeriesId:    episode.SeriesId,
 		Title:       episode.Title,
@@ -29,8 +29,8 @@ func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
 	}
 }
 
-func mapEpisodesToResponseSlice(episodes []db.Episode) []dao.EpisodeResponseDao {
-	res := make([]dao.EpisodeResponseDao, 0, len(episodes))
+func mapEpisodesToResponseSlice(episodes []db.Episode) []dao2.EpisodeResponseDao {
+	res := make([]dao2.EpisodeResponseDao, 0, len(episodes))
 	for _, s := range episodes {
 		res = append(res, mapEpisodeToResponse(s))
 	}
@@ -152,7 +152,7 @@ func registerEpisodeController(
 	})
 
 	adminEpisodeGroup.POST("refreshThumb", func(c *gin.Context) {
-		var req dao.IdRequestDao
+		var req dao2.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return

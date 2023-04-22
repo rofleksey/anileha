@@ -2,8 +2,8 @@ package controller
 
 import (
 	"anileha/config"
-	"anileha/dao"
 	"anileha/db"
+	dao2 "anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"encoding/json"
@@ -14,10 +14,10 @@ import (
 	"strconv"
 )
 
-func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileResponseDao {
-	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
+func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao2.TorrentFileResponseDao {
+	res := make([]dao2.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
-		res = append(res, dao.TorrentFileResponseDao{
+		res = append(res, dao2.TorrentFileResponseDao{
 			Path:              f.TorrentPath,
 			Status:            f.Status,
 			Selected:          f.Selected,
@@ -31,8 +31,8 @@ func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileR
 	return res
 }
 
-func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
-	return dao.TorrentResponseDao{
+func mapTorrentToResponse(torrent db.Torrent) dao2.TorrentResponseDao {
+	return dao2.TorrentResponseDao{
 		ID:                  torrent.ID,
 		Name:                torrent.Name,
 		Status:              torrent.Status,
@@ -46,8 +46,8 @@ func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
 	}
 }
 
-func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao.TorrentResponseWithoutFilesDao {
-	return dao.TorrentResponseWithoutFilesDao{
+func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao2.TorrentResponseWithoutFilesDao {
+	return dao2.TorrentResponseWithoutFilesDao{
 		ID:                  torrent.ID,
 		Name:                torrent.Name,
 		Status:              torrent.Status,
@@ -60,8 +60,8 @@ func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao.TorrentResponseWit
 	}
 }
 
-func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.TorrentResponseWithoutFilesDao {
-	res := make([]dao.TorrentResponseWithoutFilesDao, 0, len(torrents))
+func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao2.TorrentResponseWithoutFilesDao {
+	res := make([]dao2.TorrentResponseWithoutFilesDao, 0, len(torrents))
 	for _, t := range torrents {
 		res = append(res, mapTorrentWithoutFilesToResponse(t))
 	}
@@ -116,7 +116,7 @@ func registerTorrentController(
 		c.JSON(http.StatusOK, mapTorrentsWithoutFilesToResponseSlice(torrents))
 	})
 	torrentGroup.POST("start", func(c *gin.Context) {
-		var req dao.StartTorrentRequestDao
+		var req dao2.StartTorrentRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return
@@ -138,7 +138,7 @@ func registerTorrentController(
 		c.String(http.StatusOK, "OK")
 	})
 	torrentGroup.POST("stop", func(c *gin.Context) {
-		var req dao.IdRequestDao
+		var req dao2.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return

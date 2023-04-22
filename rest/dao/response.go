@@ -2,8 +2,8 @@ package dao
 
 import (
 	"anileha/db"
-	"anileha/meta"
 	"anileha/util"
+	"anileha/util/meta"
 	"time"
 )
 

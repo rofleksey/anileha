@@ -2,7 +2,7 @@ package nyaa
 
 import (
 	"anileha/config"
-	"anileha/search/core"
+	"anileha/search"
 	"context"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
@@ -22,13 +22,13 @@ type Service struct {
 	client      *http.Client
 }
 
-var _ core.Provider = (*Service)(nil)
+var _ search.Provider = (*Service)(nil)
 
 func NewService(
 	config *config.Config,
 	log *zap.Logger,
 ) (*Service, error) {
-	rl, client, err := core.InitClientAndRateLimit(config)
+	rl, client, err := search.InitClientAndRateLimit(config)
 	if err != nil {
 		return nil, err
 	}
@@ -50,18 +50,18 @@ const filesSelector = "div.torrent-file-list.panel-body > ul > li"
 const descriptionSelector = "#torrent-description"
 const downloadLinkSelector = "body > div > div.panel.panel-success > div.panel-footer.clearfix > a:nth-child(1)"
 
-func (s *Service) Search(ctx context.Context, query core.Query) ([]core.Result, error) {
+func (s *Service) Search(ctx context.Context, query search.Query) ([]search.Result, error) {
 	req, err := s.genRequest(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("error generating request: %w", err)
 	}
 
-	doc, err := core.LoadDocument(ctx, s.client, s.rateLimiter, s.log, req)
+	doc, err := search.LoadDocument(ctx, s.client, s.rateLimiter, s.log, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to laod document: %w", err)
 	}
 
-	results := make([]core.Result, 0, 75)
+	results := make([]search.Result, 0, 75)
 
 	doc.Find(torrentsSelector).Each(func(i int, sel *goquery.Selection) {
 		linkHtml := sel.Find(viewLinkSelector)
@@ -76,14 +76,14 @@ func (s *Service) Search(ctx context.Context, query core.Query) ([]core.Result, 
 		seedersStr := strings.TrimSpace(sel.Find(seedersSelector).Text())
 		seeders, _ := strconv.Atoi(seedersStr)
 
-		results = append(results, core.Result{
+		results = append(results, search.Result{
 			ID:      strings.TrimPrefix(viewLinkRelative, "/view/"),
 			Title:   title,
 			Seeders: seeders,
 			Size:    size,
 			Date:    date,
 			Link:    viewLink,
-			ExtraLoader: func(ctx context.Context) (core.ResultExtra, error) {
+			ExtraLoader: func(ctx context.Context) (search.ResultExtra, error) {
 				return s.getExtra(ctx, viewLink)
 			},
 		})
@@ -92,15 +92,15 @@ func (s *Service) Search(ctx context.Context, query core.Query) ([]core.Result, 
 	return results, nil
 }
 
-func (s *Service) getExtra(ctx context.Context, viewLink string) (core.ResultExtra, error) {
+func (s *Service) getExtra(ctx context.Context, viewLink string) (search.ResultExtra, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", viewLink, nil)
 	if err != nil {
-		return core.ResultExtra{}, fmt.Errorf("failed to create extra request: %w", err)
+		return search.ResultExtra{}, fmt.Errorf("failed to create extra request: %w", err)
 	}
 
-	doc, err := core.LoadDocument(ctx, s.client, s.rateLimiter, s.log, req)
+	doc, err := search.LoadDocument(ctx, s.client, s.rateLimiter, s.log, req)
 	if err != nil {
-		return core.ResultExtra{}, fmt.Errorf("failed to laod document: %w", err)
+		return search.ResultExtra{}, fmt.Errorf("failed to laod document: %w", err)
 	}
 
 	files := make([]string, 0, 32)
@@ -118,7 +118,7 @@ func (s *Service) getExtra(ctx context.Context, viewLink string) (core.ResultExt
 
 	downloadUrl := baseUrl + relativeDownloadUrl
 
-	return core.ResultExtra{
+	return search.ResultExtra{
 		DownloadUrl: downloadUrl,
 		Description: description,
 		Files:       files,
@@ -128,12 +128,12 @@ func (s *Service) getExtra(ctx context.Context, viewLink string) (core.ResultExt
 				return nil, err
 			}
 
-			return core.DownloadFile(ctx, s.client, s.rateLimiter, downloadReq)
+			return search.DownloadFile(ctx, s.client, s.rateLimiter, downloadReq)
 		},
 	}, nil
 }
 
-func (s *Service) genRequest(ctx context.Context, query core.Query) (*http.Request, error) {
+func (s *Service) genRequest(ctx context.Context, query search.Query) (*http.Request, error) {
 	urlQuery := make(url.Values)
 
 	// anime
@@ -142,7 +142,7 @@ func (s *Service) genRequest(ctx context.Context, query core.Query) (*http.Reque
 	// probably trust status
 	urlQuery.Set("f", "0")
 
-	if query.SortType == core.SortSeeders {
+	if query.SortType == search.SortSeeders {
 		urlQuery.Set("s", "seeders")
 	} else {
 		urlQuery.Set("s", "id")

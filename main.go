@@ -1,16 +1,16 @@
 package main
 
 import (
-	"anileha/analyze"
-	"anileha/command"
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
-	"anileha/logger"
+	"anileha/ffmpeg/analyze"
+	"anileha/ffmpeg/command"
 	"anileha/rest/controller"
 	"anileha/rest/engine"
 	"anileha/search/nyaa"
 	"anileha/service"
+	"anileha/util/logger"
 	"go.uber.org/fx"
 )
 

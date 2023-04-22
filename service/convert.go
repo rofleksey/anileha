@@ -1,12 +1,12 @@
 package service
 
 import (
-	"anileha/analyze"
-	"anileha/command"
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
 	"anileha/ffmpeg"
+	"anileha/ffmpeg/analyze"
+	command2 "anileha/ffmpeg/command"
 	"anileha/rest/engine"
 	"anileha/util"
 	"fmt"
@@ -26,7 +26,7 @@ type ConversionService struct {
 	queue            *ffmpeg.Queue
 	queueChan        chan ffmpeg.OutputMessage
 	probeAnalyzer    *analyze.ProbeAnalyzer
-	cmdProducer      *command.Producer
+	cmdProducer      *command2.Producer
 	fileService      *FileService
 	seriesService    *SeriesService
 	episodeService   *EpisodeService
@@ -36,7 +36,7 @@ type ConversionService struct {
 func NewConversionService(
 	conversionRepo *repo.ConversionRepo,
 	probeAnalyzer *analyze.ProbeAnalyzer,
-	cmdProducer *command.Producer,
+	cmdProducer *command2.Producer,
 	fileService *FileService,
 	seriesService *SeriesService,
 	episodeService *EpisodeService,
@@ -273,7 +273,7 @@ func (s *ConversionService) prepareConversion(
 }
 
 func (s *ConversionService) StartConversion(torrent db.Torrent, torrentFiles []db.TorrentFile,
-	prefsArr []command.Preferences) error {
+	prefsArr []command2.Preferences) error {
 	for i := range torrentFiles {
 		folder, err := s.fileService.GenFolderPath(s.conversionFolder)
 		if err != nil {

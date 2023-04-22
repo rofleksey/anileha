@@ -1,8 +1,8 @@
 package db
 
 import (
-	"anileha/meta"
 	"anileha/util"
+	"anileha/util/meta"
 	"gorm.io/datatypes"
 	"time"
 )

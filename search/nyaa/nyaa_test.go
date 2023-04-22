@@ -2,7 +2,7 @@ package nyaa
 
 import (
 	"anileha/config"
-	"anileha/search/core"
+	"anileha/search"
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,9 +17,9 @@ func TestNyaaSearch(t *testing.T) {
 	service, err := NewService(&cfg, zap.NewNop())
 	require.Nil(t, err)
 
-	res, err := service.Search(ctx, core.Query{
+	res, err := service.Search(ctx, search.Query{
 		Query:    "blue lock erai 1080",
-		SortType: core.SortDate,
+		SortType: search.SortDate,
 	})
 	require.Nil(t, err)
 

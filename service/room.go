@@ -3,7 +3,7 @@ package service
 import (
 	"anileha/config"
 	"anileha/db"
-	"anileha/ws"
+	"anileha/util/ws"
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"go.uber.org/fx"

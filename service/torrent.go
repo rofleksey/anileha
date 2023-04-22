@@ -1,14 +1,14 @@
 package service
 
 import (
-	"anileha/analyze"
-	"anileha/command"
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
-	"anileha/meta"
+	"anileha/ffmpeg/analyze"
+	"anileha/ffmpeg/command"
 	"anileha/rest/engine"
 	"anileha/util"
+	"anileha/util/meta"
 	"context"
 	"errors"
 	"fmt"

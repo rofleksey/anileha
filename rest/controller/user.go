@@ -2,8 +2,8 @@ package controller
 
 import (
 	"anileha/config"
-	"anileha/dao"
 	"anileha/db"
+	dao2 "anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"anileha/util"
@@ -14,8 +14,8 @@ import (
 	"net/http"
 )
 
-func mapUserToResponse(user db.User) dao.UserResponseDao {
-	return dao.UserResponseDao{
+func mapUserToResponse(user db.User) dao2.UserResponseDao {
+	return dao2.UserResponseDao{
 		ID:    user.ID,
 		Login: user.Login,
 		Name:  user.Name,
@@ -25,8 +25,8 @@ func mapUserToResponse(user db.User) dao.UserResponseDao {
 	}
 }
 
-func mapUsersToResponseSlice(users []db.User) []dao.UserResponseDao {
-	res := make([]dao.UserResponseDao, 0, len(users))
+func mapUsersToResponseSlice(users []db.User) []dao2.UserResponseDao {
+	res := make([]dao2.UserResponseDao, 0, len(users))
 	for _, u := range users {
 		res = append(res, mapUserToResponse(u))
 	}
@@ -43,7 +43,7 @@ func registerUserController(
 ) {
 	userGroup := ginEngine.Group("/user")
 	userGroup.POST("/register", func(c *gin.Context) {
-		var req dao.NewUserRequestDao
+		var req dao2.NewUserRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(err)
 			return
@@ -92,7 +92,7 @@ func registerUserController(
 		c.JSON(http.StatusOK, mapUserToResponse(*user))
 	})
 	userGroup.POST("/login", func(c *gin.Context) {
-		var req dao.AuthRequestDao
+		var req dao2.AuthRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			_ = c.Error(engine.ErrBadRequest(err.Error()))
 			return
@@ -132,7 +132,7 @@ func registerUserController(
 	authGroup := ginEngine.Group("/user")
 	authGroup.Use(engine.AuthorizedMiddleware(log))
 	authGroup.POST("/modify", func(c *gin.Context) {
-		var req dao.ModifyUserRequestDao
+		var req dao2.ModifyUserRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			_ = c.Error(err)
 			return
@@ -205,7 +205,7 @@ func registerUserController(
 	})
 
 	ownerUserGroup.POST("", func(c *gin.Context) {
-		var req dao.OwnerCreateUserRequestDao
+		var req dao2.OwnerCreateUserRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			_ = c.Error(err)
 			return

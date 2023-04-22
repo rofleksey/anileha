@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"anileha/analyze"
 	"anileha/config"
-	"anileha/dao"
 	"anileha/db"
+	"anileha/ffmpeg/analyze"
+	"anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"context"
