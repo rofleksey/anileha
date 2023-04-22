@@ -7,6 +7,17 @@ import (
 	"os"
 )
 
+type RateLimitConfig struct {
+	Requests   int `validate:"required,gt=0" yaml:"requests"`
+	IntervalMs int `validate:"required,gt=0" yaml:"intervalMs"`
+}
+
+type SearchConfig struct {
+	Proxy     string          `yaml:"proxy"`
+	RateLimit RateLimitConfig `yaml:"rateLimit"`
+	TimeoutMs int             `yaml:"timeoutMs"`
+}
+
 type DbConfig struct {
 	Host     string `validate:"required" yaml:"host"`
 	Port     uint   `validate:"required" yaml:"port"`
@@ -63,14 +74,15 @@ type Config struct {
 	Rest      RestConfig      `validate:"dive,required" yaml:"rest"`
 	WebSocket WebSocketConfig `validate:"dive,required" yaml:"ws"`
 	Data      DataConfig      `validate:"dive,required" yaml:"data"`
+	Search    SearchConfig    `validate:"dive,required" yaml:"search"`
 	Thumb     ThumbConfig     `validate:"dive,required" yaml:"thumb"`
 	User      UserConfig      `validate:"dive,required" yaml:"user"`
 	Admin     AdminConfig     `validate:"dive,required" yaml:"admin"`
 	Mail      MailConfig      `validate:"dive,required" yaml:"mail"`
 }
 
-func LoadConfig() (*Config, error) {
-	config := Config{
+func GetDefaultConfig() Config {
+	return Config{
 		Db: DbConfig{
 			Host:     "localhost",
 			Port:     5432,
@@ -92,6 +104,13 @@ func LoadConfig() (*Config, error) {
 		},
 		Data: DataConfig{
 			Dir: "data",
+		},
+		Search: SearchConfig{
+			RateLimit: RateLimitConfig{
+				Requests:   1,
+				IntervalMs: 5000,
+			},
+			TimeoutMs: 10000,
 		},
 		Thumb: ThumbConfig{
 			Attempts: 5,
@@ -115,6 +134,10 @@ func LoadConfig() (*Config, error) {
 			RegisterTemplatePath: "register.tmpl",
 		},
 	}
+}
+
+func LoadConfig() (*Config, error) {
+	config := GetDefaultConfig()
 
 	configBytes, err := os.ReadFile("config.yaml")
 	if err != nil {

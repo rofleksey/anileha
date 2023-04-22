@@ -9,6 +9,7 @@ import (
 	"anileha/db/repo"
 	"anileha/logger"
 	"anileha/rest"
+	"anileha/search/nyaa"
 	"anileha/service"
 	"go.uber.org/fx"
 )
@@ -38,6 +39,9 @@ func main() {
 		repo.TorrentRepoExport,
 		repo.ConversionRepoExport,
 		repo.EpisodeRepoExport,
+
+		// search
+		nyaa.Export,
 
 		// services
 		service.FileServiceExport,

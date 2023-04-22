@@ -65,8 +65,3 @@ type AnalysisResult struct {
 	Audio []AudioStream `json:"audio"`
 	Sub   []SubStream   `json:"sub"`
 }
-
-type EpisodeMetadata struct {
-	Episode string `json:"episode"`
-	Season  string `json:"season"`
-}

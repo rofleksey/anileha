@@ -6,13 +6,13 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/db/repo"
+	"anileha/meta"
 	"anileha/rest"
 	"anileha/util"
 	"context"
 	"errors"
 	"fmt"
 	torrentLib "github.com/anacrolix/torrent"
-	"github.com/rofleksey/roflmeta"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -538,18 +538,14 @@ func (s *TorrentService) initTorrent(torrent db.Torrent) error {
 	filenames := make([]string, 0, len(info.Files))
 	for i, torrentFile := range cTorrent.Files() {
 		torrentPath := torrentFile.DisplayPath()
-		roflMeta := roflmeta.ParseSingleEpisodeMetadata(torrentPath)
-		meta := db.EpisodeMetadata{
-			Episode: roflMeta.Episode,
-			Season:  roflMeta.Season,
-		}
+		episodeMeta := meta.GuessEpisodeMetadata(torrentPath)
 		file := db.TorrentFile{
 			TorrentId:         torrent.ID,
 			TorrentIndex:      i,
 			TorrentPath:       torrentPath,
 			Length:            uint(torrentFile.Length()),
 			Type:              util.GetFileType(torrentPath),
-			SuggestedMetadata: datatypes.NewJSONType(meta),
+			SuggestedMetadata: datatypes.NewJSONType(episodeMeta),
 		}
 		files = append(files, file)
 		filenames = append(filenames, file.TorrentPath)

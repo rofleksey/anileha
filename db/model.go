@@ -1,6 +1,7 @@
 package db
 
 import (
+	"anileha/meta"
 	"anileha/util"
 	"gorm.io/datatypes"
 	"time"
@@ -73,7 +74,7 @@ type TorrentFile struct {
 	Selected          bool
 	Status            TorrentFileStatus
 	Type              util.FileType
-	SuggestedMetadata datatypes.JSONType[EpisodeMetadata]
+	SuggestedMetadata datatypes.JSONType[meta.EpisodeMetadata]
 	Analysis          datatypes.JSONType[*AnalysisResult]
 }
 

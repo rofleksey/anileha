@@ -2,6 +2,7 @@ package dao
 
 import (
 	"anileha/db"
+	"anileha/meta"
 	"anileha/util"
 	"time"
 )
@@ -45,7 +46,7 @@ type TorrentFileResponseDao struct {
 	Length            uint                 `json:"length"`
 	ClientIndex       int                  `json:"clientIndex"`
 	Type              util.FileType        `json:"type"`
-	SuggestedMetadata db.EpisodeMetadata   `json:"suggestedMetadata"`
+	SuggestedMetadata meta.EpisodeMetadata `json:"suggestedMetadata"`
 	Analysis          *db.AnalysisResult   `json:"analysis"`
 }
 
