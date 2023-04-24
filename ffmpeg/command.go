@@ -145,9 +145,6 @@ func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan
 }
 
 func (c *Command) interpolateArgs() []string {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	result := make([]string, 0, len(c.args))
 	argsSplit := strings.Split(c.args, " ")
 

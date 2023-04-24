@@ -133,7 +133,6 @@ func (p *ProbeAnalyzer) GetVideoDurationSec(inputFile string) (int, error) {
 // ExtractSubText gets sub stream text
 func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (string, error) {
 	var resultStr string
-	p.log.Info("extracting stream subtitle text", zap.String("inputFile", inputFile), zap.Int("relativeIndex", streamIndex))
 	srtFileName := inputFile + ".srt"
 	defer func() {
 		_ = os.Remove(srtFileName)
@@ -144,6 +143,10 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	sizeCommand.AddVar("INPUT", inputFile)
 	sizeCommand.AddVar("OUTPUT", srtFileName)
 	sizeCommand.AddVar("MAP", mapValue)
+	p.log.Info("extracting stream subtitle text",
+		zap.String("inputFile", inputFile),
+		zap.Int("relativeIndex", streamIndex),
+		zap.String("cmd", sizeCommand.String()))
 	output, err := sizeCommand.ExecuteSync()
 	if output != nil {
 		resultStr = string(output)
@@ -189,6 +192,8 @@ func (p *ProbeAnalyzer) getName(stream *ffprobe.Stream) string {
 func (p *ProbeAnalyzer) Probe(inputFile string) (*db.AnalysisResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	p.log.Info("probing file", zap.String("file", inputFile))
 
 	probe, err := ffprobe.ProbeURL(ctx, inputFile)
 	if err != nil {
