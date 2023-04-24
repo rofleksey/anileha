@@ -83,7 +83,6 @@ func (p *ProbeAnalyzer) parseStreamSize(sizeCommandResult string, streamType Str
 // Last ffmpeg line: video:0kB audio:18619kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
 func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, streamIndex int) (uint64, error) {
 	var resultStr string
-	p.log.Info("getting stream size", zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex))
 	args := p.config.FFMpeg.StreamSizeArgs
 	streamLetter := streamType[0:1]
 	mapValue := fmt.Sprintf("0:%s:%d", streamLetter, streamIndex)
@@ -91,6 +90,11 @@ func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, s
 	sizeCommand.AddVar("MAX", "2147483647")
 	sizeCommand.AddVar("INPUT", inputFile)
 	sizeCommand.AddVar("MAP", mapValue)
+	p.log.Info("getting stream size",
+		zap.String("inputFile", inputFile),
+		zap.String("streamType", string(streamType)),
+		zap.Int("relativeIndex", streamIndex),
+		zap.String("cmd", sizeCommand.String()))
 	result, err := sizeCommand.ExecuteSync()
 
 	if result != nil {
