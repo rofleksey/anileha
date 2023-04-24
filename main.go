@@ -62,6 +62,7 @@ func main() {
 		controller.ProbeExport,
 		controller.EpisodeExport,
 		controller.UserExport,
+		controller.SearchExport,
 		controller.WebsocketExport,
 
 		// misc

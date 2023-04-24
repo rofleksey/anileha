@@ -1,7 +1,17 @@
 package dao
 
+import "anileha/db"
+
 type QueryRequestDao struct {
 	Query string `json:"query" binding:"required"`
+	Page  int    `json:"page" binding:"gte=0"`
+}
+
+type AddTorrentFromSearchRequestDao struct {
+	SeriesID  uint            `json:"seriesId" binding:"required"`
+	TorrentID string          `json:"torrentId" binding:"required"`
+	Provider  string          `json:"provider" binding:"required"`
+	Auto      *db.AutoTorrent `json:"auto"`
 }
 
 type StartTorrentRequestDao struct {

@@ -3,7 +3,7 @@ package controller
 import (
 	"anileha/config"
 	"anileha/db"
-	dao2 "anileha/rest/dao"
+	"anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"fmt"
@@ -15,8 +15,8 @@ import (
 	"strings"
 )
 
-func mapSeriesToResponse(series db.Series) dao2.SeriesResponseDao {
-	return dao2.SeriesResponseDao{
+func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
+	return dao.SeriesResponseDao{
 		ID:         series.ID,
 		Title:      series.Title,
 		LastUpdate: series.LastUpdate,
@@ -24,8 +24,8 @@ func mapSeriesToResponse(series db.Series) dao2.SeriesResponseDao {
 	}
 }
 
-func mapSeriesToResponseSlice(series []db.Series) []dao2.SeriesResponseDao {
-	res := make([]dao2.SeriesResponseDao, 0, len(series))
+func mapSeriesToResponseSlice(series []db.Series) []dao.SeriesResponseDao {
+	res := make([]dao.SeriesResponseDao, 0, len(series))
 	for _, s := range series {
 		res = append(res, mapSeriesToResponse(s))
 	}
@@ -50,7 +50,7 @@ func registerSeriesController(
 	})
 
 	ginEngine.POST("/series/search", func(c *gin.Context) {
-		var req dao2.QueryRequestDao
+		var req dao.QueryRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return

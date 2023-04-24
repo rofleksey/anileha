@@ -28,7 +28,7 @@
         :src="props.src"
         @mousemove.self="onVideoMove"
         @touchmove.self="onVideoTouchMove"
-        @keydown.self="playerKeyboardListener"
+        @keydown="playerKeyboardListener"
         @touchstart.self="onVideoTouchDown"
         @mousedown.self="onVideoPress"
         @touchend.self="onVideoTouchUp"

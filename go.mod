@@ -14,6 +14,8 @@ require (
 	github.com/go-playground/validator/v10 v10.12.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gorilla/websocket v1.5.0
+	github.com/mmcdole/gofeed v1.2.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/fx v1.19.2
 	go.uber.org/zap v1.24.0
@@ -81,6 +83,7 @@ require (
 	github.com/leodido/go-urn v1.2.2 // indirect
 	github.com/lispad/go-generics-tools v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mmcdole/goxpp v1.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect

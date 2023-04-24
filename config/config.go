@@ -44,8 +44,15 @@ type DataConfig struct {
 	Dir string `validate:"required" yaml:"dir"`
 }
 
+type FFMpegConfig struct {
+	StreamSizeArgs string `validate:"required" yaml:"streamSizeArgs"`
+	ExtractSubArgs string `validate:"required" yaml:"extractSubArgs"`
+	ConvertArgs    string `validate:"required" yaml:"convertArgs"`
+}
+
 type ThumbConfig struct {
-	Attempts int `validate:"gt=0" yaml:"attempts"`
+	Args     string `validate:"required" yaml:"args"`
+	Attempts int    `validate:"gt=0" yaml:"attempts"`
 }
 
 type UserConfig struct {
@@ -74,6 +81,7 @@ type Config struct {
 	Rest      RestConfig      `validate:"dive,required" yaml:"rest"`
 	WebSocket WebSocketConfig `validate:"dive,required" yaml:"ws"`
 	Data      DataConfig      `validate:"dive,required" yaml:"data"`
+	FFMpeg    FFMpegConfig    `validate:"dive,required" yaml:"ffmpeg"`
 	Search    SearchConfig    `validate:"dive,required" yaml:"search"`
 	Thumb     ThumbConfig     `validate:"dive,required" yaml:"thumb"`
 	User      UserConfig      `validate:"dive,required" yaml:"user"`
@@ -105,6 +113,11 @@ func GetDefaultConfig() Config {
 		Data: DataConfig{
 			Dir: "data",
 		},
+		FFMpeg: FFMpegConfig{
+			StreamSizeArgs: "$BASE -analyzeduration $MAX -probesize $MAX -i $INPUT -map $MAP -c copy -f null -",
+			ExtractSubArgs: "$BASE -i $INPUT -map $MAP -f srt $OUTPUT",
+			ConvertArgs:    "$BASE -i $INPUT -acodec aac -b:a 196k -ac 2 -vcodec libx264 -crf 18 -tune animation -pix_fmt yuv240p -preset slow -f mp4 $FILTER_SUB $FILTER_AUDIO $MAP_SUB $MAP_AUDIO -movflags +faststart -threads $THREADS $OUTPUT",
+		},
 		Search: SearchConfig{
 			RateLimit: RateLimitConfig{
 				Requests:   1,
@@ -113,6 +126,7 @@ func GetDefaultConfig() Config {
 			TimeoutMs: 10000,
 		},
 		Thumb: ThumbConfig{
+			Args:     "$BASE -ss $SS -i $INPUT -frames:v 1 $OUTPUT",
 			Attempts: 5,
 		},
 		User: UserConfig{

@@ -1,5 +1,5 @@
 import axios, {AxiosProgressEvent} from 'axios';
-import {Analysis, AutoTorrent, StartConversionRequest, User} from 'src/lib/api-types';
+import {AutoTorrent, SearchResult, StartConversionRequest, User} from 'src/lib/api-types';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL
 console.log(`BASE_URL = ${BASE_URL}`)
@@ -105,7 +105,7 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
   })
 }
 
-export async function postNewTorrent(seriesId: number, file: File, auto?: AutoTorrent): Promise<void> {
+export async function postNewTorrentFromFile(seriesId: number, file: File, auto?: AutoTorrent): Promise<void> {
   const formData = new FormData();
   formData.append('seriesId', seriesId.toString());
   formData.append('file', file);
@@ -114,7 +114,7 @@ export async function postNewTorrent(seriesId: number, file: File, auto?: AutoTo
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/torrent`,
+    url: `${BASE_URL}/admin/torrent/fromFile`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
@@ -122,6 +122,31 @@ export async function postNewTorrent(seriesId: number, file: File, auto?: AutoTo
     maxContentLength: MAX_FILE_SIZE,
     maxBodyLength: MAX_FILE_SIZE
   })
+}
+
+export async function postSearchTorrents(query: string, page?: number): Promise<SearchResult[]> {
+  const {data}: { data: SearchResult[] } = await axios.post(`${BASE_URL}/admin/search/torrent`, {
+    query,
+    page: page ?? 0,
+  }, {
+    withCredentials: true,
+    timeout: SUPER_LONG_TIMEOUT,
+  });
+  return data;
+}
+
+export async function postNewTorrentFromSearch(seriesId: number, torrentId: string, provider: string, auto?: AutoTorrent): Promise<void> {
+  await axios.post(`${BASE_URL}/admin/torrent/fromSearch`, {
+    seriesId,
+    torrentId,
+    provider,
+    auto
+  }, {
+    withCredentials: true,
+    timeout: SUPER_LONG_TIMEOUT,
+    maxContentLength: MAX_FILE_SIZE,
+    maxBodyLength: MAX_FILE_SIZE
+  });
 }
 
 export async function postStartTorrent(torrentId: number, fileIndices: number[]): Promise<void> {

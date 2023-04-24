@@ -15,14 +15,17 @@ import (
 )
 
 type Provider interface {
+	GetRSS(ctx context.Context) ([]ResultRSS, error)
 	Search(ctx context.Context, query Query) ([]Result, error)
+	GetById(ctx context.Context, id string) (ResultById, error)
+	DownloadById(ctx context.Context, id string) ([]byte, error)
 }
 
-type Sort string
+type Sort int
 
 const (
-	SortDate    Sort = "date"
-	SortSeeders Sort = "seeders"
+	SortDate    Sort = 0
+	SortSeeders Sort = 1
 )
 
 type Query struct {
@@ -31,21 +34,24 @@ type Query struct {
 	Page     int
 }
 
-type ResultExtra struct {
-	DownloadUrl     string
-	Description     string
-	Files           []string
-	DownloadTorrent func(ctx context.Context) ([]byte, error)
+type ResultRSS struct {
+	ID    string
+	Title string
+	Link  string
+}
+
+type ResultById struct {
+	DownloadUrl string
+	Files       []string
 }
 
 type Result struct {
-	ID          string                                         `json:"id"`
-	Title       string                                         `json:"title"`
-	Seeders     int                                            `json:"seeders"`
-	Size        string                                         `json:"size"`
-	Date        string                                         `json:"date"`
-	Link        string                                         `json:"link"`
-	ExtraLoader func(ctx context.Context) (ResultExtra, error) `json:"-"`
+	ID      string
+	Title   string
+	Seeders int
+	Size    string
+	Date    string
+	Link    string
 }
 
 func InitClientAndRateLimit(config *config.Config) (*rate.Limiter, *http.Client, error) {

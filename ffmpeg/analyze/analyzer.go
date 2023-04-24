@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"anileha/config"
 	"anileha/db"
 	"anileha/ffmpeg"
 	"anileha/util"
@@ -24,10 +25,11 @@ import (
 type ProbeAnalyzer struct {
 	regexMap map[StreamType]*regexp.Regexp
 	log      *zap.Logger
+	config   *config.Config
 }
 
 func NewProbeAnalyzer(
-	log *zap.Logger,
+	log *zap.Logger, config *config.Config,
 ) *ProbeAnalyzer {
 	regexMap := make(map[StreamType]*regexp.Regexp)
 	regexMap[StreamVideo] = videoRegex
@@ -36,6 +38,7 @@ func NewProbeAnalyzer(
 	return &ProbeAnalyzer{
 		regexMap: regexMap,
 		log:      log,
+		config:   config,
 	}
 }
 
@@ -81,14 +84,13 @@ func (p *ProbeAnalyzer) parseStreamSize(sizeCommandResult string, streamType Str
 func (p *ProbeAnalyzer) GetStreamSize(inputFile string, streamType StreamType, streamIndex int) (uint64, error) {
 	var resultStr string
 	p.log.Info("getting stream size", zap.String("inputFile", inputFile), zap.String("streamType", string(streamType)), zap.Int("relativeIndex", streamIndex))
-	sizeCommand := ffmpeg.NewCommand(inputFile, 0, "-")
+	args := p.config.FFMpeg.StreamSizeArgs
 	streamLetter := streamType[0:1]
 	mapValue := fmt.Sprintf("0:%s:%d", streamLetter, streamIndex)
-	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
-	sizeCommand.AddKeyValue("-analyzeduration", "2147483647", ffmpeg.OptionBase)
-	sizeCommand.AddKeyValue("-probesize", "2147483647", ffmpeg.OptionBase)
-	sizeCommand.AddKeyValue("-c", "copy", ffmpeg.OptionOutput)
-	sizeCommand.AddKeyValue("-f", "null", ffmpeg.OptionOutput)
+	sizeCommand := ffmpeg.NewCommand("ffmpeg", args, 0)
+	sizeCommand.AddVar("MAX", "2147483647")
+	sizeCommand.AddVar("INPUT", inputFile)
+	sizeCommand.AddVar("MAP", mapValue)
 	result, err := sizeCommand.ExecuteSync()
 
 	if result != nil {
@@ -132,10 +134,12 @@ func (p *ProbeAnalyzer) ExtractSubText(inputFile string, streamIndex int) (strin
 	defer func() {
 		_ = os.Remove(srtFileName)
 	}()
-	sizeCommand := ffmpeg.NewCommand(inputFile, 0, srtFileName)
 	mapValue := fmt.Sprintf("0:s:%d", streamIndex)
-	sizeCommand.AddKeyValue("-map", mapValue, ffmpeg.OptionInput)
-	sizeCommand.AddKeyValue("-f", "srt", ffmpeg.OptionOutput)
+	args := p.config.FFMpeg.ExtractSubArgs
+	sizeCommand := ffmpeg.NewCommand("ffmpeg", args, 0)
+	sizeCommand.AddVar("INPUT", inputFile)
+	sizeCommand.AddVar("OUTPUT", srtFileName)
+	sizeCommand.AddVar("MAP", mapValue)
 	output, err := sizeCommand.ExecuteSync()
 	if output != nil {
 		resultStr = string(output)

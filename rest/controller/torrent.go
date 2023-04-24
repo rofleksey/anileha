@@ -3,21 +3,23 @@ package controller
 import (
 	"anileha/config"
 	"anileha/db"
-	dao2 "anileha/rest/dao"
+	"anileha/rest/dao"
 	"anileha/rest/engine"
+	"anileha/search/nyaa"
 	"anileha/service"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
 	"strconv"
 )
 
-func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao2.TorrentFileResponseDao {
-	res := make([]dao2.TorrentFileResponseDao, 0, len(torrentFiles))
+func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileResponseDao {
+	res := make([]dao.TorrentFileResponseDao, 0, len(torrentFiles))
 	for _, f := range torrentFiles {
-		res = append(res, dao2.TorrentFileResponseDao{
+		res = append(res, dao.TorrentFileResponseDao{
 			Path:              f.TorrentPath,
 			Status:            f.Status,
 			Selected:          f.Selected,
@@ -31,8 +33,8 @@ func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao2.TorrentFile
 	return res
 }
 
-func mapTorrentToResponse(torrent db.Torrent) dao2.TorrentResponseDao {
-	return dao2.TorrentResponseDao{
+func mapTorrentToResponse(torrent db.Torrent) dao.TorrentResponseDao {
+	return dao.TorrentResponseDao{
 		ID:                  torrent.ID,
 		Name:                torrent.Name,
 		Status:              torrent.Status,
@@ -46,8 +48,8 @@ func mapTorrentToResponse(torrent db.Torrent) dao2.TorrentResponseDao {
 	}
 }
 
-func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao2.TorrentResponseWithoutFilesDao {
-	return dao2.TorrentResponseWithoutFilesDao{
+func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao.TorrentResponseWithoutFilesDao {
+	return dao.TorrentResponseWithoutFilesDao{
 		ID:                  torrent.ID,
 		Name:                torrent.Name,
 		Status:              torrent.Status,
@@ -60,8 +62,8 @@ func mapTorrentWithoutFilesToResponse(torrent db.Torrent) dao2.TorrentResponseWi
 	}
 }
 
-func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao2.TorrentResponseWithoutFilesDao {
-	res := make([]dao2.TorrentResponseWithoutFilesDao, 0, len(torrents))
+func mapTorrentsWithoutFilesToResponseSlice(torrents []db.Torrent) []dao.TorrentResponseWithoutFilesDao {
+	res := make([]dao.TorrentResponseWithoutFilesDao, 0, len(torrents))
 	for _, t := range torrents {
 		res = append(res, mapTorrentWithoutFilesToResponse(t))
 	}
@@ -73,6 +75,7 @@ func registerTorrentController(
 	config *config.Config,
 	ginEngine *gin.Engine,
 	fileService *service.FileService,
+	nyaaService *nyaa.Service,
 	torrentService *service.TorrentService,
 ) {
 	torrentGroup := ginEngine.Group("/admin/torrent")
@@ -116,7 +119,7 @@ func registerTorrentController(
 		c.JSON(http.StatusOK, mapTorrentsWithoutFilesToResponseSlice(torrents))
 	})
 	torrentGroup.POST("start", func(c *gin.Context) {
-		var req dao2.StartTorrentRequestDao
+		var req dao.StartTorrentRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return
@@ -138,7 +141,7 @@ func registerTorrentController(
 		c.String(http.StatusOK, "OK")
 	})
 	torrentGroup.POST("stop", func(c *gin.Context) {
-		var req dao2.IdRequestDao
+		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return
@@ -173,7 +176,8 @@ func registerTorrentController(
 		}
 		c.String(http.StatusOK, "OK")
 	})
-	torrentGroup.POST("", func(c *gin.Context) {
+
+	torrentGroup.POST("/fromFile", func(c *gin.Context) {
 		form, err := c.MultipartForm()
 		if err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
@@ -225,6 +229,40 @@ func registerTorrentController(
 			c.Error(err)
 			return
 		}
+		c.String(http.StatusOK, "OK")
+	})
+
+	torrentGroup.POST("/fromSearch", func(c *gin.Context) {
+		var req dao.AddTorrentFromSearchRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.Error(engine.ErrBadRequest(err.Error()))
+			return
+		}
+
+		tempDst, err := fileService.GenTempFilePath("new.torrent")
+		if err != nil {
+			c.Error(engine.ErrInternal(err.Error()))
+			return
+		}
+
+		bytes, err := nyaaService.DownloadById(c.Request.Context(), req.TorrentID)
+		if err != nil {
+			c.Error(engine.ErrInternal(err.Error()))
+			return
+		}
+
+		err = os.WriteFile(tempDst, bytes, 0644)
+		if err != nil {
+			c.Error(engine.ErrInternal(err.Error()))
+			return
+		}
+
+		err = torrentService.AddFromFile(req.SeriesID, tempDst, req.Auto)
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
 		c.String(http.StatusOK, "OK")
 	})
 }

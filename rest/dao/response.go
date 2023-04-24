@@ -86,3 +86,13 @@ type UserResponseDao struct {
 	Roles []string `json:"roles"`
 	Thumb string   `json:"thumb"`
 }
+
+type SearchResultDao struct {
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Provider string `json:"provider"`
+	Seeders  int    `json:"seeders"`
+	Size     string `json:"size"`
+	Date     string `json:"date"`
+	Link     string `json:"link"`
+}

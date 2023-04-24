@@ -152,3 +152,13 @@ export interface AutoTorrent {
   audioLang: string;
   subLang: string;
 }
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  provider: string;
+  seeders: number;
+  size: string;
+  date: string;
+  link: string;
+}

@@ -165,18 +165,11 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 		numThreads = 16
 	}
 
-	command := ffmpeg.NewCommand(inputFile, probe.Video.DurationSec, outputPath)
-	command.AddKeyValue("-acodec", "aac", ffmpeg.OptionOutput)
-	command.AddKeyValue("-b:a", "196k", ffmpeg.OptionOutput)
-	command.AddKeyValue("-ac", "2", ffmpeg.OptionOutput)
-	command.AddKeyValue("-vcodec", "libx264", ffmpeg.OptionOutput)
-	command.AddKeyValue("-crf", "18", ffmpeg.OptionOutput)
-	command.AddKeyValue("-tune", "animation", ffmpeg.OptionOutput)  // this is bad?
-	command.AddKeyValue("-pix_fmt", "yuv420p", ffmpeg.OptionOutput) // yuv420p10le?
-	command.AddKeyValue("-preset", "slow", ffmpeg.OptionOutput)
-	command.AddKeyValue("-f", "mp4", ffmpeg.OptionOutput)
-	command.AddKeyValue("-movflags", "+faststart", ffmpeg.OptionPostOutput)
-	command.AddKeyValue("-threads", strconv.Itoa(numThreads), ffmpeg.OptionOutput)
+	args := p.config.FFMpeg.ConvertArgs
+	command := ffmpeg.NewCommand("ffmpeg", args, probe.Video.DurationSec)
+	command.AddVar("INPUT", inputFile)
+	command.AddVar("OUTPUT", outputPath)
+	command.AddVar("THREADS", strconv.Itoa(numThreads))
 
 	audioPick := p.selectAudio(probe.Audio, prefs.Audio)
 	subPick := p.selectSub(probe.Sub, prefs.Sub)
@@ -185,28 +178,31 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 		switch subPick.Filter {
 		case subtitlesSubFilter:
 			if subPick.ExternalFile != "" {
-				command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v]subtitles=f='%s'[vo]",
-					subPick.ExternalFile), ffmpeg.OptionOutput)
+				command.AddVar("FILTER_SUB", "-filter_complex",
+					fmt.Sprintf("[0:v]subtitles=f='%s'[vo]", subPick.ExternalFile))
 			} else {
-				command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v]subtitles=f='%s':si=%d[vo]",
-					inputFile, *subPick.StreamIndex), ffmpeg.OptionOutput)
+				command.AddVar("FILTER_SUB", "-filter_complex",
+					fmt.Sprintf("[0:v]subtitles=f='%s':si=%d[vo]", inputFile, *subPick.StreamIndex))
 			}
-			command.AddKeyValue("-map", "[vo]", ffmpeg.OptionPostOutput)
 		case overlaySubFilter:
-			command.AddKeyValue("-filter_complex", fmt.Sprintf("[0:v][0:s:%d]overlay[vo]",
-				*subPick.StreamIndex), ffmpeg.OptionOutput)
-			command.AddKeyValue("-map", "[vo]", ffmpeg.OptionPostOutput)
+			command.AddVar("FILTER_SUB", "-filter_complex",
+				fmt.Sprintf("[0:v][0:s:%d]overlay[vo]", *subPick.StreamIndex))
+
 		default:
 			return nil, util.ErrUnsupportedSubs
 		}
+
+		command.AddVar("MAP_SUB", "-map", "[vo]")
 	} else {
-		command.AddKeyValue("-map", "0:v", ffmpeg.OptionPostOutput)
+		command.AddVar("MAP_SUB", "-map", "0:v")
 	}
 
 	if audioPick != nil {
-		command.AddKeyValue("-map", fmt.Sprintf("0:a:%d", *audioPick.StreamIndex), ffmpeg.OptionOutput)
+		command.AddVar("MAP_AUDIO", "-map", fmt.Sprintf("0:a:%d", *audioPick.StreamIndex))
 	}
+
 	command.WriteLogsTo(logsPath)
+
 	return command, nil
 }
 

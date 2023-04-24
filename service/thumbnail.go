@@ -76,9 +76,11 @@ func (s *ThumbService) videoFileThumbnailWorker(inputFile string, timeSeconds in
 		_ = os.Remove(tempPath)
 	}()
 
-	thumbCmd := ffmpeg.NewCommand(inputFile, 0, tempPath)
-	thumbCmd.AddKeyValue("-ss", strconv.Itoa(timeSeconds), ffmpeg.OptionBase)
-	thumbCmd.AddKeyValue("-frames:v", "1", ffmpeg.OptionOutput)
+	args := s.config.Thumb.Args
+	thumbCmd := ffmpeg.NewCommand("ffmpeg", args, 0)
+	thumbCmd.AddVar("INPUT", inputFile)
+	thumbCmd.AddVar("OUTPUT", tempPath)
+	thumbCmd.AddVar("SS", strconv.Itoa(timeSeconds))
 
 	s.log.Info("generating thumbnail",
 		zap.String("inputFile", inputFile),

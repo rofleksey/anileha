@@ -2,7 +2,7 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin card">
       <q-card-section>
-        <div class="text-h6">Add torrent</div>
+        <div class="text-h6">Add torrent from file</div>
       </q-card-section>
       <q-card-section class="q-pt-none">
         <q-toggle
@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import {useDialogPluginComponent} from 'quasar'
 import {ref} from 'vue';
-import {postNewTorrent} from 'src/lib/post-api';
+import {postNewTorrentFromFile} from 'src/lib/post-api';
 import {showError} from 'src/lib/util';
 import {AutoTorrent} from 'src/lib/api-types';
 
@@ -91,7 +91,7 @@ function onOKClick() {
     }
   }
   postLoading.value = true;
-  postNewTorrent(props.seriesId, file, autoTorrent)
+  postNewTorrentFromFile(props.seriesId, file, autoTorrent)
     .then(() => {
       onDialogOK();
     })

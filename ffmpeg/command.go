@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +19,9 @@ var timeRegex = regexp.MustCompile("time=(\\d+):(\\d+):(\\d+).(\\d+)")
 
 type Command struct {
 	mutex    sync.Mutex
-	opts     []option
+	cmd      string
+	args     string
+	vars     map[string][]string
 	logsPath *string
 
 	// immutable
@@ -31,66 +32,30 @@ type CommandSignalEnd struct {
 	Err error
 }
 
-type option struct {
-	key      string
-	priority OptionPriority
-	value    *string
-}
-
-type OptionPriority int
-
-const (
-	OptionBase       OptionPriority = 1
-	optionInputFile  OptionPriority = 2
-	OptionInput      OptionPriority = 3
-	OptionOutput     OptionPriority = 4
-	OptionPostOutput OptionPriority = 5
-	optionOutputFile OptionPriority = 6
-)
-
-func (c *Command) AddSingle(key string, optType OptionPriority) {
+func (c *Command) AddVar(key string, value ...string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	opt := newOption(key, optType, nil)
-	c.opts = append(c.opts, opt)
-}
 
-func (c *Command) AddKeyValue(key string, value string, optType OptionPriority) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	opt := newOption(key, optType, &value)
-	c.opts = append(c.opts, opt)
+	c.vars[key] = value
 }
 
 func (c *Command) WriteLogsTo(logsPath string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
 	c.logsPath = &logsPath
 }
 
-func newOption(key string, priority OptionPriority, value *string) option {
-	return option{key, priority, value}
-}
-
-func (o *option) getStrings() []string {
-	if o.value != nil {
-		return []string{o.key, *o.value}
-	}
-	return []string{o.key}
-}
-
-func NewCommand(inputFile string, videoDurationSec int, outputFile string) *Command {
+func NewCommand(cmd string, args string, videoDurationSec int) *Command {
 	command := Command{
-		opts:             make([]option, 0, 32),
+		cmd:              cmd,
+		args:             args,
+		vars:             make(map[string][]string),
 		videoDurationSec: videoDurationSec,
 	}
-	command.AddSingle("-hide_banner", OptionBase)
-	command.AddSingle("-y", OptionBase)
-	command.AddKeyValue("-hwaccel", "auto", OptionBase)
-	command.AddKeyValue("-stats_period", "2", OptionBase)
-	//command.AddKeyValue("-progress", "pipe:2", OptionBase)
-	command.AddKeyValue("-i", inputFile, optionInputFile)
-	command.AddSingle(outputFile, optionOutputFile)
+
+	command.vars["BASE"] = []string{"-hide_banner", "-y", "-hwaccel", "auto", "-stats_period", "3"}
+
 	return &command
 }
 
@@ -179,55 +144,75 @@ func (c *Command) processWatcher(cmd *exec.Cmd, reader io.ReadCloser, outputChan
 	close(outputChan)
 }
 
-func (c *Command) prepareArgs(withExecutable bool) []string {
-	sort.SliceStable(c.opts, func(i, j int) bool {
-		return c.opts[i].priority < c.opts[j].priority
-	})
-	args := make([]string, 0, len(c.opts))
-	if withExecutable {
-		args = append(args, "ffmpeg")
+func (c *Command) interpolateArgs() []string {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	result := make([]string, 0, len(c.args))
+	argsSplit := strings.Split(c.args, " ")
+
+	for _, arg := range argsSplit {
+		if strings.HasPrefix(arg, "$") {
+			varName := strings.TrimPrefix(arg, "$")
+			varValue, varExists := c.vars[varName]
+			if !varExists {
+				continue
+			}
+			result = append(result, varValue...)
+		} else {
+			result = append(result, arg)
+		}
 	}
-	for _, opt := range c.opts {
-		args = append(args, opt.getStrings()...)
-	}
-	return args
+
+	return result
 }
 
 func (c *Command) Execute(externalLog *zap.Logger) (chan any, context.CancelFunc, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	args := c.prepareArgs(false)
+
+	resultArgs := c.interpolateArgs()
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	cmd := exec.CommandContext(ctx, c.cmd, resultArgs...)
+
 	stdoutReader, err := cmd.StdoutPipe()
 	if err != nil {
 		cancelFunc()
 		return nil, nil, err
 	}
+
 	// merge stderr into stdout
 	cmd.Stderr = cmd.Stdout
+
 	err = cmd.Start()
 	if err != nil {
 		cancelFunc()
 		return nil, nil, err
 	}
+
 	outputChan := make(chan any, 32)
+
 	go c.processWatcher(cmd, stdoutReader, outputChan, externalLog)
+
 	return outputChan, cancelFunc, nil
 }
 
 func (c *Command) ExecuteSync() ([]byte, error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	args := c.prepareArgs(false)
-	cmd := exec.Command("ffmpeg", args...)
+
+	resultArgs := c.interpolateArgs()
+	cmd := exec.Command(c.cmd, resultArgs...)
 	outputBytes, err := cmd.CombinedOutput()
+
 	return outputBytes, err
 }
 
 func (c *Command) String() string {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	args := c.prepareArgs(true)
-	return strings.Join(args, " ")
+
+	args := c.interpolateArgs()
+
+	return c.cmd + " " + strings.Join(args, " ")
 }

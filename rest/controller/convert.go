@@ -4,7 +4,7 @@ import (
 	"anileha/config"
 	"anileha/db"
 	"anileha/ffmpeg/command"
-	dao2 "anileha/rest/dao"
+	"anileha/rest/dao"
 	"anileha/rest/engine"
 	"anileha/service"
 	"github.com/gin-gonic/gin"
@@ -15,8 +15,8 @@ import (
 	"strconv"
 )
 
-func mapConversionToResponse(c db.Conversion) dao2.ConversionResponseDao {
-	return dao2.ConversionResponseDao{
+func mapConversionToResponse(c db.Conversion) dao.ConversionResponseDao {
+	return dao.ConversionResponseDao{
 		ID:            c.ID,
 		SeriesId:      c.SeriesId,
 		TorrentId:     c.TorrentId,
@@ -31,8 +31,8 @@ func mapConversionToResponse(c db.Conversion) dao2.ConversionResponseDao {
 	}
 }
 
-func mapConversionsToResponseSlice(conversions []db.Conversion) []dao2.ConversionResponseDao {
-	res := make([]dao2.ConversionResponseDao, 0, len(conversions))
+func mapConversionsToResponseSlice(conversions []db.Conversion) []dao.ConversionResponseDao {
+	res := make([]dao.ConversionResponseDao, 0, len(conversions))
 	for _, t := range conversions {
 		res = append(res, mapConversionToResponse(t))
 	}
@@ -103,7 +103,7 @@ func registerConvertController(
 		c.JSON(http.StatusOK, mapConversionsToResponseSlice(conversions))
 	})
 	convertGroup.POST("/start", func(c *gin.Context) {
-		var req dao2.StartConversionRequestDao
+		var req dao.StartConversionRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return
@@ -116,7 +116,7 @@ func registerConvertController(
 		torrentFiles := make([]db.TorrentFile, 0, 32)
 		prefsArr := make([]command.Preferences, 0, 32)
 		for _, file := range torrent.Files {
-			reqIndex := slices.IndexFunc(req.Files, func(data dao2.StartConversionFilePrefData) bool {
+			reqIndex := slices.IndexFunc(req.Files, func(data dao.StartConversionFilePrefData) bool {
 				return data.Index == file.ClientIndex
 			})
 			if reqIndex >= 0 {
@@ -156,7 +156,7 @@ func registerConvertController(
 		c.String(http.StatusOK, "OK")
 	})
 	convertGroup.POST("/stop", func(c *gin.Context) {
-		var req dao2.IdRequestDao
+		var req dao.IdRequestDao
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return

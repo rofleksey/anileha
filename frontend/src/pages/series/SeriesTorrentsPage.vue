@@ -2,7 +2,10 @@
   <q-page class="full-width" padding>
     <TorrentTable :data="data" :loading="dataLoading"/>
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
-      <q-btn fab icon="add" color="accent" @click="openNewTorrentModal"/>
+      <q-fab color="accent" icon="add" direction="up">
+        <q-fab-action color="primary" @click="openNewTorrentFileModal" icon="file_upload" />
+        <q-fab-action color="primary" @click="openNewTorrentSearchModal" icon="search" />
+      </q-fab>
     </q-page-sticky>
   </q-page>
 </template>
@@ -14,9 +17,10 @@ import {fetchTorrentsBySeriesId} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import {useQuasar} from 'quasar';
 import {useRoute} from 'vue-router';
-import NewTorrentModal from 'components/modal/NewTorrentModal.vue';
+import NewTorrentFileModal from 'components/modal/NewTorrentFileModal.vue';
 import TorrentTable from 'components/TorrentTable.vue';
 import {useInterval} from 'src/lib/composables';
+import NewTorrentSearchModal from 'components/modal/NewTorrentSearchModal.vue';
 
 const quasar = useQuasar();
 const route = useRoute();
@@ -34,7 +38,7 @@ function refreshData() {
       data.value = newTorrents;
     })
     .catch((e) => {
-      showError('failed to fetch torrents', e);
+      showError('Failed to fetch torrents', e);
     })
     .finally(() => {
       dataLoading.value = false;
@@ -45,9 +49,20 @@ onMounted(() => {
   refreshData();
 })
 
-function openNewTorrentModal() {
+function openNewTorrentFileModal() {
   quasar.dialog({
-    component: NewTorrentModal,
+    component: NewTorrentFileModal,
+    componentProps: {
+      seriesId: seriesId.value,
+    }
+  }).onOk(() => {
+    refreshData();
+  });
+}
+
+function openNewTorrentSearchModal() {
+  quasar.dialog({
+    component: NewTorrentSearchModal,
     componentProps: {
       seriesId: seriesId.value,
     }
