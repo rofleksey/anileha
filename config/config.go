@@ -116,7 +116,7 @@ func GetDefaultConfig() Config {
 		FFMpeg: FFMpegConfig{
 			StreamSizeArgs: "$BASE -analyzeduration $MAX -probesize $MAX -i $INPUT -map $MAP -c copy -f null -",
 			ExtractSubArgs: "$BASE -i $INPUT -map $MAP -f srt $OUTPUT",
-			ConvertArgs:    "$BASE -i $INPUT -acodec aac -b:a 196k -ac 2 -vcodec libx264 -crf 18 -tune animation -pix_fmt yuv240p -preset slow -f mp4 $FILTER_SUB $FILTER_AUDIO $MAP_SUB $MAP_AUDIO -movflags +faststart -threads $THREADS $OUTPUT",
+			ConvertArgs:    "$BASE -i $INPUT -acodec aac -b:a 196k -ac 2 -vcodec libx264 -crf 18 -tune animation -pix_fmt yuv420p -preset slow -f mp4 $FILTER_SUB $FILTER_AUDIO $MAP_SUB $MAP_AUDIO -movflags +faststart -threads $THREADS $OUTPUT",
 		},
 		Search: SearchConfig{
 			RateLimit: RateLimitConfig{
