@@ -115,8 +115,8 @@ func GetDefaultConfig() Config {
 		},
 		Data: DataConfig{
 			Dir:              "data",
-			DownloadBpsLimit: 5 * 1024 * 1024,
-			UploadBpsLimit:   1024 * 1024,
+			DownloadBpsLimit: 5 * 1024 * 1024 * 1024,
+			UploadBpsLimit:   1024 * 1024 * 1024,
 		},
 		FFMpeg: FFMpegConfig{
 			StreamSizeArgs: "$BASE -analyzeduration $MAX -probesize $MAX -i $INPUT -map $MAP -c copy -f null -",
