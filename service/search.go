@@ -240,7 +240,7 @@ func (s *SearchService) doPoll(ctx context.Context) error {
 	}
 
 	feedLenBefore := len(feed)
-	feed = pie.Filter(feed, func(rss search.ResultRSS) bool {
+	feed = pie.Reverse(pie.Filter(feed, func(rss search.ResultRSS) bool {
 		if rss.Timestamp != nil {
 			return rss.Timestamp.After(lastRss.Timestamp)
 		}
@@ -248,7 +248,7 @@ func (s *SearchService) doPoll(ctx context.Context) error {
 		curId, _ := strconv.Atoi(rss.ID)
 
 		return curId >= lastRssId
-	})
+	}))
 	feedLenAfter := len(feed)
 
 	if feedLenAfter < feedLenBefore {

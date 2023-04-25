@@ -303,7 +303,9 @@ func registerTorrentController(
 			return
 		}
 
-		for _, res := range results {
+		reversed := pie.Reverse(results)
+
+		for _, res := range reversed {
 			tempDst, err := fileService.GenTempFilePath("new.torrent")
 			if err != nil {
 				c.Error(engine.ErrInternal(err.Error()))

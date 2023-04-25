@@ -16,6 +16,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"golang.org/x/time/rate"
 	"gorm.io/datatypes"
 	"os"
 	"path"
@@ -83,6 +84,8 @@ func NewTorrentService(
 	}
 	clientConfig := torrentLib.NewDefaultClientConfig()
 	clientConfig.DataDir = downloadsFolder
+	clientConfig.DownloadRateLimiter = rate.NewLimiter(rate.Every(time.Second), config.Data.DownloadBpsLimit)
+	clientConfig.UploadRateLimiter = rate.NewLimiter(rate.Every(time.Second), config.Data.UploadBpsLimit)
 	client, err := torrentLib.NewClient(clientConfig)
 	if err != nil {
 		return nil, err

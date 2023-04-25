@@ -42,7 +42,9 @@ type WebSocketConfig struct {
 }
 
 type DataConfig struct {
-	Dir string `validate:"required" yaml:"dir"`
+	Dir              string `validate:"required" yaml:"dir"`
+	DownloadBpsLimit int    `validate:"gt=0" yaml:"downloadBpsLimit"`
+	UploadBpsLimit   int    `validate:"gt=0" yaml:"uploadBpsLimit"`
 }
 
 type FFMpegConfig struct {
@@ -112,7 +114,9 @@ func GetDefaultConfig() Config {
 			MessageChanBufferSize: 256,
 		},
 		Data: DataConfig{
-			Dir: "data",
+			Dir:              "data",
+			DownloadBpsLimit: 5 * 1024 * 1024,
+			UploadBpsLimit:   1024 * 1024,
 		},
 		FFMpeg: FFMpegConfig{
 			StreamSizeArgs: "$BASE -analyzeduration $MAX -probesize $MAX -i $INPUT -map $MAP -c copy -f null -",
