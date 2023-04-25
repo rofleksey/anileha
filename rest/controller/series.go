@@ -16,11 +16,19 @@ import (
 )
 
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
+	var queryValue *db.SeriesQuery
+
+	if series.Query != nil {
+		actualValue := series.Query.Data()
+		queryValue = &actualValue
+	}
+
 	return dao.SeriesResponseDao{
 		ID:         series.ID,
 		Title:      series.Title,
 		LastUpdate: series.LastUpdate,
 		Thumb:      series.Thumb.Url,
+		Query:      queryValue,
 	}
 }
 

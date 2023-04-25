@@ -1,5 +1,5 @@
 import axios, {AxiosProgressEvent} from 'axios';
-import {AutoTorrent, SearchResult, StartConversionRequest, User} from 'src/lib/api-types';
+import {AutoTorrent, SearchResult, SetSeriesQueryRequestData, StartConversionRequest, User} from 'src/lib/api-types';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL
 console.log(`BASE_URL = ${BASE_URL}`)
@@ -164,6 +164,25 @@ export async function postStopTorrent(torrentId: number): Promise<void> {
     id: torrentId,
   }, {
     withCredentials: true,
+  });
+}
+
+export async function postSetSeriesQuery(seriesId: number, query: SetSeriesQueryRequestData | null): Promise<void> {
+  await axios.post(`${BASE_URL}/admin/search/series/setQuery`, {
+    seriesId,
+    query
+  }, {
+    withCredentials: true,
+  });
+}
+
+export async function postAddTorrentsFromQuery(seriesId: number, query: SetSeriesQueryRequestData): Promise<void> {
+  await axios.post(`${BASE_URL}/admin/torrent/fromQuery`, {
+    seriesId,
+    query
+  }, {
+    withCredentials: true,
+    timeout: 0,
   });
 }
 

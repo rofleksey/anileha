@@ -8,12 +8,14 @@ import (
 	"anileha/search/nyaa"
 	"anileha/service"
 	"encoding/json"
+	"github.com/elliotchance/pie/v2"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func mapTorrentFilesToResponse(torrentFiles []db.TorrentFile) []dao.TorrentFileResponseDao {
@@ -76,6 +78,7 @@ func registerTorrentController(
 	ginEngine *gin.Engine,
 	fileService *service.FileService,
 	nyaaService *nyaa.Service,
+	searchService *service.SearchService,
 	torrentService *service.TorrentService,
 ) {
 	torrentGroup := ginEngine.Group("/admin/torrent")
@@ -244,6 +247,7 @@ func registerTorrentController(
 			c.Error(engine.ErrInternal(err.Error()))
 			return
 		}
+		defer fileService.DeleteTempFileAsync(tempDst)
 
 		bytes, err := nyaaService.DownloadById(c.Request.Context(), req.TorrentID)
 		if err != nil {
@@ -264,6 +268,71 @@ func registerTorrentController(
 		}
 
 		c.String(http.StatusOK, "OK")
+	})
+
+	torrentGroup.POST("/fromQuery", func(c *gin.Context) {
+		var req dao.AddTorrentQueryRequestDao
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.Error(engine.ErrBadRequest(err.Error()))
+			return
+		}
+
+		var err error
+
+		include := pie.Map(pie.Filter(strings.Fields(strings.TrimSpace(req.Query.Include)), func(s string) bool {
+			return len(s) > 0
+		}), func(value string) string {
+			return strings.ToLower(value)
+		})
+
+		exclude := pie.Map(pie.Filter(strings.Fields(strings.TrimSpace(req.Query.Exclude)), func(s string) bool {
+			return len(s) > 0
+		}), func(value string) string {
+			return strings.ToLower(value)
+		})
+
+		results, err := searchService.SearchOld(c.Request.Context(), db.SeriesQuery{
+			Include:    include,
+			Exclude:    exclude,
+			Provider:   req.Query.Provider,
+			SingleFile: req.Query.SingleFile,
+			Auto:       req.Query.Auto,
+		})
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		for _, res := range results {
+			tempDst, err := fileService.GenTempFilePath("new.torrent")
+			if err != nil {
+				c.Error(engine.ErrInternal(err.Error()))
+				return
+			}
+			defer fileService.DeleteTempFileAsync(tempDst)
+
+			bytes, err := nyaaService.DownloadById(c.Request.Context(), res.ID)
+			if err != nil {
+				c.Error(engine.ErrInternal(err.Error()))
+				return
+			}
+
+			err = os.WriteFile(tempDst, bytes, 0644)
+			if err != nil {
+				c.Error(engine.ErrInternal(err.Error()))
+				return
+			}
+
+			err = torrentService.AddFromFile(req.SeriesID, tempDst, &req.Query.Auto)
+			if err != nil {
+				c.Error(err)
+				return
+			}
+
+			c.String(http.StatusOK, "OK")
+		}
+
+		c.JSON(http.StatusOK, "OK")
 	})
 }
 

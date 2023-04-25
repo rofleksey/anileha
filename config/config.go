@@ -13,9 +13,10 @@ type RateLimitConfig struct {
 }
 
 type SearchConfig struct {
-	Proxy     string          `yaml:"proxy"`
-	RateLimit RateLimitConfig `yaml:"rateLimit"`
-	TimeoutMs int             `yaml:"timeoutMs"`
+	Proxy          string          `yaml:"proxy"`
+	RateLimit      RateLimitConfig `yaml:"rateLimit"`
+	TimeoutMs      int             `yaml:"timeoutMs"`
+	RssIntervalSec int             `yaml:"rssIntervalSec"`
 }
 
 type DbConfig struct {
@@ -123,7 +124,8 @@ func GetDefaultConfig() Config {
 				Requests:   1,
 				IntervalMs: 5000,
 			},
-			TimeoutMs: 10000,
+			TimeoutMs:      10000,
+			RssIntervalSec: 1800,
 		},
 		Thumb: ThumbConfig{
 			Args:     "$BASE -ss $SS -i $INPUT -frames:v 1 $OUTPUT",

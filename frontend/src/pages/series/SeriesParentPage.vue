@@ -9,6 +9,12 @@
         icon="delete"
         @click="onDeleteClick"/>
       <q-btn
+        v-if="curUser?.roles?.includes('admin')  && tabName === 'torrents'"
+        flat
+        round
+        icon="schedule"
+        @click="openScheduleModal"/>
+      <q-btn
         v-if="curUser?.roles?.includes('admin') && tabName === 'episodes'"
         flat
         round
@@ -33,8 +39,9 @@ import {showError, showSuccess} from 'src/lib/util';
 import {useQuasar} from 'quasar';
 import {deleteSeries} from 'src/lib/delete-api';
 import {useUserStore} from 'stores/user-store';
-import {User} from 'src/lib/api-types';
+import {Series, User} from 'src/lib/api-types';
 import NewEpisodeModal from 'components/modal/NewEpisodeModal.vue';
+import SeriesRSSModal from 'components/modal/SeriesRSSModal.vue';
 
 const quasar = useQuasar();
 const router = useRouter();
@@ -45,7 +52,8 @@ const tabName = computed(() => route.name?.toString().replace('series-', ''));
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
-const title = ref('');
+const seriesData = ref<Series | undefined>()
+const title = computed(() => seriesData.value?.title ?? '');
 
 function onTabChange(value: string) {
   router.replace(`/series/${seriesId.value}/${value}`)
@@ -58,6 +66,18 @@ function openUploadModal() {
       seriesId: seriesId.value,
     }
   });
+}
+
+function openScheduleModal() {
+  quasar.dialog({
+    component: SeriesRSSModal,
+    componentProps: {
+      seriesId: seriesId.value,
+      query: seriesData.value?.query ?? null,
+    }
+  }).onOk(() => {
+    reloadData();
+  })
 }
 
 function onDeleteClick() {
@@ -77,18 +97,18 @@ function onDeleteClick() {
   })
 }
 
-function reloadTitle() {
+function reloadData() {
   fetchSeriesById(seriesId.value)
     .then((series) => {
-      title.value = series.title;
+      seriesData.value = series;
     })
     .catch((e) => {
-      showError('failed to fetch series', e);
+      showError('Failed to fetch series', e);
     })
 }
 
 onMounted(() => {
-  reloadTitle();
+  reloadData();
 })
 </script>
 

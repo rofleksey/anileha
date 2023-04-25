@@ -65,3 +65,11 @@ type AnalysisResult struct {
 	Audio []AudioStream `json:"audio"`
 	Sub   []SubStream   `json:"sub"`
 }
+
+type SeriesQuery struct {
+	Include    []string    `json:"include"`
+	Exclude    []string    `json:"exclude"`
+	Provider   string      `json:"provider"`
+	SingleFile bool        `json:"singleFile"`
+	Auto       AutoTorrent `json:"auto"`
+}

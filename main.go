@@ -39,6 +39,7 @@ func main() {
 		repo.TorrentExport,
 		repo.ConversionExport,
 		repo.EpisodeExport,
+		repo.LastRSSExport,
 
 		// search
 		nyaa.Export,
@@ -53,6 +54,7 @@ func main() {
 		service.EpisodeExport,
 		service.UserExport,
 		service.RoomExport,
+		service.SearchExport,
 
 		// rest controllers
 		controller.HealthExport,

@@ -35,9 +35,10 @@ type Query struct {
 }
 
 type ResultRSS struct {
-	ID    string
-	Title string
-	Link  string
+	ID        string
+	Title     string
+	Link      string
+	Timestamp *time.Time
 }
 
 type ResultById struct {

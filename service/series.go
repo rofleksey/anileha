@@ -65,6 +65,13 @@ func (s *SeriesService) DeleteById(id uint) error {
 	return nil
 }
 
+func (s *SeriesService) SetQuery(id uint, query *db.SeriesQuery) error {
+	if err := s.seriesRepo.SetQuery(id, query); err != nil {
+		return engine.ErrInternal(err.Error())
+	}
+	return nil
+}
+
 func (s *SeriesService) AddSeries(name string, thumb db.Thumb) (uint, error) {
 	series := db.Series{
 		Title: name,

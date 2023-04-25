@@ -109,7 +109,6 @@ func (r *TorrentRepo) SetFileAnalysis(id uint, analysis db.AnalysisResult) error
 func (r *TorrentRepo) UpdateProgress(id uint, progress util.Progress) error {
 	if err := r.db.Model(&db.Torrent{}).
 		Where("id = ?", id).
-		Select("progress", "eta", "speed", "elapsed").
 		Updates(db.Torrent{Progress: progress}).Error; err != nil {
 		return err
 	}
@@ -120,7 +119,6 @@ func (r *TorrentRepo) UpdateProgress(id uint, progress util.Progress) error {
 func (r *TorrentRepo) UpdateProgressAndBytesRead(id uint, progress util.Progress, bytesRead uint) error {
 	if err := r.db.Model(&db.Torrent{}).
 		Where("id = ?", id).
-		Select("progress", "eta", "speed", "elapsed", "bytes_read").
 		Updates(db.Torrent{Progress: progress, BytesRead: bytesRead}).Error; err != nil {
 		return err
 	}

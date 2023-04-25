@@ -8,10 +8,11 @@ import (
 )
 
 type SeriesResponseDao struct {
-	ID         uint      `json:"id"`
-	Title      string    `json:"title"`
-	Thumb      string    `json:"thumb"`
-	LastUpdate time.Time `json:"lastUpdate"`
+	ID         uint            `json:"id"`
+	Title      string          `json:"title"`
+	Thumb      string          `json:"thumb"`
+	LastUpdate time.Time       `json:"lastUpdate"`
+	Query      *db.SeriesQuery `json:"query"`
 }
 
 type TorrentResponseDao struct {

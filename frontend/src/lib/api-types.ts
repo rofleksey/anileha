@@ -13,6 +13,15 @@ export interface Series {
   lastUpdate: string;
   title: string;
   thumb: string;
+  query: SeriesQueryServer | null;
+}
+
+export interface SeriesQueryServer {
+  include: string[];
+  exclude: string[];
+  provider: string;
+  singleFile: boolean;
+  auto: AutoTorrent;
 }
 
 export interface Progress {
@@ -162,3 +171,17 @@ export interface SearchResult {
   date: string;
   link: string;
 }
+
+export interface SetSeriesQueryRequestData {
+  provider: string;
+  include: string;
+  exclude: string;
+  singleFile: boolean;
+  auto: AutoTorrent;
+}
+
+export interface SetSeriesQueryRequest {
+  seriesId: number;
+  query: SetSeriesQueryRequestData | null;
+}
+

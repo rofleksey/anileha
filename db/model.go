@@ -13,6 +13,7 @@ type Series struct {
 	CreatedAt  time.Time
 	LastUpdate time.Time
 	Title      string
+	Query      *datatypes.JSONType[SeriesQuery]
 	Thumb      Thumb `gorm:"embedded"`
 }
 
@@ -145,4 +146,10 @@ type User struct {
 	Email     string `gorm:"uniqueIndex"`
 	Roles     datatypes.JSONSlice[string]
 	Thumb     Thumb `gorm:"embedded"`
+}
+
+type LastRSSUpdate struct {
+	ID        uint `gorm:"primarykey"`
+	Timestamp time.Time
+	RssId     string
 }

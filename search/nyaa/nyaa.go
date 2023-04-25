@@ -158,9 +158,10 @@ func (s *Service) GetRSS(ctx context.Context) ([]search.ResultRSS, error) {
 
 	for _, item := range feed.Items {
 		results = append(results, search.ResultRSS{
-			ID:    strings.TrimPrefix(item.GUID, baseUrl+"/view"),
-			Title: item.Title,
-			Link:  item.GUID,
+			ID:        strings.TrimPrefix(item.GUID, baseUrl+"/view/"),
+			Title:     item.Title,
+			Link:      item.GUID,
+			Timestamp: item.PublishedParsed,
 		})
 	}
 
@@ -175,17 +176,13 @@ func (s *Service) genRequest(ctx context.Context, query search.Query) (*http.Req
 	urlQuery.Set("q", query.Query)
 	// probably trust status
 	urlQuery.Set("f", "0")
+	urlQuery.Set("o", "desc")
+	urlQuery.Set("p", strconv.Itoa(query.Page+1))
 
 	if query.SortType == search.SortSeeders {
 		urlQuery.Set("s", "seeders")
 	} else {
 		urlQuery.Set("s", "id")
-	}
-
-	urlQuery.Set("o", "desc")
-
-	if query.Page > 0 {
-		urlQuery.Set("p", strconv.Itoa(query.Page))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", baseUrl, nil)

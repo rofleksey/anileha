@@ -4,6 +4,7 @@ import (
 	"anileha/db"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -50,6 +51,18 @@ func (r *SeriesRepo) GetAll() ([]db.Series, error) {
 	return seriesArr, nil
 }
 
+func (r *SeriesRepo) GetAllWithQuery() ([]db.Series, error) {
+	var seriesArr []db.Series
+	queryResult := r.db.
+		Where("query IS NOT NULL").
+		Order("series.last_update ASC").
+		Find(&seriesArr)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	return seriesArr, nil
+}
+
 func (r *SeriesRepo) Search(query string) ([]db.Series, error) {
 	var seriesArr []db.Series
 	queryResult := r.db.Where("name ILIKE '%' || ? || '%'", query).
@@ -59,6 +72,18 @@ func (r *SeriesRepo) Search(query string) ([]db.Series, error) {
 		return nil, queryResult.Error
 	}
 	return seriesArr, nil
+}
+
+func (r *SeriesRepo) SetQuery(id uint, query *db.SeriesQuery) error {
+	if query != nil {
+		newJson := datatypes.NewJSONType(*query)
+		return r.db.Model(&db.Series{}).
+			Where("id = ?", id).
+			Updates(db.Series{Query: &newJson}).Error
+	}
+	return r.db.Model(&db.Series{}).
+		Where("id = ?", id).
+		Updates(map[string]any{"query": nil}).Error
 }
 
 func (r *SeriesRepo) Create(series *db.Series) (uint, error) {

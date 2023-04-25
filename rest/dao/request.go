@@ -77,3 +77,21 @@ type AuthRequestDao struct {
 	User string `json:"user" binding:"required"`
 	Pass string `json:"pass" binding:"required"`
 }
+
+type SeriesQueryRequestDataDao struct {
+	Provider   string         `json:"provider" binding:"required"`
+	Auto       db.AutoTorrent `json:"auto" binding:"required"`
+	Include    string         `json:"include" binding:"required"`
+	Exclude    string         `json:"exclude"`
+	SingleFile bool           `json:"singleFile"`
+}
+
+type SeriesQueryRequestDao struct {
+	SeriesID uint                       `json:"seriesID" binding:"required"`
+	Query    *SeriesQueryRequestDataDao `json:"query"`
+}
+
+type AddTorrentQueryRequestDao struct {
+	SeriesID uint                      `json:"seriesID" binding:"required"`
+	Query    SeriesQueryRequestDataDao `json:"query" binding:"required"`
+}
