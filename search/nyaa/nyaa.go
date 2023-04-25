@@ -148,6 +148,7 @@ func (s *Service) GetById(ctx context.Context, id string) (search.ResultById, er
 
 func (s *Service) GetRSS(ctx context.Context) ([]search.ResultRSS, error) {
 	parser := gofeed.NewParser()
+	parser.Client = s.client
 
 	feed, err := parser.ParseURLWithContext(baseUrl+"/rss", ctx)
 	if err != nil {
