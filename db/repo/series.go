@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"time"
 )
 
 type SeriesRepo struct {
@@ -84,6 +85,12 @@ func (r *SeriesRepo) SetQuery(id uint, query *db.SeriesQuery) error {
 	return r.db.Model(&db.Series{}).
 		Where("id = ?", id).
 		Updates(map[string]any{"query": nil}).Error
+}
+
+func (r *SeriesRepo) MoveToTop(id uint) error {
+	return r.db.Model(&db.Series{}).
+		Where("id = ?", id).
+		Updates(db.Series{LastUpdate: time.Now()}).Error
 }
 
 func (r *SeriesRepo) Create(series *db.Series) (uint, error) {

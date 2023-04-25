@@ -18,6 +18,7 @@ import (
 
 type EpisodeService struct {
 	episodeRepo   *repo.EpisodeRepo
+	seriesRepo    *repo.SeriesRepo
 	log           *zap.Logger
 	analyzer      *analyze.ProbeAnalyzer
 	fileService   *FileService
@@ -28,6 +29,7 @@ type EpisodeService struct {
 func NewEpisodeService(
 	lifecycle fx.Lifecycle,
 	episodeRepo *repo.EpisodeRepo,
+	seriesRepo *repo.SeriesRepo,
 	fileService *FileService,
 	thumbService *ThumbService,
 	analyzer *analyze.ProbeAnalyzer,
@@ -45,6 +47,7 @@ func NewEpisodeService(
 	}
 	return &EpisodeService{
 		episodeRepo:   episodeRepo,
+		seriesRepo:    seriesRepo,
 		analyzer:      analyzer,
 		fileService:   fileService,
 		thumbService:  thumbService,
@@ -97,6 +100,10 @@ func (s *EpisodeService) CreateFromConversion(conversion *db.Conversion) (*db.Ep
 		return nil, engine.ErrInternal(err.Error())
 	}
 
+	if conversion.SeriesId != nil {
+		_ = s.seriesRepo.MoveToTop(*conversion.SeriesId)
+	}
+
 	episode.ID = id
 
 	return &episode, nil
@@ -145,6 +152,10 @@ func (s *EpisodeService) CreateManually(seriesId *uint, tempFilePath string, tit
 	}
 
 	episode.ID = id
+
+	if seriesId != nil {
+		_ = s.seriesRepo.MoveToTop(*seriesId)
+	}
 
 	return &episode, nil
 }
