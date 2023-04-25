@@ -84,8 +84,10 @@ func NewTorrentService(
 	}
 	clientConfig := torrentLib.NewDefaultClientConfig()
 	clientConfig.DataDir = downloadsFolder
-	clientConfig.DownloadRateLimiter = rate.NewLimiter(rate.Every(time.Second), config.Data.DownloadBpsLimit)
-	clientConfig.UploadRateLimiter = rate.NewLimiter(rate.Every(time.Second), config.Data.UploadBpsLimit)
+	downloadRate := rate.Every(time.Second / time.Duration(config.Data.DownloadBpsLimit))
+	uploadRate := rate.Every(time.Second / time.Duration(config.Data.UploadBpsLimit))
+	clientConfig.DownloadRateLimiter = rate.NewLimiter(downloadRate, config.Data.DownloadBpsLimit)
+	clientConfig.UploadRateLimiter = rate.NewLimiter(uploadRate, config.Data.UploadBpsLimit)
 	client, err := torrentLib.NewClient(clientConfig)
 	if err != nil {
 		return nil, err
