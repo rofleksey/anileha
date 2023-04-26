@@ -338,6 +338,9 @@ function onVideoPress(e: MouseEvent) {
 }
 
 function onPlayPress(e?: MouseEvent) {
+  if (!showControls.value) {
+    return;
+  }
   togglePlayback();
 }
 
@@ -354,6 +357,9 @@ function togglePlayback() {
 }
 
 function movePreview(e: MouseEvent | TouchEvent) {
+  if (!showControls.value) {
+    return 0;
+  }
   const bounds = (e.target as HTMLDivElement).getBoundingClientRect();
   const maxDx = (sliderRef.value as HTMLDivElement).clientWidth;
   let clientX: number
@@ -402,6 +408,9 @@ function seekTo(newTime: number, throttle: boolean, remote?: boolean) {
 }
 
 function onPreviewHover(e: MouseEvent) {
+  if (!showControls.value) {
+    return;
+  }
   if (e.buttons === 1 || e.buttons === 3) {
     seekPreview(e);
   } else {
@@ -410,12 +419,18 @@ function onPreviewHover(e: MouseEvent) {
 }
 
 function seekPreview(e: MouseEvent | TouchEvent) {
+  if (!showControls.value) {
+    return;
+  }
   const newProgress = movePreview(e);
   const newTime = newProgress * totalDuration.value;
   seekTo(newTime, true);
 }
 
 function seekVolume(e: MouseEvent | TouchEvent) {
+  if (!showControls.value) {
+    return;
+  }
   const bounds = (e.target as HTMLDivElement).getBoundingClientRect();
   const maxDx = (volumeSliderRef.value as HTMLDivElement).clientWidth;
   let clientX: number
@@ -430,12 +445,18 @@ function seekVolume(e: MouseEvent | TouchEvent) {
 }
 
 function onVolumeHover(e: MouseEvent) {
+  if (!showControls.value) {
+    return;
+  }
   if (e.buttons === 1 || e.buttons === 3) {
     seekVolume(e);
   }
 }
 
 function toggleFullscreen(e?: MouseEvent) {
+  if (!showControls.value) {
+    return;
+  }
   if (document.fullscreenElement) {
     if (document.exitFullscreen) {
       document.exitFullscreen();
