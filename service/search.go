@@ -255,6 +255,10 @@ func (s *SearchService) doPoll(ctx context.Context) error {
 		s.log.Info("removed old feed items", zap.Int("newCount", feedLenAfter))
 	}
 
+	if feedLenAfter == 0 {
+		return fmt.Errorf("no new feed items since last time")
+	}
+
 	newCounter := 0
 
 	for _, series := range seriesWithQueries {
