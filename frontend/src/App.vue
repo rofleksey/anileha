@@ -110,6 +110,7 @@
                 v-for="button in buttons1"
                 :key="button.text"
                 class="YL__drawer-footer-link"
+                @click="router.push(button.page)"
                 href="javascript:void(0)"
               >
                 {{ button.text }}
@@ -161,6 +162,7 @@ interface LinkItem {
 
 interface ButtonItem {
   text: string;
+  page: string;
 }
 
 const userLinks = ref<LinkItem[]>([
@@ -178,7 +180,7 @@ const ownerLinks = ref<LinkItem[]>([
 ]);
 
 const buttons1 = ref<ButtonItem[]>([
-  {text: 'About'},
+  {text: 'About', page: '/about'},
 ]);
 
 const leftDrawerOpen = ref(false)
