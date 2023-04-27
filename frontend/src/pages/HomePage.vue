@@ -1,15 +1,5 @@
 <template>
   <q-page class="full-width row items-start q-gutter-lg content-start justify-center" padding>
-    <q-pagination
-      v-if="maxPages > 0"
-      v-model="page"
-      color="purple"
-      :max="maxPages"
-      :max-pages="6"
-      boundary-numbers
-      direction-links
-    />
-    <br />
     <q-card
       class="episode-card"
       v-for="episode in data"
@@ -23,13 +13,14 @@
         <div class="text-subtitle2 ellipsis">{{ episode.title }}</div>
       </q-card-section>
     </q-card>
-    <br />
+    <div class="flex-break"></div>
     <q-pagination
       v-if="maxPages > 0"
       v-model="page"
       color="purple"
       :max="maxPages"
       :max-pages="6"
+      :disable="dataLoading"
       boundary-numbers
       direction-links
     />
@@ -37,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import {Episode} from 'src/lib/api-types';
 import {fetchEpisodes} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
@@ -51,6 +42,8 @@ const dataLoading = ref(false);
 const data = ref<Episode[]>([]);
 const page = ref(1);
 const maxPages = ref(1);
+
+watch(page, refreshData);
 
 function refreshData() {
   dataLoading.value = true;
