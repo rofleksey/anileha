@@ -80,6 +80,7 @@ func registerTorrentController(
 	nyaaService *nyaa.Service,
 	searchService *service.SearchService,
 	torrentService *service.TorrentService,
+	convertService *service.ConversionService,
 ) {
 	torrentGroup := ginEngine.Group("/admin/torrent")
 	torrentGroup.Use(engine.RoleMiddleware(log, []string{"admin"}))
@@ -167,16 +168,29 @@ func registerTorrentController(
 	})
 	torrentGroup.DELETE(":id", func(c *gin.Context) {
 		idString := c.Param("id")
+
 		id, err := strconv.ParseUint(idString, 10, 64)
 		if err != nil {
 			c.Error(engine.ErrBadRequest(err.Error()))
 			return
 		}
-		err = torrentService.DeleteById(uint(id))
+
+		torrent, err := torrentService.GetById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
 		}
+
+		_ = torrentService.Stop(*torrent)
+
+		torrentConversions, _ := convertService.GetByTorrentId(uint(id))
+
+		for _, conv := range torrentConversions {
+			_ = convertService.StopConversion(conv.ID)
+		}
+
+		_ = torrentService.DeleteById(uint(id))
+
 		c.String(http.StatusOK, "OK")
 	})
 

@@ -47,6 +47,9 @@ func registerSeriesController(
 	fileService *service.FileService,
 	thumbService *service.ThumbService,
 	seriesService *service.SeriesService,
+	torrentService *service.TorrentService,
+	convertService *service.ConversionService,
+	episodeService *service.EpisodeService,
 ) {
 	ginEngine.GET("/series", func(c *gin.Context) {
 		seriesSlice, err := seriesService.GetAll()
@@ -96,11 +99,32 @@ func registerSeriesController(
 			c.Error(engine.ErrBadRequest(fmt.Sprintf("failed to parse id: %s", err.Error())))
 			return
 		}
+
+		episodes, _ := episodeService.GetBySeriesId(uint(id))
+
+		for _, ep := range episodes {
+			_ = episodeService.DeleteById(ep.ID)
+		}
+
+		conversions, _ := convertService.GetBySeriesId(uint(id))
+
+		for _, c := range conversions {
+			_ = convertService.StopConversion(c.ID)
+		}
+
+		torrents, _ := torrentService.GetBySeriesId(uint(id))
+
+		for _, t := range torrents {
+			_ = torrentService.Stop(t)
+			_ = torrentService.DeleteById(t.ID)
+		}
+
 		err = seriesService.DeleteById(uint(id))
 		if err != nil {
 			c.Error(err)
 			return
 		}
+
 		c.String(http.StatusOK, "OK")
 	})
 

@@ -17,13 +17,12 @@
         <q-icon v-else-if="props.value === 'ready'" class="text-green" name="done" size="2rem"/>
         <q-circular-progress
           v-else-if="props.value === 'analysis'"
-          show-value
           style="margin: 0"
           class="text-orange q-ma-md"
-          :value="props.row.progress.progress"
+          indeterminate
           track-color="grey-9"
-          size="lg"
-          color="orange"
+          size="md"
+          color="lime"
         />
         <q-circular-progress
           v-else

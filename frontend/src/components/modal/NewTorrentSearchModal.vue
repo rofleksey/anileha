@@ -22,7 +22,7 @@
           >
             <q-input
               v-model="searchQuery"
-              :loadin="postLoading"
+              :loading="postLoading"
               debounce="1000"
               filled
               placeholder="Search"
@@ -78,6 +78,7 @@
               <q-btn
                 :disable="postLoading"
                 @click="onOKClick"
+                :loading="postLoading"
                 color="primary"
                 label="Submit"/>
             </q-stepper-navigation>
