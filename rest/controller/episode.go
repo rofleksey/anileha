@@ -45,8 +45,9 @@ func registerEpisodeController(
 	episodeService *service.EpisodeService,
 ) {
 	ginEngine.GET("/episodes", func(c *gin.Context) {
-		pageString := c.Param("page")
+		pageString := c.Query("page")
 		page, _ := strconv.Atoi(pageString)
+
 		episodes, maxPages, err := episodeService.GetEpisodes(page)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

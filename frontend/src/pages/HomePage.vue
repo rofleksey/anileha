@@ -73,4 +73,7 @@ onMounted(() => {
 
   &:hover
     opacity: 0.6
+    
+.flex-break
+  flex: 1 0 100% !important
 </style>
