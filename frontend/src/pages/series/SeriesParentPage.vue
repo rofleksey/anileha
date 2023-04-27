@@ -27,7 +27,7 @@
         <q-tab v-if="curUser?.roles?.includes('admin')" name="conversions" label="Conversions"/>
       </q-tabs>
     </q-toolbar>
-    <router-view></router-view>
+    <router-view :series="seriesData"></router-view>
   </q-page>
 </template>
 

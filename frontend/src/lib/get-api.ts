@@ -96,6 +96,19 @@ export async function fetchEpisodesBySeriesId(id: number): Promise<Episode[]> {
   return data;
 }
 
+export async function fetchEpisodes(page: number): Promise<Episode[]> {
+  const {data}: { data: Episode[] } = await axios.get(
+    `${BASE_URL}/episodes`,
+    {
+      params: {
+        page
+      },
+      withCredentials: true,
+    }
+  );
+  return data;
+}
+
 export async function fetchEpisodeById(id: number): Promise<Episode> {
   const {data}: { data: Episode } = await axios.get(
     `${BASE_URL}/episodes/${id}`,

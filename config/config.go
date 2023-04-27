@@ -45,6 +45,7 @@ type DataConfig struct {
 	Dir              string `validate:"required" yaml:"dir"`
 	DownloadBpsLimit int    `validate:"gt=0" yaml:"downloadBpsLimit"`
 	UploadBpsLimit   int    `validate:"gt=0" yaml:"uploadBpsLimit"`
+	EpisodesPerPage  int    `validate:"gt=0" yaml:"episodesPerPage"`
 }
 
 type FFMpegConfig struct {
@@ -117,6 +118,7 @@ func GetDefaultConfig() Config {
 			Dir:              "data",
 			DownloadBpsLimit: 5 * 1024 * 1024,
 			UploadBpsLimit:   1024 * 1024,
+			EpisodesPerPage:  75,
 		},
 		FFMpeg: FFMpegConfig{
 			StreamSizeArgs: "$BASE -analyzeduration $MAX -probesize $MAX -i $INPUT -map $MAP -c copy -f null -",

@@ -20,6 +20,7 @@ type EpisodeService struct {
 	episodeRepo   *repo.EpisodeRepo
 	seriesRepo    *repo.SeriesRepo
 	log           *zap.Logger
+	config        *config.Config
 	analyzer      *analyze.ProbeAnalyzer
 	fileService   *FileService
 	thumbService  *ThumbService
@@ -52,6 +53,7 @@ func NewEpisodeService(
 		fileService:   fileService,
 		thumbService:  thumbService,
 		log:           log,
+		config:        config,
 		episodeFolder: episodeFolder,
 	}, nil
 }
@@ -176,6 +178,19 @@ func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	if err != nil {
 		return nil, engine.ErrInternal(err.Error())
 	}
+
+	return episodes, nil
+}
+
+func (s *EpisodeService) GetEpisodes(page int) ([]db.Episode, error) {
+	offset := s.config.Data.EpisodesPerPage * page
+	limit := s.config.Data.EpisodesPerPage
+
+	episodes, err := s.episodeRepo.Get(offset, limit)
+	if err != nil {
+		return nil, engine.ErrInternal(err.Error())
+	}
+
 	return episodes, nil
 }
 

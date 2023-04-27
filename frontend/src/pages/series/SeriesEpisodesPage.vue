@@ -17,8 +17,8 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, ref} from 'vue';
-import {Episode} from 'src/lib/api-types';
+import {computed, onMounted, ref, watch} from 'vue';
+import {Episode, Series} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import {showError} from 'src/lib/util';
 import {useRoute, useRouter} from 'vue-router';
@@ -28,19 +28,31 @@ const router = useRouter();
 const route = useRoute();
 const seriesId = computed(() => Number(route.params.seriesId));
 
+interface Props {
+  series: Series | undefined;
+}
+
+const props = defineProps<Props>()
+
 const dataLoading = ref(false);
 const data = ref<Episode[]>([]);
 
 useInterval(refreshData, 10000);
 
+watch(() => props.series, refreshData)
+
 function refreshData() {
   dataLoading.value = true;
   fetchEpisodesBySeriesId(seriesId.value)
     .then((newEpisodes) => {
-      data.value = newEpisodes;
+      if (props.series?.query) {
+        data.value = newEpisodes.reverse();
+      } else {
+        data.value = newEpisodes;
+      }
     })
     .catch((e) => {
-      showError('failed to fetch episodes', e);
+      showError('Failed to fetch episodes', e);
     })
     .finally(() => {
       dataLoading.value = false;

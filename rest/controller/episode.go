@@ -44,6 +44,17 @@ func registerEpisodeController(
 	fileService *service.FileService,
 	episodeService *service.EpisodeService,
 ) {
+	ginEngine.GET("/episodes", func(c *gin.Context) {
+		pageString := c.Param("page")
+		page, _ := strconv.Atoi(pageString)
+		episodes, err := episodeService.GetEpisodes(page)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
+	})
+
 	ginEngine.GET("/episodes/series/:seriesId", func(c *gin.Context) {
 		idString := c.Param("seriesId")
 		id, err := strconv.ParseUint(idString, 10, 64)

@@ -31,6 +31,19 @@ func (r *EpisodeRepo) GetById(id uint) (*db.Episode, error) {
 	return &episode, nil
 }
 
+func (r *EpisodeRepo) Get(offset int, limit int) ([]db.Episode, error) {
+	var episodes []db.Episode
+	queryResult := r.db.
+		Offset(offset).
+		Limit(limit).
+		Order("episodes.created_at DESC").
+		Find(&episodes)
+	if queryResult.Error != nil {
+		return nil, queryResult.Error
+	}
+	return episodes, nil
+}
+
 func (r *EpisodeRepo) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	var episodes []db.Episode
 	queryResult := r.db.Where("series_id = ?", seriesId).
