@@ -7,7 +7,9 @@
       :max="maxPages"
       :max-pages="6"
       boundary-numbers
+      direction-links
     />
+    <br />
     <q-card
       class="episode-card"
       v-for="episode in data"
@@ -21,6 +23,7 @@
         <div class="text-subtitle2 ellipsis">{{ episode.title }}</div>
       </q-card-section>
     </q-card>
+    <br />
     <q-pagination
       v-if="maxPages > 0"
       v-model="page"
@@ -28,6 +31,7 @@
       :max="maxPages"
       :max-pages="6"
       boundary-numbers
+      direction-links
     />
   </q-page>
 </template>
