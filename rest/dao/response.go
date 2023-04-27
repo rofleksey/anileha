@@ -79,6 +79,11 @@ type EpisodeResponseDao struct {
 	Url          string    `json:"link"`
 }
 
+type GetEpisodesResponseDao struct {
+	Episodes []EpisodeResponseDao `json:"episodes"`
+	MaxPages int64                `json:"maxPages"`
+}
+
 type UserResponseDao struct {
 	ID    uint     `json:"id"`
 	Login string   `json:"login"`

@@ -95,6 +95,11 @@ export interface Episode {
   durationSec: number;
 }
 
+export interface GetEpisodesResponse {
+  episodes: Episode[];
+  maxPages: number;
+}
+
 export interface BaseStream {
   index: number;
   name: string;

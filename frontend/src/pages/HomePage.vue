@@ -1,20 +1,34 @@
 <template>
   <q-page class="full-width row items-start q-gutter-lg content-start justify-center" padding>
-    <q-infinite-scroll @load="onBottomScroll" :offset="250">
-      <q-card
-        class="episode-card"
-        v-for="episode in data"
-        :key="episode.id"
-        @click="router.push(`/watch/${episode.id}`)">
-        <q-img
-          :src="episode.thumb"
-          :ratio="1"
-        />
-        <q-card-section>
-          <div class="text-subtitle2 ellipsis">{{ episode.title }}</div>
-        </q-card-section>
-      </q-card>
-    </q-infinite-scroll>
+    <q-pagination
+      v-if="maxPages > 0"
+      v-model="page"
+      color="purple"
+      :max="maxPages"
+      :max-pages="6"
+      boundary-numbers
+    />
+    <q-card
+      class="episode-card"
+      v-for="episode in data"
+      :key="episode.id"
+      @click="router.push(`/watch/${episode.id}`)">
+      <q-img
+        :src="episode.thumb"
+        :ratio="1"
+      />
+      <q-card-section>
+        <div class="text-subtitle2 ellipsis">{{ episode.title }}</div>
+      </q-card-section>
+    </q-card>
+    <q-pagination
+      v-if="maxPages > 0"
+      v-model="page"
+      color="purple"
+      :max="maxPages"
+      :max-pages="6"
+      boundary-numbers
+    />
   </q-page>
 </template>
 
@@ -31,22 +45,15 @@ const router = useRouter();
 
 const dataLoading = ref(false);
 const data = ref<Episode[]>([]);
-const page = ref(0);
-const reachedEnd = ref(false);
+const page = ref(1);
+const maxPages = ref(1);
 
-function onBottomScroll() {
-  if (reachedEnd.value) {
-    return;
-  }
-  page.value += 1;
+function refreshData() {
   dataLoading.value = true;
-  fetchEpisodes(page.value)
-    .then((newEpisodes) => {
-      if (newEpisodes.length === 0) {
-        reachedEnd.value = true;
-        return
-      }
-      data.value = data.value.concat(newEpisodes);
+  fetchEpisodes(page.value - 1)
+    .then((newData) => {
+      data.value = newData.episodes;
+      maxPages.value = Math.max(1, newData.maxPages)
     })
     .catch((e) => {
       showError('Failed to fetch episodes', e);
@@ -54,13 +61,6 @@ function onBottomScroll() {
     .finally(() => {
       dataLoading.value = false;
     });
-}
-
-function refreshData() {
-  page.value = 0;
-  reachedEnd.value = false;
-  data.value = [];
-  onBottomScroll();
 }
 
 onMounted(() => {

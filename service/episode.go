@@ -182,16 +182,21 @@ func (s *EpisodeService) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	return episodes, nil
 }
 
-func (s *EpisodeService) GetEpisodes(page int) ([]db.Episode, error) {
+func (s *EpisodeService) GetEpisodes(page int) ([]db.Episode, int64, error) {
 	offset := s.config.Data.EpisodesPerPage * page
 	limit := s.config.Data.EpisodesPerPage
 
 	episodes, err := s.episodeRepo.Get(offset, limit)
 	if err != nil {
-		return nil, engine.ErrInternal(err.Error())
+		return nil, 0, engine.ErrInternal(err.Error())
 	}
 
-	return episodes, nil
+	count, err := s.episodeRepo.Count()
+	if err != nil {
+		return nil, 0, engine.ErrInternal(err.Error())
+	}
+
+	return episodes, count / int64(limit), nil
 }
 
 func (s *EpisodeService) RefreshThumb(id uint) error {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {Conversion, Episode, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
+import {Conversion, Episode, GetEpisodesResponse, Series, Torrent, TorrentWithFiles, User} from 'src/lib/api-types';
 
 axios.defaults.timeout = 10000;
 
@@ -96,8 +96,8 @@ export async function fetchEpisodesBySeriesId(id: number): Promise<Episode[]> {
   return data;
 }
 
-export async function fetchEpisodes(page: number): Promise<Episode[]> {
-  const {data}: { data: Episode[] } = await axios.get(
+export async function fetchEpisodes(page: number): Promise<GetEpisodesResponse> {
+  const {data}: { data: GetEpisodesResponse } = await axios.get(
     `${BASE_URL}/episodes`,
     {
       params: {

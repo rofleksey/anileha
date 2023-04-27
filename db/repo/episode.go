@@ -44,6 +44,16 @@ func (r *EpisodeRepo) Get(offset int, limit int) ([]db.Episode, error) {
 	return episodes, nil
 }
 
+func (r *EpisodeRepo) Count() (int64, error) {
+	var count int64
+
+	if err := r.db.Table("episodes").Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (r *EpisodeRepo) GetBySeriesId(seriesId uint) ([]db.Episode, error) {
 	var episodes []db.Episode
 	queryResult := r.db.Where("series_id = ?", seriesId).

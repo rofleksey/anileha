@@ -47,12 +47,16 @@ func registerEpisodeController(
 	ginEngine.GET("/episodes", func(c *gin.Context) {
 		pageString := c.Param("page")
 		page, _ := strconv.Atoi(pageString)
-		episodes, err := episodeService.GetEpisodes(page)
+		episodes, maxPages, err := episodeService.GetEpisodes(page)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, mapEpisodesToResponseSlice(episodes))
+
+		c.JSON(http.StatusOK, dao.GetEpisodesResponseDao{
+			Episodes: mapEpisodesToResponseSlice(episodes),
+			MaxPages: maxPages,
+		})
 	})
 
 	ginEngine.GET("/episodes/series/:seriesId", func(c *gin.Context) {
