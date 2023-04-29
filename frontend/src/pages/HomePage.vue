@@ -10,7 +10,8 @@
         :ratio="1"
       />
       <q-card-section>
-        <div class="text-subtitle2 ellipsis">{{ episode.title }}</div>
+        <div class="text-subtitle2 ellipsis">{{ episode.season }}</div>
+        <div class="text-subtitle2 ellipsis">{{ episode.episode }}</div>
       </q-card-section>
     </q-card>
     <div class="flex-break"></div>
@@ -73,7 +74,7 @@ onMounted(() => {
 
   &:hover
     opacity: 0.6
-    
+
 .flex-break
   flex: 1 0 100% !important
 </style>
