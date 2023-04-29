@@ -149,19 +149,11 @@ func registerUserController(
 	})
 
 	authGroup.POST("/avatar", func(c *gin.Context) {
-		form, err := c.MultipartForm()
+		file, err := c.FormFile("image")
 		if err != nil {
-			c.Error(engine.ErrBadRequest(err.Error()))
+			c.Error(engine.ErrBadRequest("failed to parse file"))
 			return
 		}
-
-		files := form.File["image"]
-		if files == nil || len(files) != 1 {
-			c.Error(engine.ErrBadRequest("invalid number of images sent"))
-			return
-		}
-
-		file := files[0]
 
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {

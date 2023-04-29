@@ -195,18 +195,13 @@ func registerTorrentController(
 	})
 
 	torrentGroup.POST("/fromFile", func(c *gin.Context) {
-		form, err := c.MultipartForm()
-		if err != nil {
-			c.Error(engine.ErrBadRequest(err.Error()))
-			return
-		}
-
-		seriesIdStrArr := form.Value["seriesId"]
-		if seriesIdStrArr == nil || len(seriesIdStrArr) != 1 {
+		seriesIdStr, seriesIdExists := c.GetPostForm("seriesId")
+		if !seriesIdExists {
 			c.Error(engine.ErrBadRequest("error getting seriesId"))
 			return
 		}
-		seriesId, err := strconv.ParseUint(seriesIdStrArr[0], 10, 64)
+
+		seriesId, err := strconv.ParseUint(seriesIdStr, 10, 64)
 		if err != nil {
 			c.Error(engine.ErrBadRequest("failed to parse seriesId"))
 			return
@@ -214,9 +209,9 @@ func registerTorrentController(
 
 		var auto *db.AutoTorrent
 
-		autoArr := form.Value["auto"]
-		if autoArr != nil && len(autoArr) == 1 {
-			if err := json.Unmarshal([]byte(autoArr[0]), &auto); err == nil {
+		autoStr, autoExists := c.GetPostForm("auto")
+		if autoExists {
+			if err := json.Unmarshal([]byte(autoStr), &auto); err == nil {
 				if auto.AudioLang == "" || auto.SubLang == "" {
 					c.Error(engine.ErrBadRequest("invalid auto JSON"))
 					return
@@ -224,12 +219,12 @@ func registerTorrentController(
 			}
 		}
 
-		files := form.File["file"]
-		if files == nil || len(files) == 0 {
-			c.Error(engine.ErrBadRequest("no files sent"))
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.Error(engine.ErrBadRequest("failed to parse file"))
 			return
 		}
-		file := files[0]
+
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
 			c.Error(engine.ErrInternal(err.Error()))

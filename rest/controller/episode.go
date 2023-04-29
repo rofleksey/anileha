@@ -11,7 +11,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 func mapEpisodeToResponse(episode db.Episode) dao.EpisodeResponseDao {
@@ -94,57 +93,31 @@ func registerEpisodeController(
 	adminEpisodeGroup.Use(engine.RoleMiddleware(log, []string{"admin"}))
 
 	adminEpisodeGroup.POST("/", func(c *gin.Context) {
-		form, err := c.MultipartForm()
-		if err != nil {
-			c.Error(engine.ErrBadRequest(err.Error()))
-			return
-		}
-
 		var seriesId *uint
 
-		seriesIds := form.Value["seriesId"]
-		if seriesIds != nil && len(seriesIds) == 1 {
-			seriesIdStr := strings.TrimSpace(seriesIds[0])
-			if len(seriesIdStr) != 0 {
-				seriesIdTemp, err := strconv.ParseUint(seriesIdStr, 10, 64)
-				if err == nil {
-					seriesIdUint := uint(seriesIdTemp)
-					seriesId = &seriesIdUint
-				}
+		seriesIdStr, seriesIdExists := c.GetPostForm("seriesId")
+		if seriesIdExists {
+			seriesIdTemp, err := strconv.ParseUint(seriesIdStr, 10, 64)
+			if err == nil {
+				seriesIdUint := uint(seriesIdTemp)
+				seriesId = &seriesIdUint
 			}
 		}
 
-		var seasonStr string
-
-		var episodeStr string
-
-		titles := form.Value["title"]
-		if titles == nil || len(titles) != 1 {
+		title, titleExists := c.GetPostForm("title")
+		if !titleExists {
 			c.Error(engine.ErrBadRequest("error getting title"))
 			return
 		}
-		title := strings.TrimSpace(titles[0])
-		if len(title) == 0 {
-			c.Error(engine.ErrBadRequest("title is blank"))
+
+		seasonStr := c.PostForm("season")
+		episodeStr := c.PostForm("episode")
+
+		file, err := c.FormFile("file")
+		if err != nil {
+			c.Error(engine.ErrBadRequest("failed to parse file"))
 			return
 		}
-
-		seasons := form.Value["season"]
-		if seasons != nil && len(seasons) == 1 {
-			seasonStr = strings.TrimSpace(seasons[0])
-		}
-
-		episodes := form.Value["episode"]
-		if episodes != nil && len(episodes) == 1 {
-			episodeStr = strings.TrimSpace(episodes[0])
-		}
-
-		files := form.File["file"]
-		if files == nil || len(files) != 1 {
-			c.Error(engine.ErrBadRequest("invalid number of files sent"))
-			return
-		}
-		file := files[0]
 
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {

@@ -12,7 +12,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 func mapSeriesToResponse(series db.Series) dao.SeriesResponseDao {
@@ -129,28 +128,18 @@ func registerSeriesController(
 	})
 
 	adminSeriesGroup.POST("/", func(c *gin.Context) {
-		form, err := c.MultipartForm()
-		if err != nil {
-			c.Error(engine.ErrBadRequest(err.Error()))
-			return
-		}
-		titles := form.Value["title"]
-		if titles == nil || len(titles) != 1 {
+		title, titleExists := c.GetPostForm("title")
+		if !titleExists {
 			c.Error(engine.ErrBadRequest("error getting series title"))
 			return
 		}
-		title := titles[0]
-		trimmedTitle := strings.TrimSpace(title)
-		if len(trimmedTitle) == 0 {
-			c.Error(engine.ErrBadRequest("series title is blank"))
+
+		file, err := c.FormFile("thumb")
+		if err != nil {
+			c.Error(engine.ErrBadRequest("failed to parse file"))
 			return
 		}
-		files := form.File["thumb"]
-		if files == nil || len(files) != 1 {
-			c.Error(engine.ErrBadRequest("invalid number of files sent"))
-			return
-		}
-		file := files[0]
+
 		tempDst, err := fileService.GenTempFilePath(file.Filename)
 		if err != nil {
 			c.Error(engine.ErrInternal(err.Error()))
@@ -167,7 +156,7 @@ func registerSeriesController(
 			c.Error(err)
 			return
 		}
-		seriesId, err := seriesService.AddSeries(trimmedTitle, thumb)
+		seriesId, err := seriesService.AddSeries(title, thumb)
 		if err != nil {
 			thumb.Delete()
 			c.Error(err)
