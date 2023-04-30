@@ -6,7 +6,7 @@ console.log(`BASE_URL = ${BASE_URL}`)
 
 const LONG_TIMEOUT = 30000
 const SUPER_LONG_TIMEOUT = 120000
-const MAX_FILE_SIZE = 5368709120;
+const MAX_FILE_SIZE = Infinity;
 
 export async function postLogin(user: string, pass: string): Promise<User> {
   const {data}: { data: User } = await axios.post(`${BASE_URL}/user/login`, {
@@ -57,7 +57,6 @@ export async function postAccountAvatar(image: File): Promise<string> {
     withCredentials: true,
     timeout: LONG_TIMEOUT,
     maxContentLength: MAX_FILE_SIZE,
-    maxBodyLength: MAX_FILE_SIZE
   });
   return data;
 }
@@ -74,7 +73,6 @@ export async function postNewSeries(title: string, thumb: File): Promise<void> {
     withCredentials: true,
     timeout: LONG_TIMEOUT,
     maxContentLength: MAX_FILE_SIZE,
-    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
@@ -101,7 +99,6 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
     onUploadProgress: progressCallback,
     timeout: 0,
     maxContentLength: MAX_FILE_SIZE,
-    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
@@ -114,13 +111,12 @@ export async function postNewTorrentFromFile(seriesId: number, file: File, auto?
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/torrent/fromFile/`,
+    url: `${BASE_URL}/admin/torrent/fromFile`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
     timeout: SUPER_LONG_TIMEOUT,
     maxContentLength: MAX_FILE_SIZE,
-    maxBodyLength: MAX_FILE_SIZE
   })
 }
 
@@ -145,7 +141,6 @@ export async function postNewTorrentFromSearch(seriesId: number, torrentId: stri
     withCredentials: true,
     timeout: SUPER_LONG_TIMEOUT,
     maxContentLength: MAX_FILE_SIZE,
-    maxBodyLength: MAX_FILE_SIZE
   });
 }
 
