@@ -20,11 +20,14 @@ type SearchConfig struct {
 }
 
 type DbConfig struct {
-	Host     string `validate:"required" yaml:"host"`
-	Port     uint   `validate:"required" yaml:"port"`
-	DbName   string `validate:"required" yaml:"dbName"`
-	Username string `validate:"required" yaml:"username"`
-	Password string `validate:"required" yaml:"password"`
+	Host                string `validate:"required" yaml:"host"`
+	Port                uint   `validate:"required" yaml:"port"`
+	DbName              string `validate:"required" yaml:"dbName"`
+	Username            string `validate:"required" yaml:"username"`
+	Password            string `validate:"required" yaml:"password"`
+	MaxIdleConns        int    `validate:"required" yaml:"maxIdleConns"`
+	MaxOpenConns        int    `validate:"required" yaml:"maxOpenConns"`
+	ConnMaxLifetimeSecs int    `validate:"required" yaml:"connMaxLifetimeSecs"`
 }
 
 type RestConfig struct {
@@ -97,11 +100,14 @@ type Config struct {
 func GetDefaultConfig() Config {
 	return Config{
 		Db: DbConfig{
-			Host:     "localhost",
-			Port:     5432,
-			DbName:   "anileha",
-			Username: "postgres",
-			Password: "postgres",
+			Host:                "localhost",
+			Port:                5432,
+			DbName:              "anileha",
+			Username:            "postgres",
+			Password:            "postgres",
+			MaxIdleConns:        10,
+			MaxOpenConns:        30,
+			ConnMaxLifetimeSecs: 1800,
 		},
 		Rest: RestConfig{
 			Port:    7891,
