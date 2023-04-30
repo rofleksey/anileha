@@ -108,7 +108,8 @@ func registerUserController(
 		}
 		session := sessions.Default(c)
 		session.Options(sessions.Options{
-			Path: "/",
+			Path:   "/",
+			MaxAge: config.User.AuthDurationSec,
 			//SameSite: http.SameSiteNoneMode,
 			//Secure:   true,
 		})

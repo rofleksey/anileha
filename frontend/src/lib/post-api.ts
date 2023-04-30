@@ -111,7 +111,7 @@ export async function postNewTorrentFromFile(seriesId: number, file: File, auto?
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/torrent/fromFile`,
+    url: `${BASE_URL}/admin/torrent/fromFile/`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,

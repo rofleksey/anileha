@@ -63,6 +63,7 @@ type UserConfig struct {
 	Salt             string `validate:"required" yaml:"salt"`
 	CookieHashKey    string `validate:"required" yaml:"cookieHashKey"`
 	CookieEncryptKey string `validate:"required" yaml:"cookieEncryptKey"`
+	AuthDurationSec  int    `validate:"gt=0" yaml:"authDurationSec"`
 }
 
 type AdminConfig struct {
@@ -141,6 +142,7 @@ func GetDefaultConfig() Config {
 			Salt:             "salt",
 			CookieHashKey:    "qwertyuiopasdfghjkl;'zxcvbnm,.qw",
 			CookieEncryptKey: "qwertyuiopasdfgh",
+			AuthDurationSec:  604800,
 		},
 		Admin: AdminConfig{
 			Username: "admin",
