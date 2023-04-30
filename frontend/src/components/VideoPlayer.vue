@@ -27,13 +27,13 @@
         class="video"
         :poster="props.poster"
         :src="props.src"
-        @mousemove.self="onVideoMove"
+        @mousemove="onVideoMove"
         @touchmove.self="onVideoTouchMove"
         @keydown="playerKeyboardListener"
         @touchstart.self="onVideoTouchDown"
-        @mousedown.self="onVideoPress"
+        @mousedown="onVideoPress"
         @touchend.self="onVideoTouchUp"
-        @dblclick.self="isMobile && togglePlayback"
+        @dblclick="isMobile && togglePlayback"
         @canplay="emit('canplay')"
         tabIndex="-1"/>
       <slot :playing="playing"></slot>
