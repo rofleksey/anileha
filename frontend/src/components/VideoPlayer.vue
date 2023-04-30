@@ -1,7 +1,8 @@
 <template>
   <div
     :class="{player: true, loading: props.loading, immersed: !showControls}"
-    ref="playerRef">
+    ref="playerRef"
+    tabIndex="-1">
     <canvas
       ref="canvasRef"
       style="display: none"

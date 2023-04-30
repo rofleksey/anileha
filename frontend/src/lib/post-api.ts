@@ -51,7 +51,7 @@ export async function postAccountAvatar(image: File): Promise<string> {
   formData.append('image', image);
   const {data}: { data: string } = await axios({
     method: 'post',
-    url: `${BASE_URL}/user/avatar/`,
+    url: `${BASE_URL}/user/avatar`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
@@ -67,7 +67,7 @@ export async function postNewSeries(title: string, thumb: File): Promise<void> {
   formData.append('thumb', thumb);
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/series/`,
+    url: `${BASE_URL}/admin/series`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
@@ -92,7 +92,7 @@ export async function postNewEpisode(seriesId: number | null, file: File, title:
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/episodes/`,
+    url: `${BASE_URL}/admin/episodes`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
@@ -111,7 +111,7 @@ export async function postNewTorrentFromFile(seriesId: number, file: File, auto?
   }
   await axios({
     method: 'post',
-    url: `${BASE_URL}/admin/torrent/fromFile/`,
+    url: `${BASE_URL}/admin/torrent/fromFile`,
     data: formData,
     headers: {'Content-Type': 'multipart/form-data'},
     withCredentials: true,
