@@ -2,6 +2,7 @@
   <div
     :class="{player: true, loading: props.loading, immersed: !showControls}"
     ref="playerRef"
+    @keydown="playerKeyboardListener"
     tabIndex="-1">
     <canvas
       ref="canvasRef"
@@ -29,7 +30,6 @@
         :src="props.src"
         @mousemove="onVideoMove"
         @touchmove.self="onVideoTouchMove"
-        @keydown="playerKeyboardListener"
         @touchstart.self="onVideoTouchDown"
         @mousedown="onVideoPress"
         @touchend.self="onVideoTouchUp"
@@ -468,9 +468,10 @@ function toggleFullscreen(e?: MouseEvent) {
       return
     }
     if (player.requestFullscreen) {
-      player.requestFullscreen();
+      player.requestFullscreen().then(() => {
+        player.focus();
+      })
     }
-    player.focus();
   }
   e?.stopPropagation();
 }
