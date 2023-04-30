@@ -40,10 +40,6 @@ func NewProducer(
 }
 
 func (p *Producer) selectAudio(streams []db.AudioStream, prefs PreferencesData) *selectedAudioStream {
-	if len(streams) == 0 {
-		return nil
-	}
-
 	if prefs.Disable {
 		return nil
 	}
@@ -52,6 +48,10 @@ func (p *Producer) selectAudio(streams []db.AudioStream, prefs PreferencesData) 
 		return &selectedAudioStream{
 			ExternalFile: prefs.ExternalFile,
 		}
+	}
+
+	if len(streams) == 0 {
+		return nil
 	}
 
 	if prefs.StreamIndex != nil {
@@ -81,10 +81,6 @@ func (p *Producer) selectAudio(streams []db.AudioStream, prefs PreferencesData) 
 }
 
 func (p *Producer) selectSub(streams []db.SubStream, prefs PreferencesData) *selectedSubStream {
-	if len(streams) == 0 {
-		return nil
-	}
-
 	if prefs.Disable {
 		return nil
 	}
@@ -94,6 +90,10 @@ func (p *Producer) selectSub(streams []db.SubStream, prefs PreferencesData) *sel
 			ExternalFile: prefs.ExternalFile,
 			Filter:       subtitlesSubFilter,
 		}
+	}
+
+	if len(streams) == 0 {
+		return nil
 	}
 
 	if prefs.StreamIndex != nil {

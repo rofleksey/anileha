@@ -261,14 +261,11 @@ watch(overrideSubLang, () => {
 
 watch(externalSubFilter, () => {
   prefsData.value.forEach((it) => {
-    const newSub = pickExternalSub(it);
-    if (newSub) {
-      it.prefs.sub = newSub;
-    }
+    it.prefs.sub = pickExternalSub(it);
   });
 });
 
-function pickExternalSub(file: TorrentFileWithPrefs): ConversionPreference | null {
+function pickExternalSub(file: TorrentFileWithPrefs): ConversionPreference {
   const fileBaseName = file.path.substring(file.path.lastIndexOf('/') + 1);
 
   let externalSub: string | null = null;
@@ -286,7 +283,9 @@ function pickExternalSub(file: TorrentFileWithPrefs): ConversionPreference | nul
   });
 
   if (!externalSub) {
-    return null;
+    return {
+      disable: true
+    };
   }
 
   return {
