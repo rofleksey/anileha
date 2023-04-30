@@ -9,25 +9,34 @@ import (
 	"github.com/elliotchance/pie/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"os"
+	"path"
 	"runtime"
 	"sort"
 	"strconv"
 )
 
 type Producer struct {
-	log    *zap.Logger
-	config *config.Config
+	log     *zap.Logger
+	config  *config.Config
+	fontDir string
 }
 
 func NewProducer(
 	log *zap.Logger,
 	config *config.Config,
-) *Producer {
+) (*Producer, error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	fontDir := path.Join(workingDir, config.Data.Dir, util.FontSubDir)
 	log.Info("cpu count", zap.Int("count", runtime.NumCPU()))
 	return &Producer{
-		log:    log,
-		config: config,
-	}
+		log:     log,
+		config:  config,
+		fontDir: fontDir,
+	}, nil
 }
 
 func (p *Producer) selectAudio(streams []db.AudioStream, prefs PreferencesData) *selectedAudioStream {
@@ -179,7 +188,7 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 		case subtitlesSubFilter:
 			if subPick.ExternalFile != "" {
 				command.AddVar("FILTER_SUB", "-filter_complex",
-					fmt.Sprintf("[0:v]subtitles=f='%s'[vo]", subPick.ExternalFile))
+					fmt.Sprintf("[0:v]subtitles=f='%s':fontsdir='%s'[vo]", subPick.ExternalFile, p.fontDir))
 			} else {
 				command.AddVar("FILTER_SUB", "-filter_complex",
 					fmt.Sprintf("[0:v]subtitles=f='%s':si=%d[vo]", inputFile, *subPick.StreamIndex))

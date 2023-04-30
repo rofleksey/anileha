@@ -54,6 +54,11 @@
         v-model="overrideSubLang"
         label="Preferred subtitle language"/>
 
+      <q-input
+        v-model="externalSubFilter"
+        debounce="500"
+        label="External subtitles filter"/>
+
       <q-separator/>
 
       <q-table
@@ -82,6 +87,7 @@
               size="sm"
               icon="settings"/>
             <q-btn
+              v-if="props.value.stream !== undefined"
               @click="openSubtitlePreviewModal(props.row.clientIndex, props.value.stream)"
               flat
               round
@@ -151,6 +157,7 @@ import {
   SubStream,
   TorrentFile,
 } from 'src/lib/api-types';
+import levenshtein from 'fast-levenshtein';
 import {fetchTorrentById} from 'src/lib/get-api';
 import {QuasarColumnType, showError, showSuccess} from 'src/lib/util';
 import {useRoute} from 'vue-router';
@@ -178,6 +185,7 @@ const prefsData = ref<TorrentFileWithPrefs[]>([]);
 const overrideSeason = ref('');
 const overrideAudioLang = ref('jpn');
 const overrideSubLang = ref('eng');
+const externalSubFilter = ref('');
 
 const readyFiles = computed(() => {
   const files = fileData.value;
@@ -193,8 +201,9 @@ const readyVideoFiles = computed(() => {
 });
 
 const externalSubtitleFiles = computed(() => {
+  const filter = externalSubFilter.value.toLowerCase();
   return readyFiles.value
-    .filter((file) => file.type === 'subtitle')
+    .filter((file) => file.type === 'subtitle' && file.path.toLowerCase().includes(filter))
     .map((file) => file.path);
 });
 
@@ -250,6 +259,40 @@ watch(overrideSubLang, () => {
   });
 });
 
+watch(externalSubFilter, () => {
+  prefsData.value.forEach((it) => {
+    const newSub = pickExternalSub(it);
+    if (newSub) {
+      it.prefs.sub = newSub;
+    }
+  });
+});
+
+function pickExternalSub(file: TorrentFileWithPrefs): ConversionPreference | null {
+  const fileBaseName = file.path.substring(file.path.lastIndexOf('/') + 1);
+
+  let externalSub: string | null = null;
+  let minDist = Infinity
+
+  externalSubtitleFiles.value.forEach((extFilePath) => {
+    const baseName = extFilePath.substring(extFilePath.lastIndexOf('/') + 1);
+    const dist = levenshtein.get(baseName, fileBaseName, {
+      useCollator: true,
+    });
+    if (dist < minDist) {
+      minDist = dist;
+      externalSub = extFilePath;
+    }
+  });
+
+  if (!externalSub) {
+    return null;
+  }
+
+  return {
+    file: externalSub,
+  }
+}
 
 function formatName(name: string) {
   if (name.trim().length === 0) {

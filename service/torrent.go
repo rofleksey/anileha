@@ -34,6 +34,7 @@ type TorrentService struct {
 	fileService     *FileService
 	analyzer        *analyze.ProbeAnalyzer
 	convertService  *ConversionService
+	fontService     *FontService
 	log             *zap.Logger
 	infoFolder      string
 	downloadsFolder string
@@ -74,6 +75,7 @@ func NewTorrentService(
 	fileService *FileService,
 	analyzer *analyze.ProbeAnalyzer,
 	convertService *ConversionService,
+	fontService *FontService,
 ) (*TorrentService, error) {
 	if err := torrentRepo.ResetDownloadStatus(); err != nil {
 		return nil, fmt.Errorf("failed to reset download status: %w", err)
@@ -109,6 +111,7 @@ func NewTorrentService(
 		fileService:     fileService,
 		analyzer:        analyzer,
 		convertService:  convertService,
+		fontService:     fontService,
 		log:             log,
 		infoFolder:      infoFolder,
 		downloadsFolder: downloadsFolder,
@@ -304,6 +307,8 @@ func (s *TorrentService) prepareForAnalysis(id uint) {
 		torrent.Files[i].ReadyPath = &newPath
 	}
 
+	s.fontService.LoadFonts(context.Background(), torrent.Files)
+
 	err = s.torrentRepo.SetPreAnalysis(*torrent)
 	if err != nil {
 		s.log.Error("transaction on torrent completion failed",
@@ -359,6 +364,11 @@ func (s *TorrentService) performAnalysis(id uint, etaCalc *util.EtaCalculator) {
 	for i := range torrent.Files {
 		// ignore already analyzed files
 		if torrent.Files[i].Status != db.TorrentFileAnalysis {
+			continue
+		}
+
+		// ignore non-video files
+		if torrent.Files[i].Type != util.FileTypeVideo {
 			continue
 		}
 

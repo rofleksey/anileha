@@ -55,6 +55,7 @@ func main() {
 		service.UserExport,
 		service.RoomExport,
 		service.SearchExport,
+		service.FontExport,
 
 		// rest controllers
 		controller.HealthExport,

@@ -27,8 +27,6 @@ func ErrorMiddleware(log *zap.Logger) func(c *gin.Context) {
 				c.JSON(statusError.StatusCode, gin.H{"error": "internal server error"})
 				log.Error("internal server error", zap.Error(statusError))
 				return
-			} else {
-				log.Warn("request finished with non 200 status", zap.Error(statusError))
 			}
 			c.JSON(statusError.StatusCode, gin.H{"error": statusError.Error()})
 			return

@@ -127,7 +127,6 @@
           <component :is="Component"></component>
         </keep-alive>
       </router-view>
-
     </q-page-container>
 
     <!--    <q-ajax-bar-->

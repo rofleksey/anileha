@@ -4,6 +4,8 @@
             :nodes="nodes"
             node-key="id"
             tick-strategy="leaf"
+            ref="treeRef"
+            dense
             v-model:selected="selection"
             v-model:ticked="ticked"
             v-model:expanded="expanded"
@@ -47,6 +49,7 @@ interface Node {
 const dataLoading = ref(false);
 const data = ref<TorrentWithFiles | null>();
 
+const treeRef = ref<any>();
 const selection = ref<number[]>([]);
 const ticked = ref<number[]>([]);
 const expanded = ref<number[]>([]);
@@ -59,7 +62,7 @@ const nodes = computed(() => {
   const rootNodes: Node[] = [];
   let miscCounter = -1;
   torrent.files.forEach((file) => {
-    const pathSplit = file.path.split('/');
+    const pathSplit = ['< root >', ...file.path.split('/')];
     let curNodeArray = rootNodes;
     pathSplit.forEach((pathItem, index) => {
       let nodeItem = curNodeArray.find((arrayItem) => arrayItem.label === pathItem);
@@ -87,6 +90,7 @@ function refreshData() {
       ticked.value = newTorrent.files
         .filter((file) => file.selected)
         .map((file) => file.clientIndex);
+      setTimeout(() => treeRef.value?.expandAll(), 1);
     })
     .catch((e) => {
       showError('failed to fetch torrent', e);
