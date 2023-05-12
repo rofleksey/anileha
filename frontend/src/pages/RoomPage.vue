@@ -9,14 +9,14 @@
         round
         icon="skip_previous"
         :disable="episodeIndex === 0"
-        @click="changePageEpisode(episodeListData![episodeIndex - 1].id)"/>
+        @click="changeEpisodeRemote(episodeListData![episodeIndex - 1].id)"/>
       <q-btn
         v-if="episodeIndex >= 0"
         flat
         round
         icon="skip_next"
         :disable="episodeIndex === episodeListData?.length - 1"
-        @click="changePageEpisode(episodeListData![episodeIndex + 1].id)"/>
+        @click="changeEpisodeRemote(episodeListData![episodeIndex + 1].id)"/>
     </q-toolbar>
     <InteractiveOverlay>
       Click to enable
@@ -101,6 +101,16 @@ const episodeIndex = computed(() => {
 watch(episodeIndex, () => {
   console.log(`episodeIndex = ${episodeIndex.value}`);
 })
+
+function changeEpisodeRemote(newEpisodeId: number) {
+  sendWs<RoomState>('room-state', {
+    episodeId: newEpisodeId,
+    timestamp: 0,
+    playing: false,
+  });
+
+  changePageEpisode(newEpisodeId);
+}
 
 function changePageEpisode(newEpisodeId: number) {
   router.replace({
