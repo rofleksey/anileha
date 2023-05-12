@@ -74,7 +74,7 @@ const route = useRoute();
 const router = useRouter();
 
 const roomId = computed(() => route.query.id?.toString());
-const episodeId = computed(() => Number(route.query.episodeId?.toString()));
+const pageEpisodeId = computed(() => Number(route.query.episodeId?.toString()));
 
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
@@ -85,6 +85,7 @@ const dataLoading = ref(false);
 const videoLoading = ref(false);
 const videoError = ref(false);
 const videoProgress = ref(0);
+const videoEpisodeId = ref<number | null>(null);
 const episodeData = ref<Episode | undefined>();
 const episodeListData = ref<Episode[] | undefined>();
 const watchersState = ref<WatcherState[]>([]);
@@ -94,23 +95,26 @@ const episodeIndex = computed(() => {
   if (!episodeListData.value) {
     return -1;
   }
-  return episodeListData.value?.findIndex((it) => it.id === episodeId.value);
+  return episodeListData.value?.findIndex((it) => it.id === pageEpisodeId.value);
 });
 
 function changeEpisode(newEpisodeId: number) {
-  router.replace({
-    path: '/room',
-    query: {
-      id: roomId.value,
-      episodeId: newEpisodeId,
-    }
-  })
+  if (pageEpisodeId.value !== newEpisodeId) {
+    router.replace({
+      path: '/room',
+      query: {
+        id: roomId.value,
+        episodeId: newEpisodeId,
+      }
+    });
+  }
+  videoEpisodeId.value = newEpisodeId;
 }
 
 const {sendWs} = useWebSocket({
   url: `ws://${window.location.host}/room/ws/${roomId.value}`,
   onConnect: () => {
-    if (episodeId.value) {
+    if (pageEpisodeId.value) {
       const selfWatcher = watchersState.value.find((it) => it.id === curUser.value?.id)
       if (!selfWatcher) {
         return
@@ -130,13 +134,13 @@ const {sendWs} = useWebSocket({
 
       playerRef.value?.setPlaying(false);
       playerRef.value?.seek(room.timestamp)
-      if (room.episodeId && room.episodeId !== episodeId.value) {
+      if (room.episodeId) {
         changeEpisode(room.episodeId);
       }
       watchersState.value = watchers;
 
       sendWs<RoomState>('room-state', {
-        episodeId: room.episodeId || episodeId.value,
+        episodeId: room.episodeId || pageEpisodeId.value,
         timestamp: -1,
         playing: false,
       });
@@ -155,7 +159,7 @@ const {sendWs} = useWebSocket({
       }
       playerRef.value?.setPlaying(roomState.playing);
       playerRef.value?.seek(roomState.timestamp)
-      if (roomState.episodeId && roomState.episodeId !== episodeId.value) {
+      if (roomState.episodeId) {
         changeEpisode(roomState.episodeId);
       }
     } else if (type === 'user-state') {
@@ -195,7 +199,7 @@ const {sendWs} = useWebSocket({
   },
 })
 
-watch(episodeId, refreshData);
+watch(videoEpisodeId, refreshData);
 
 function watcherIconText(watcher: WatcherState) {
   if (watcher.status === 'loading') {
@@ -230,7 +234,7 @@ function onPlay() {
   });
 
   sendWs<RoomState>('room-state', {
-    episodeId: episodeId.value,
+    episodeId: pageEpisodeId.value,
     timestamp: playerRef.value?.getTimestamp() ?? 0,
     playing: true,
   });
@@ -243,7 +247,7 @@ function onPause() {
   });
 
   sendWs<RoomState>('room-state', {
-    episodeId: episodeId.value,
+    episodeId: pageEpisodeId.value,
     timestamp: playerRef.value?.getTimestamp() ?? 0,
     playing: false,
   });
@@ -275,7 +279,7 @@ function onSeek(timestamp: number) {
   });
 
   sendWs<RoomState>('room-state', {
-    episodeId: episodeId.value,
+    episodeId: pageEpisodeId.value,
     timestamp: timestamp,
     playing: false,
   });
@@ -341,12 +345,12 @@ function loadVideo(src: string) {
 }
 
 function refreshData() {
-  if (!episodeId.value) {
+  if (!pageEpisodeId.value) {
     episodeData.value = undefined;
     return
   }
   dataLoading.value = true;
-  fetchEpisodeById(episodeId.value)
+  fetchEpisodeById(pageEpisodeId.value)
     .then((newEpisode) => {
       episodeData.value = newEpisode;
       loadVideo(`${BASE_URL}${newEpisode.link}`);
@@ -364,7 +368,7 @@ function refreshData() {
       });
 
       sendWs<RoomState>('room-state', {
-        episodeId: episodeId.value,
+        episodeId: pageEpisodeId.value,
         timestamp: -1,
         playing: false,
       });
