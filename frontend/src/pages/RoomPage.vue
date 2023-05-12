@@ -92,10 +92,10 @@ const watchersState = ref<WatcherState[]>([]);
 const videoSrc = ref<Blob | string>('');
 
 const episodeIndex = computed(() => {
-  if (!episodeListData.value) {
+  if (!episodeListData.value || !videoEpisodeId.value) {
     return -1;
   }
-  return episodeListData.value?.findIndex((it) => it.id === pageEpisodeId.value);
+  return episodeListData.value?.findIndex((it) => it.id === videoEpisodeId.value);
 });
 
 function changePageEpisode(newEpisodeId: number) {
