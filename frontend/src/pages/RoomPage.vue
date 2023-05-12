@@ -3,6 +3,20 @@
     <q-toolbar class="bg-purple text-white shadow-2 rounded-borders">
       <q-btn flat :label="`Room: ${episodeData?.title ?? ''}`"/>
       <q-btn flat :label="`${watchersState.length} viewers`"/>
+      <q-btn
+        v-if="episodeIndex >= 0"
+        flat
+        round
+        icon="skip_previous"
+        :disable="episodeIndex === 0"
+        @click="changeEpisode(episodeListData![episodeIndex - 1].id)"/>
+      <q-btn
+        v-if="episodeIndex >= 0"
+        flat
+        round
+        icon="skip_next"
+        :disable="episodeIndex === episodeListData?.length - 1"
+        @click="changeEpisode(episodeListData![episodeIndex + 1].id)"/>
     </q-toolbar>
     <InteractiveOverlay>
       Click to enable
@@ -34,14 +48,13 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ComputedRef, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, ComputedRef, onUnmounted, ref, watch} from 'vue';
 import {Episode, RoomState, User, WatcherState, WatcherStatePartial} from 'src/lib/api-types';
-import {BASE_URL, fetchEpisodeById} from 'src/lib/get-api';
+import {BASE_URL, fetchEpisodeById, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import {showError, showHint, showSuccess} from 'src/lib/util';
-import {useRoute} from 'vue-router';
+import {useRoute, useRouter} from 'vue-router';
 import {useUserStore} from 'stores/user-store';
 import VideoPlayer from 'components/VideoPlayer.vue';
-import {useRoomStore} from 'stores/room-store';
 import InteractiveOverlay from 'components/InteractiveOverlay.vue';
 import formatDuration from 'format-duration';
 import {useWebSocket} from 'src/lib/ws';
@@ -58,10 +71,10 @@ let downloadRequest: XMLHttpRequest | undefined = undefined;
 let lastObjectUrl: string | undefined = undefined;
 
 const route = useRoute();
-const roomStore = useRoomStore();
+const router = useRouter();
 
 const roomId = computed(() => route.query.id?.toString());
-const episodeId = computed(() => roomStore.episodeId);
+const episodeId = computed(() => Number(route.query.episodeId?.toString()));
 
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
@@ -73,8 +86,26 @@ const videoLoading = ref(false);
 const videoError = ref(false);
 const videoProgress = ref(0);
 const episodeData = ref<Episode | undefined>();
+const episodeListData = ref<Episode[] | undefined>();
 const watchersState = ref<WatcherState[]>([]);
 const videoSrc = ref<Blob | string>('');
+
+const episodeIndex = computed(() => {
+  if (!episodeListData.value) {
+    return -1;
+  }
+  return episodeListData.value?.findIndex((it) => it.id === episodeId.value);
+});
+
+function changeEpisode(newEpisodeId: number) {
+  router.replace({
+    path: '/room',
+    query: {
+      id: roomId.value,
+      episodeId: newEpisodeId,
+    }
+  })
+}
 
 const {sendWs} = useWebSocket({
   url: `ws://${window.location.host}/room/ws/${roomId.value}`,
@@ -99,13 +130,13 @@ const {sendWs} = useWebSocket({
 
       playerRef.value?.setPlaying(false);
       playerRef.value?.seek(room.timestamp)
-      if (room.episodeId) {
-        roomStore.setEpisodeId(room.episodeId);
+      if (room.episodeId && room.episodeId !== episodeId.value) {
+        changeEpisode(room.episodeId);
       }
       watchersState.value = watchers;
 
       sendWs<RoomState>('room-state', {
-        episodeId: episodeId.value,
+        episodeId: room.episodeId || episodeId.value,
         timestamp: -1,
         playing: false,
       });
@@ -124,8 +155,8 @@ const {sendWs} = useWebSocket({
       }
       playerRef.value?.setPlaying(roomState.playing);
       playerRef.value?.seek(roomState.timestamp)
-      if (roomState.episodeId) {
-        roomStore.setEpisodeId(roomState.episodeId);
+      if (roomState.episodeId && roomState.episodeId !== episodeId.value) {
+        changeEpisode(roomState.episodeId);
       }
     } else if (type === 'user-state') {
       const newState = message as WatcherState
@@ -165,12 +196,6 @@ const {sendWs} = useWebSocket({
 })
 
 watch(episodeId, refreshData);
-
-watch(roomId, () => {
-  if (roomId.value) {
-    roomStore.setRoomId(roomId.value);
-  }
-});
 
 function watcherIconText(watcher: WatcherState) {
   if (watcher.status === 'loading') {
@@ -326,6 +351,14 @@ function refreshData() {
       episodeData.value = newEpisode;
       loadVideo(`${BASE_URL}${newEpisode.link}`);
 
+      if (newEpisode.seriesId) {
+        fetchEpisodesBySeriesId(newEpisode.seriesId).then((newEpisodeList) => {
+          episodeListData.value = newEpisodeList
+        }).catch((e) => {
+          showError('Failed to fetch episode list', e);
+        })
+      }
+
       updateSelfStatus((w) => {
         w.timestamp = 0;
       });
@@ -343,10 +376,6 @@ function refreshData() {
       dataLoading.value = false;
     });
 }
-
-onMounted(() => {
-  refreshData();
-});
 
 onUnmounted(() => {
   downloadRequest?.abort();

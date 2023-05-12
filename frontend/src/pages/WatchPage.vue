@@ -1,7 +1,7 @@
 <template>
   <q-page class="full-width" padding>
     <q-toolbar class="bg-purple text-white shadow-2 rounded-borders">
-      <q-btn flat :label="data?.title ?? ''"/>
+      <q-btn flat :label="episodeData?.title ?? ''"/>
       <q-btn
         flat
         round
@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import {computed, ComputedRef, onMounted, ref} from 'vue';
 import {Episode, User} from 'src/lib/api-types';
-import {BASE_URL, fetchEpisodeById} from 'src/lib/get-api';
+import {BASE_URL, fetchEpisodeById, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import sanitize from 'sanitize-filename';
 import {showError, showSuccess} from 'src/lib/util';
 import {useRoute, useRouter} from 'vue-router';
@@ -48,8 +48,8 @@ import VideoPlayer from 'components/VideoPlayer.vue';
 import {deleteEpisode} from 'src/lib/delete-api';
 import {useQuasar} from 'quasar';
 import {refreshEpisodeThumb} from 'src/lib/post-api';
-import {useRoomStore} from 'stores/room-store';
 import {useInterval} from 'src/lib/composables';
+import {nanoid} from 'nanoid';
 
 const quasar = useQuasar();
 const router = useRouter();
@@ -62,14 +62,11 @@ const episodeId = computed(() => Number(route.params.episodeId));
 const userStore = useUserStore();
 const curUser: ComputedRef<User | null> = computed(() => userStore.user);
 
-const roomStore = useRoomStore();
-const roomId = computed(() => roomStore.roomId);
-
 const dataLoading = ref(false);
-const data = ref<Episode | undefined>();
+const episodeData = ref<Episode | undefined>();
 
 const videoSrc = computed(() => {
-  const episode = data.value;
+  const episode = episodeData.value;
   if (!episode) {
     return '';
   }
@@ -77,7 +74,7 @@ const videoSrc = computed(() => {
 });
 
 const posterSrc = computed(() => {
-  const episode = data.value;
+  const episode = episodeData.value;
   if (!episode) {
     return '';
   }
@@ -85,12 +82,11 @@ const posterSrc = computed(() => {
 });
 
 function onGroupWatch() {
-  roomStore.setEpisodeId(episodeId.value);
-
   router.push({
     path: '/room',
     query: {
-      id: roomId.value,
+      id: nanoid(6),
+      episodeId: episodeId.value,
     }
   });
 }
@@ -134,7 +130,7 @@ function onDownloadClick() {
   link.href = videoSrc.value;
   link.setAttribute(
     'download',
-    sanitize(`${data.value?.title ?? 'blank'}.mp4`)
+    sanitize(`${episodeData.value?.title ?? 'blank'}.mp4`)
   );
   document.body.appendChild(link);
   link.click();
@@ -149,7 +145,7 @@ function onDeleteClick() {
   }).onOk(() => {
     deleteEpisode(episodeId.value)
       .then(() => {
-        showSuccess('Episode deleted', `Successfully deleted episode ${data.value?.title ?? ''}`);
+        showSuccess('Episode deleted', `Successfully deleted episode ${episodeData.value?.title ?? ''}`);
         router.push('/');
       })
       .catch((e) => {
@@ -162,7 +158,7 @@ function refreshData() {
   dataLoading.value = true;
   fetchEpisodeById(episodeId.value)
     .then((newEpisode) => {
-      data.value = newEpisode;
+      episodeData.value = newEpisode;
     })
     .catch((e) => {
       showError('failed to fetch episode', e);

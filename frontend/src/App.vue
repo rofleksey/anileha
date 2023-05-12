@@ -123,9 +123,7 @@
 
     <q-page-container>
       <router-view v-slot="{ Component }">
-        <keep-alive include="RoomPage">
-          <component :is="Component"></component>
-        </keep-alive>
+        <component :is="Component"></component>
       </router-view>
     </q-page-container>
 
