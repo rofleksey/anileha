@@ -92,7 +92,7 @@ const watchersState = ref<WatcherState[]>([]);
 const videoSrc = ref<Blob | string>('');
 
 const episodeIndex = computed(() => {
-  if (!episodeListData.value || !videoEpisodeId.value) {
+  if (!episodeListData.value || videoEpisodeId.value === null) {
     return -1;
   }
   return episodeListData.value?.findIndex((it) => it.id === videoEpisodeId.value) ?? -1;
