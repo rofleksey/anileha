@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, ComputedRef, onUnmounted, ref, watch} from 'vue';
+import {computed, ComputedRef, onMounted, onUnmounted, ref, watch} from 'vue';
 import {Episode, RoomState, User, WatcherState, WatcherStatePartial} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodeById, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import {showError, showHint, showSuccess} from 'src/lib/util';
@@ -149,15 +149,9 @@ const {sendWs} = useWebSocket({
       if (room.episodeId) {
         changePageEpisode(room.episodeId);
       } else {
-        changePageEpisode(pageEpisodeId.value);
+        changeEpisodeRemote(pageEpisodeId.value);
       }
       watchersState.value = watchers;
-
-      sendWs<RoomState>('room-state', {
-        episodeId: room.episodeId || pageEpisodeId.value,
-        timestamp: -1,
-        playing: false,
-      });
     } else if (type === 'room-state') {
       console.log(message);
       const roomState = message as RoomState;
@@ -359,12 +353,12 @@ function loadVideo(src: string) {
 }
 
 function refreshData() {
-  if (!pageEpisodeId.value) {
+  if (!videoEpisodeId.value) {
     episodeData.value = undefined;
     return
   }
   dataLoading.value = true;
-  fetchEpisodeById(pageEpisodeId.value)
+  fetchEpisodeById(videoEpisodeId.value)
     .then((newEpisode) => {
       episodeData.value = newEpisode;
       loadVideo(`${BASE_URL}${newEpisode.link}`);
@@ -394,6 +388,10 @@ function refreshData() {
       dataLoading.value = false;
     });
 }
+
+onMounted(() => {
+  console.log('on mounted');
+})
 
 onUnmounted(() => {
   downloadRequest?.abort();
