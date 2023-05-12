@@ -103,15 +103,13 @@ watch(episodeIndex, () => {
 })
 
 function changePageEpisode(newEpisodeId: number) {
-  if (pageEpisodeId.value !== newEpisodeId) {
-    router.replace({
-      path: '/room',
-      query: {
-        id: roomId.value,
-        episodeId: newEpisodeId,
-      }
-    });
-  }
+  router.replace({
+    path: '/room',
+    query: {
+      id: roomId.value,
+      episodeId: newEpisodeId,
+    }
+  });
   videoEpisodeId.value = newEpisodeId;
 }
 
