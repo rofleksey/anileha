@@ -9,14 +9,14 @@
         round
         icon="skip_previous"
         :disable="episodeIndex === 0"
-        @click="changeEpisode(episodeListData![episodeIndex - 1].id)"/>
+        @click="changePageEpisode(episodeListData![episodeIndex - 1].id)"/>
       <q-btn
         v-if="episodeIndex >= 0"
         flat
         round
         icon="skip_next"
         :disable="episodeIndex === episodeListData?.length - 1"
-        @click="changeEpisode(episodeListData![episodeIndex + 1].id)"/>
+        @click="changePageEpisode(episodeListData![episodeIndex + 1].id)"/>
     </q-toolbar>
     <InteractiveOverlay>
       Click to enable
@@ -98,7 +98,7 @@ const episodeIndex = computed(() => {
   return episodeListData.value?.findIndex((it) => it.id === pageEpisodeId.value);
 });
 
-function changeEpisode(newEpisodeId: number) {
+function changePageEpisode(newEpisodeId: number) {
   if (pageEpisodeId.value !== newEpisodeId) {
     router.replace({
       path: '/room',
@@ -135,7 +135,9 @@ const {sendWs} = useWebSocket({
       playerRef.value?.setPlaying(false);
       playerRef.value?.seek(room.timestamp)
       if (room.episodeId) {
-        changeEpisode(room.episodeId);
+        changePageEpisode(room.episodeId);
+      } else {
+        changePageEpisode(pageEpisodeId.value);
       }
       watchersState.value = watchers;
 
@@ -160,7 +162,7 @@ const {sendWs} = useWebSocket({
       playerRef.value?.setPlaying(roomState.playing);
       playerRef.value?.seek(roomState.timestamp)
       if (roomState.episodeId) {
-        changeEpisode(roomState.episodeId);
+        changePageEpisode(roomState.episodeId);
       }
     } else if (type === 'user-state') {
       const newState = message as WatcherState
