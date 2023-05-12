@@ -95,7 +95,7 @@ const episodeIndex = computed(() => {
   if (!episodeListData.value || !videoEpisodeId.value) {
     return -1;
   }
-  return episodeListData.value?.findIndex((it) => it.id === videoEpisodeId.value);
+  return episodeListData.value?.findIndex((it) => it.id === videoEpisodeId.value) ?? -1;
 });
 
 function changePageEpisode(newEpisodeId: number) {
