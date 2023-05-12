@@ -98,6 +98,10 @@ const episodeIndex = computed(() => {
   return episodeListData.value?.findIndex((it) => it.id === videoEpisodeId.value) ?? -1;
 });
 
+watch(episodeIndex, () => {
+  console.log(`episodeIndex = ${episodeIndex.value}`);
+})
+
 function changePageEpisode(newEpisodeId: number) {
   if (pageEpisodeId.value !== newEpisodeId) {
     router.replace({
