@@ -51,13 +51,27 @@
         label="Preferred audio language"/>
 
       <q-input
+        :disable="noSubtitles"
         v-model="overrideSubLang"
         label="Preferred subtitle language"/>
 
+      <q-toggle
+        :disable="noSubtitles"
+        v-model="useExternalSubtitles"
+        label="Use external subtitles"
+      />
+
       <q-input
+        :disable="noSubtitles || !useExternalSubtitles"
         v-model="externalSubFilter"
         debounce="500"
         label="External subtitles filter"/>
+
+      <q-toggle
+        :disable="useExternalSubtitles"
+        v-model="noSubtitles"
+        label="No subtitles"
+      />
 
       <q-separator/>
 
@@ -186,6 +200,8 @@ const overrideSeason = ref('');
 const overrideAudioLang = ref('jpn');
 const overrideSubLang = ref('eng');
 const externalSubFilter = ref('');
+const useExternalSubtitles = ref(false);
+const noSubtitles = ref(false);
 
 const readyFiles = computed(() => {
   const files = fileData.value;
@@ -250,18 +266,23 @@ watch(overrideAudioLang, () => {
   });
 });
 
-watch(overrideSubLang, () => {
-  if (!overrideSubLang.value) {
+watch([noSubtitles, overrideSubLang, useExternalSubtitles, externalSubFilter], () => {
+  if (noSubtitles.value) {
+    prefsData.value.forEach((it) => {
+      it.prefs.sub = {
+        disable: true,
+      }
+    });
     return
+  }
+  if (useExternalSubtitles.value) {
+    prefsData.value.forEach((it) => {
+      it.prefs.sub = pickExternalSub(it);
+    });
+    return;
   }
   prefsData.value.forEach((it) => {
     it.prefs.sub = pickSubStream(it.analysis.sub, overrideSubLang.value);
-  });
-});
-
-watch(externalSubFilter, () => {
-  prefsData.value.forEach((it) => {
-    it.prefs.sub = pickExternalSub(it);
   });
 });
 
