@@ -95,6 +95,7 @@ interface Props {
   loading?: boolean;
   progress?: number;
   pauseOnSeek?: boolean;
+  requestPlayPause?: boolean;
 }
 
 const props = defineProps<Props>()
@@ -103,7 +104,9 @@ const emit = defineEmits<{
   (e: 'time', timestamp: number): void
   (e: 'seek', timestamp: number): void
   (e: 'play'): void
+  (e: 'requestPlay'): void
   (e: 'pause'): void
+  (e: 'requestPause'): void
   (e: 'canplay'): void
 }>()
 
@@ -151,9 +154,13 @@ watch(videoRef, () => {
 watch(playing, () => {
   if (playing.value) {
     videoRef.value?.play();
+    emit('play');
+    showCenterText('>', 300);
     restartHideControlsTimer();
   } else {
     videoRef.value?.pause();
+    emit('pause');
+    showCenterText('||', 300);
     stopHideControlsTimer();
   }
 });
@@ -346,14 +353,21 @@ function onPlayPress(e?: MouseEvent) {
 }
 
 function togglePlayback() {
+  if (props.requestPlayPause) {
+    requestTogglePlayback();
+    return
+  }
+  const newValue = !playing.value
+  playing.value = newValue;
+}
+
+function requestTogglePlayback() {
   const newValue = !playing.value
   playing.value = newValue;
   if (newValue) {
-    emit('play');
-    showCenterText('>', 300);
+    emit('requestPlay');
   } else {
-    emit('pause');
-    showCenterText('||', 300);
+    emit('requestPause');
   }
 }
 

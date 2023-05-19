@@ -13,6 +13,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('pages/AllSeriesPage.vue'),
   },
   {
+    path: '/watchLater',
+    name: 'watch-later',
+    component: () => import('pages/WatchLaterPage.vue'),
+  },
+  {
     path: '/torrents',
     name: 'all-torrents',
     component: () => import('pages/AllTorrentsPage.vue'),

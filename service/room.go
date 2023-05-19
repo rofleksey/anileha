@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 	"sync"
 	"time"
 )
@@ -30,10 +31,11 @@ func NewRoomService(
 }
 
 type room struct {
-	mutex    sync.Mutex
-	id       string
-	state    RoomState
-	watchers map[uint]*watcher
+	mutex          sync.Mutex
+	id             string
+	state          RoomState
+	watchers       map[uint]*watcher
+	playPauseLimit *rate.Limiter
 }
 
 func (r *room) broadcastExcept(id uint, req any) {
@@ -45,11 +47,22 @@ func (r *room) broadcastExcept(id uint, req any) {
 	}
 }
 
+func (r *room) broadcast(req any) {
+	for _, w := range r.watchers {
+		w.client.Send(req)
+	}
+}
+
 type RoomState struct {
 	EpisodeId   *uint   `json:"episodeId"`
 	Timestamp   float64 `json:"timestamp"`
 	Playing     bool    `json:"playing"`
 	InitiatorId uint    `json:"initiatorId"`
+}
+
+type PlayPauseState struct {
+	Timestamp float64 `json:"timestamp"`
+	Playing   bool    `json:"playing"`
 }
 
 type watcher struct {
@@ -119,6 +132,33 @@ func (s *RoomService) handleRoomStateRequest(watcher *watcher, userRoom *room, b
 	userRoom.broadcastExcept(watcher.state.Id, req)
 }
 
+func (s *RoomService) handlePlayPauseStateRequest(watcher *watcher, userRoom *room, bytes []byte) {
+	var req MessageStructure[PlayPauseState]
+	err := json.Unmarshal(bytes, &req)
+	if err != nil {
+		s.log.Warn("failed to unmarshal play pause state request", zap.Error(err))
+		return
+	}
+
+	s.log.Info("play pause state", zap.Any("state", req.Message))
+
+	userRoom.mutex.Lock()
+	defer userRoom.mutex.Unlock()
+
+	if !userRoom.playPauseLimit.Allow() {
+		return
+	}
+
+	outputMessage := RoomState{
+		EpisodeId:   userRoom.state.EpisodeId,
+		Timestamp:   req.Message.Timestamp,
+		Playing:     req.Message.Playing,
+		InitiatorId: watcher.state.Id,
+	}
+
+	userRoom.broadcast(outputMessage)
+}
+
 func (s *RoomService) handleUserStateRequest(watcher *watcher, userRoom *room, bytes []byte) {
 	var req MessageStructure[WatcherStatePartial]
 	err := json.Unmarshal(bytes, &req)
@@ -151,6 +191,8 @@ func (s *RoomService) handleMessage(watcher *watcher, userRoom *room, bytes []by
 	switch req.Type {
 	case "room-state":
 		s.handleRoomStateRequest(watcher, userRoom, bytes)
+	case "play-pause":
+		s.handlePlayPauseStateRequest(watcher, userRoom, bytes)
 	case "user-state":
 		s.handleUserStateRequest(watcher, userRoom, bytes)
 	case "user-disconnect":
@@ -213,8 +255,9 @@ func (s *RoomService) HandleConnection(conn *websocket.Conn, user *db.User, room
 	userRoom, roomExists := s.rooms[roomId]
 	if !roomExists {
 		userRoom = &room{
-			id:       roomId,
-			watchers: make(map[uint]*watcher),
+			id:             roomId,
+			watchers:       make(map[uint]*watcher),
+			playPauseLimit: rate.NewLimiter(rate.Every(time.Millisecond*500), 1),
 		}
 		s.rooms[roomId] = userRoom
 	}

@@ -25,10 +25,14 @@
       ref="playerRef"
       style="margin-top: 10px"
       :src="videoSrc"
+      :poster="episodeData?.thumb ?? ''"
       :loading="videoLoading"
       :progress="videoProgress"
       pause-on-seek
+      request-play-pause
+      @request-play="onRequestPlay"
       @play="onPlay"
+      @request-pause="onRequestPause"
       @pause="onPause"
       @time="onTime"
       @seek="onSeek"
@@ -49,7 +53,7 @@
 
 <script setup lang="ts">
 import {computed, ComputedRef, onMounted, onUnmounted, ref, watch} from 'vue';
-import {Episode, RoomState, User, WatcherState, WatcherStatePartial} from 'src/lib/api-types';
+import {Episode, PlayPauseState, RoomState, User, WatcherState, WatcherStatePartial} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodeById, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import {showError, showHint, showSuccess} from 'src/lib/util';
 import {useRoute, useRouter} from 'vue-router';
@@ -235,16 +239,29 @@ function watcherIconColor(watcher: WatcherState) {
   return 'gray'
 }
 
+function onRequestPlay() {
+  sendWs<PlayPauseState>('play-pause', {
+    timestamp: playerRef.value?.getTimestamp() ?? 0,
+    playing: true,
+  });
+}
+
 function onPlay() {
   console.log('onPlay');
   updateSelfStatus((w) => {
     w.status = 'play';
   });
+}
 
-  sendWs<RoomState>('room-state', {
-    episodeId: pageEpisodeId.value,
+function onRequestPause() {
+  console.log('onPause');
+  updateSelfStatus((w) => {
+    w.status = 'pause';
+  });
+
+  sendWs<PlayPauseState>('play-pause', {
     timestamp: playerRef.value?.getTimestamp() ?? 0,
-    playing: true,
+    playing: false,
   });
 }
 
@@ -252,12 +269,6 @@ function onPause() {
   console.log('onPause');
   updateSelfStatus((w) => {
     w.status = 'pause';
-  });
-
-  sendWs<RoomState>('room-state', {
-    episodeId: pageEpisodeId.value,
-    timestamp: playerRef.value?.getTimestamp() ?? 0,
-    playing: false,
   });
 }
 

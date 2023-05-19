@@ -150,6 +150,11 @@ export interface RoomState {
   initiatorId?: number;
 }
 
+export interface PlayPauseState {
+  timestamp: number;
+  playing: boolean;
+}
+
 export interface WatcherState extends WatcherStatePartial {
   id: number;
   name: string;

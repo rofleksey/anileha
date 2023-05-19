@@ -41,7 +41,7 @@ import {computed, ComputedRef, onMounted, ref} from 'vue';
 import {Episode, User} from 'src/lib/api-types';
 import {BASE_URL, fetchEpisodeById, fetchEpisodesBySeriesId} from 'src/lib/get-api';
 import sanitize from 'sanitize-filename';
-import {showError, showSuccess} from 'src/lib/util';
+import {saveWatchLater, showError, showSuccess} from 'src/lib/util';
 import {useRoute, useRouter} from 'vue-router';
 import {useUserStore} from 'stores/user-store';
 import VideoPlayer from 'components/VideoPlayer.vue';
@@ -100,13 +100,18 @@ function onCanPlay() {
 }
 
 function serializeTimestamp() {
-  if (!episodeId.value) {
+  if (!episodeId.value || !playerRef.value?.getPlaying()) {
     return
   }
-  localStorage.setItem(`episode-timestamp-${episodeId.value}`, playerRef.value?.getTimestamp());
+  const seriesId = episodeData.value?.seriesId;
+  const timestamp = playerRef.value?.getTimestamp();
+  if (seriesId && timestamp) {
+    saveWatchLater(seriesId, episodeId.value, episodeData.value?.episode ?? '');
+    localStorage.setItem(`episode-timestamp-${episodeId.value}`, timestamp);
+  }
 }
 
-useInterval(serializeTimestamp, 5000);
+useInterval(serializeTimestamp, 10000);
 
 function onRefreshThumbClick() {
   quasar.dialog({
