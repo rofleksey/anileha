@@ -164,7 +164,7 @@ interface ButtonItem {
 
 const userLinks = ref<LinkItem[]>([
   {icon: 'home', text: 'Home', page: '/'},
-  {icon: 'watch_later', text: 'Continue', page: '/series'},
+  {icon: 'watch_later', text: 'Continue', page: '/watchLater'},
   {icon: 'video_library', text: 'Series', page: '/series'},
 ]);
 
