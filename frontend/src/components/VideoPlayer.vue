@@ -357,13 +357,11 @@ function togglePlayback() {
     requestTogglePlayback();
     return
   }
-  const newValue = !playing.value
-  playing.value = newValue;
+  playing.value = !playing.value;
 }
 
 function requestTogglePlayback() {
   const newValue = !playing.value
-  playing.value = newValue;
   if (newValue) {
     emit('requestPlay');
   } else {

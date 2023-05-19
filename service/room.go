@@ -156,7 +156,10 @@ func (s *RoomService) handlePlayPauseStateRequest(watcher *watcher, userRoom *ro
 		InitiatorId: watcher.state.Id,
 	}
 
-	userRoom.broadcast(outputMessage)
+	userRoom.broadcast(MessageStructure[RoomState]{
+		Type:    "room-state",
+		Message: outputMessage,
+	})
 }
 
 func (s *RoomService) handleUserStateRequest(watcher *watcher, userRoom *room, bytes []byte) {
