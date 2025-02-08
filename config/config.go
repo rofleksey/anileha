@@ -110,8 +110,8 @@ func GetDefaultConfig() Config {
 			ConnMaxLifetimeSecs: 1800,
 		},
 		Rest: RestConfig{
-			Port:    7891,
-			BaseUrl: "http://127.0.0.1:7891",
+			Port:    8080,
+			BaseUrl: "http://127.0.0.1:8080",
 		},
 		WebSocket: WebSocketConfig{
 			WriteTimeoutMs:        10000,
