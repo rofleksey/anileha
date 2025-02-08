@@ -12,7 +12,7 @@ RUN npm i && npm run build
 
 FROM alpine
 WORKDIR /opt
-RUN apk update && apk add --no-cache curl ca-certificates ffmpeg ffprobe
+RUN apk update && apk add --no-cache curl ca-certificates ffmpeg
 COPY --from=apiBuilder /opt/anileha /opt/anileha
 COPY --from=frontBuilder /opt/dist /opt/frontend/dist
 EXPOSE 8080
