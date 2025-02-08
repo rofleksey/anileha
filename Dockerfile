@@ -1,4 +1,4 @@
-FROM golang:1.18-alpine AS apiBuilder
+FROM golang:1.20-alpine AS apiBuilder
 WORKDIR /opt
 COPY . /opt/
 RUN apk add --no-cache gcc musl-dev
