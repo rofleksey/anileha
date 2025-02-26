@@ -165,13 +165,14 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 	prefs Preferences) (*ffmpeg.Command, error) {
 	// free 2 virtual CPUs from ffmpeg workload
 	numThreads := runtime.NumCPU() - 2
-	if numThreads < 1 {
-		numThreads = 1
-	}
 
 	// ffmpeg doesn't recommend setting this above 16
-	if numThreads > 16 {
-		numThreads = 16
+	if numThreads > p.config.FFMpeg.MaxThreads {
+		numThreads = p.config.FFMpeg.MaxThreads
+	}
+
+	if numThreads < 1 {
+		numThreads = 1
 	}
 
 	args := p.config.FFMpeg.ConvertArgs
