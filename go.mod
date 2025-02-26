@@ -132,6 +132,7 @@ require (
 	go.opentelemetry.io/otel v1.10.0 // indirect
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/dig v1.16.1 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go4.org v0.0.0-20200411211856-f5505b9728dd // indirect

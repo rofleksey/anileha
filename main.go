@@ -11,6 +11,7 @@ import (
 	"anileha/search/nyaa"
 	"anileha/service"
 	"anileha/util/logger"
+	_ "go.uber.org/automaxprocs"
 	"go.uber.org/fx"
 )
 

@@ -169,7 +169,7 @@ func (p *Producer) GetFFmpegCommand(inputFile string, outputPath string, logsPat
 		numThreads = 1
 	}
 
-	// ffmpeg doesn't recommend settings this above 16
+	// ffmpeg doesn't recommend setting this above 16
 	if numThreads > 16 {
 		numThreads = 16
 	}
